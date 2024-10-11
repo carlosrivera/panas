@@ -1,6 +1,6 @@
 {
   "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "default",
+  "style": "new-york",
   "rsc": true,
   "tsx": true,
   "tailwind": {
@@ -11,10 +11,10 @@
     "prefix": ""
   },
   "aliases": {
-    "components": "@repo/ui/components",
-    "ui": "@repo/ui/components/ui",
-    "utils": "@repo/ui/lib/utils",
-    "lib": "@repo/ui/lib",
-    "hooks": "@repo/ui/hooks"
+    "components": "@panas-ai/ui/components",
+    "ui": "@panas-ai/ui/components/ui",
+    "utils": "@panas-ai/ui/lib/utils",
+    "lib": "@panas-ai/ui/lib",
+    "hooks": "@panas-ai/ui/hooks"
   }
 }

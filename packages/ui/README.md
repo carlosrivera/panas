@@ -1,1 +1,1 @@
-# `@repo/ui`
+# `@panas-ai/ui`

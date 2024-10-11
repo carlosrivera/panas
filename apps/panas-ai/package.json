@@ -1,0 +1,34 @@
+{
+    "name": "panas-ai",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev --port 3333 --turbo",
+        "build": "next build",
+        "start": "next start",
+        "lint": "eslint . --max-warnings 0"
+    },
+    "dependencies": {
+        "@panas-ai/ui": "workspace:*",
+        "framer-motion": "^11.11.7",
+        "next": "14.2.8",
+        "react": "^18",
+        "react-dom": "^18",
+        "ts-pattern": "^5.4.0",
+        "zod": "^3.23.8"
+    },
+    "devDependencies": {
+        "@next/eslint-plugin-next": "14.2.8",
+        "@panas-ai/eslint-config": "workspace:*",
+        "@panas-ai/typescript-config": "workspace:*",
+        "@types/eslint": "^8",
+        "@types/node": "^20",
+        "@types/react": "^18",
+        "@types/react-dom": "^18",
+        "autoprefixer": "^10",
+        "eslint": "^8",
+        "postcss": "^8",
+        "tailwindcss": "^3.4.10",
+        "typescript": "^5"
+    }
+}

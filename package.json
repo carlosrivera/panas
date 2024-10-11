@@ -1,5 +1,5 @@
 {
-  "name": "turborepo-shadcn-ui",
+  "name": "panas-ai",
   "version": "1.4.2",
   "private": true,
   "license": "MIT",
@@ -8,11 +8,11 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "ui": "pnpm --filter @repo/ui ui"
+    "ui": "pnpm --filter @panas-ai/ui ui"
   },
   "devDependencies": {
-    "@repo/eslint-config": "workspace:*",
-    "@repo/typescript-config": "workspace:*",
+    "@panas-ai/eslint-config": "workspace:*",
+    "@panas-ai/typescript-config": "workspace:*",
     "prettier": "^3.3.3",
     "turbo": "2.1.1"
   },
