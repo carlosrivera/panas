@@ -197,7 +197,7 @@ export const cloudRequestSchema = z
         method: z.enum(["GET", "POST"]),
         path: z
             .string()
-            .regex(/^\/[A-Za-z0-9_\/-]*$/)
+            .regex(/^\/[A-Za-z0-9_/-]*$/)
             .max(300),
         bodyDigest: digestSchema,
         nonce: z.uuid(),
