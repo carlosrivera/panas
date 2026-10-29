@@ -686,3 +686,293 @@
         transition: none !important;
     }
 }
+.directory-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 1.2rem;
+    align-items: end;
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--card);
+}
+.directory-filters label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: grid;
+    gap: 0.5rem;
+}
+.directory-filters label .small-note {
+    font-weight: 400;
+    display: inline;
+}
+.directory-filters input,
+.directory-filters select {
+    font: inherit;
+    font-size: 0.85rem;
+    min-height: 46px;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #a7b39f;
+    border-radius: 0.5rem;
+    background: #fffdf7;
+    color: var(--foreground);
+    width: 100%;
+    min-width: 0;
+}
+.filter-button {
+    min-height: 46px;
+    background: var(--foreground);
+    color: var(--card);
+    border: 0;
+    border-radius: 100px;
+    padding: 0.65rem 1.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+.filter-note {
+    grid-column: 1/-1;
+    font-size: 0.7rem;
+    color: var(--muted-foreground);
+}
+.directory-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    margin-block: 1.2rem;
+}
+.directory-toolbar .text-link {
+    border: 0;
+    background: none;
+    color: var(--foreground);
+    padding: 0.4rem;
+    flex-shrink: 0;
+}
+.directory-message {
+    border: 1px dashed #b8c3ad;
+    border-radius: var(--radius);
+    padding: 3rem;
+    background: #f0f1e5;
+    margin-block: 1.5rem;
+}
+.directory-message h2 {
+    font-size: 2rem;
+    margin-block: 0.7rem;
+}
+.directory-message p {
+    font-size: 0.9rem;
+    color: var(--muted-foreground);
+    max-width: 39rem;
+}
+.directory-message .text-link {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--foreground);
+    margin-top: 1rem;
+}
+.message-warning {
+    background: #f3e8d8;
+    border-style: solid;
+    border-color: #d6be9e;
+}
+.provider-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+}
+.provider-card-public {
+    padding: 1.8rem;
+    border: 1px solid var(--border);
+    background: var(--card);
+    border-radius: var(--radius);
+    min-width: 0;
+}
+.provider-card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+}
+.provider-card-heading .tiny-label {
+    font-size: 0.58rem;
+}
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.63rem;
+    font-weight: 600;
+    border: 1px solid #b8c3ad;
+    padding: 0.3rem 0.65rem;
+    border-radius: 100px;
+    line-height: 1.5;
+}
+.status-pill > span {
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+.status-ready {
+    background: #e7eddf;
+    color: #284b3a;
+    border-color: #a1b292;
+}
+.status-quiet {
+    background: #eeeee5;
+    color: #596458;
+}
+.status-warning {
+    background: #f4e4cb;
+    color: #7e4714;
+    border-color: #d6be9e;
+}
+.provider-card-public h2 {
+    font-family: var(--font-sans);
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    margin-top: 1.8rem;
+    line-height: 1.4;
+}
+.provider-card-public h2 a {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    text-decoration: none;
+}
+.provider-card-public h2 a:hover {
+    text-decoration: underline;
+}
+.provider-model {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    margin-top: 0.3rem;
+    overflow-wrap: anywhere;
+}
+.provider-price {
+    margin-top: 1.4rem;
+    padding-block: 1rem;
+    border-block: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+.provider-price strong {
+    font-size: 1.2rem;
+    overflow-wrap: anywhere;
+}
+.provider-price > span {
+    font-size: 0.7rem;
+    color: var(--muted-foreground);
+}
+.provider-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin-block: 1.3rem;
+}
+.provider-facts > div {
+    min-width: 0;
+}
+.provider-facts dt {
+    font-size: 0.65rem;
+    color: var(--muted-foreground);
+}
+.provider-facts dd {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+.provider-times {
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    margin-bottom: 1rem;
+}
+.provider-times p {
+    font-size: 0.65rem;
+    color: var(--muted-foreground);
+    margin-bottom: 0.2rem;
+}
+.directory-disclaimer {
+    font-size: 0.75rem;
+    color: var(--muted-foreground);
+    max-width: 50rem;
+    line-height: 1.8;
+    margin-top: 2rem;
+}
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.pagination button {
+    border: 0;
+    background: none;
+    color: var(--foreground);
+}
+.pagination button:disabled,
+.directory-toolbar button:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
+.provider-detail-grid {
+    max-width: 52rem;
+}
+.provider-detail .provider-facts {
+    gap: 1.3rem;
+}
+.provider-revisions .long-value {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+}
+.benchmark-block {
+    background: #f0f1e5;
+    border-radius: 0.7rem;
+    padding: 1.3rem;
+    margin-block: 1.5rem;
+}
+.benchmark-block h3 {
+    font-size: 0.9rem;
+}
+.benchmark-block p {
+    margin-top: 0.6rem;
+    font-size: 0.85rem;
+}
+.benchmark-block .small-note {
+    font-size: 0.7rem;
+}
+@media (max-width: 767px) {
+    .directory-filters {
+        grid-template-columns: 1fr;
+        padding: 1.2rem;
+        gap: 1rem;
+    }
+    .provider-grid {
+        grid-template-columns: 1fr;
+    }
+    .directory-toolbar {
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    .directory-toolbar > .small-note {
+        font-size: 0.68rem;
+    }
+    .provider-card-public {
+        padding: 1.4rem;
+    }
+    .provider-card-heading {
+        align-items: flex-start;
+    }
+    .directory-message {
+        padding: 1.5rem;
+    }
+    .provider-facts {
+        gap: 1rem;
+    }
+}

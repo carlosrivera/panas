@@ -4,8 +4,8 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "next dev --port 3333",
-        "build": "next build",
+        "dev": "next dev --webpack --port 3333",
+        "build": "next build --webpack",
         "start": "next start --port 3333",
         "typecheck": "tsc --noEmit"
     },
@@ -13,7 +13,9 @@
         "@panas/ui": "workspace:*",
         "next": "16.4.3",
         "react": "19.3.1",
-        "react-dom": "19.3.1"
+        "react-dom": "19.3.1",
+        "@panas/contracts": "workspace:*",
+        "zod": "4.6.7"
     },
     "devDependencies": {
         "@panas/typescript-config": "workspace:*",
