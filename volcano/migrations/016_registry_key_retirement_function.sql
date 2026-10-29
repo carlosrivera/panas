@@ -1,0 +1,1 @@
+CREATE OR REPLACE FUNCTION panas_retire_registry_key() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF OLD.public_key_pem IS DISTINCT FROM NEW.public_key_pem OR OLD.enabled IS DISTINCT FROM NEW.enabled THEN UPDATE panas_registry_current SET eligible=false, state='testing', retired_at=clock_timestamp() WHERE provider_id=NEW.provider_id; END IF; RETURN NEW; END $$;
