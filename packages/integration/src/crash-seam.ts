@@ -14,7 +14,7 @@ import {
     repositoryRoot,
     type OwnedProvider,
 } from "./processes.js";
-import { ownedRuntimePid, assertDescendant } from "./owned-runtime.js";
+import { assertDescendant } from "./owned-runtime.js";
 import { connectBuyer } from "./mcp-client.js";
 import { prepareDelayedRuntime } from "./delayed-runtime.js";
 import { inspectFixtureRequest, openOperator } from "./prepare.js";
@@ -217,6 +217,7 @@ export async function runCrashSeam(path: string): Promise<string> {
         });
     try {
         const baseline = await inspectFixtureRequest(path, randomUUID());
+        report.baseline = baseline;
         if (baseline.held !== "0") throw new Error("FIXTURE_HAS_PRIOR_HOLDS");
         provider = await launchProvider(config.providerEnvs[1], {
             PANAS_OLLAMA_BINARY: wrapper.binaryPath,
@@ -244,7 +245,33 @@ export async function runCrashSeam(path: string): Promise<string> {
         const completedBytes = hash(
             await readFile(join(dataPath, "requests", completedId + ".enc")),
         );
-        ownedWrapperPid = ownedRuntimePid(provider);
+        const listener = execFileSync(
+            "lsof",
+            ["-nP", "-tiTCP:11602", "-sTCP:LISTEN"],
+            { encoding: "utf8" },
+        ).trim();
+        if (!/^\d+$/.test(listener))
+            throw new Error("AMBIGUOUS_WRAPPER_LISTENER");
+        ownedWrapperPid = Number(listener);
+        assertDescendant(ownedWrapperPid, provider.child.pid!, (pid) =>
+            Number(
+                execFileSync("ps", ["-p", String(pid), "-o", "ppid="], {
+                    encoding: "utf8",
+                }).trim(),
+            ),
+        );
+        const command = execFileSync(
+            "ps",
+            ["-p", String(ownedWrapperPid), "-o", "command="],
+            { encoding: "utf8" },
+        ).trim();
+        if (
+            ![
+                `${process.execPath} ${wrapper.binaryPath} serve`,
+                `node ${wrapper.binaryPath} serve`,
+            ].includes(command)
+        )
+            throw new Error("WRAPPER_COMMAND_MISMATCH");
         const ownerRecord = JSON.parse(
             await readPrivate(join(dataPath, "host.owner.json")),
         );
