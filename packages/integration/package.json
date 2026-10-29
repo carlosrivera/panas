@@ -1,0 +1,29 @@
+{
+    "name": "@panas/integration",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "typecheck": "tsc --noEmit",
+        "local-simulation": "tsx src/cli.ts local-simulation",
+        "manual-two-machine": "tsx src/cli.ts manual-two-machine",
+        "failure-fixtures": "tsx src/cli.ts failure-fixtures",
+        "setup": "tsx src/cli.ts prepare",
+        "release-smoke": "tsx src/cli.ts release-smoke"
+    },
+    "dependencies": {
+        "@panas/accounting": "workspace:*",
+        "@panas/protocol": "workspace:*",
+        "@panas/contracts": "workspace:*",
+        "@modelcontextprotocol/sdk": "1.32.2",
+        "pg": "8.23.1",
+        "zod": "4.6.7"
+    },
+    "devDependencies": {
+        "@panas/typescript-config": "workspace:*",
+        "@types/node": "24.19.2",
+        "@types/pg": "8.23.1",
+        "typescript": "6.0.3",
+        "tsx": "4.23.15"
+    }
+}
