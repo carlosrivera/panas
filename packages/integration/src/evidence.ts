@@ -39,6 +39,7 @@ export const evidenceSchema = z
             "failure-fixtures",
             "fault-seams",
             "deadline-seam",
+            "cancel-race-seam",
         ]),
         startedAt: z.iso.datetime(),
         finishedAt: z.iso.datetime(),
@@ -84,6 +85,7 @@ export const evidenceSchema = z
                 "release-smoke",
                 "fault-seams",
                 "deadline-seam",
+                "cancel-race-seam",
             ].includes(report.mode) &&
             (report.physicalMachineCount !== 1 ||
                 report.gates.twoPhysicalMacs !== "pending")

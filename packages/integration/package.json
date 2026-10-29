@@ -12,7 +12,8 @@
         "release-smoke": "tsx src/cli.ts release-smoke",
         "fault-seams": "tsx src/cli.ts fault-seams",
         "deadline-seam": "tsx src/cli.ts deadline-seam",
-        "reconcile-fixtures": "tsx src/cli.ts reconcile-fixtures"
+        "reconcile-fixtures": "tsx src/cli.ts reconcile-fixtures",
+        "cancel-race-seam": "tsx src/cli.ts cancel-race-seam"
     },
     "dependencies": {
         "@panas/accounting": "workspace:*",

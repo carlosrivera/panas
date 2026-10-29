@@ -1,0 +1,93 @@
+{
+    "schemaVersion": 1,
+    "scope": "explicit-audited-test-fixture-operator-review",
+    "gitCommit": "ed2219f0c3e1f309a8185826c6d387fea883e0a8",
+    "sourceTreeDirty": false,
+    "observedAt": "2026-10-29T15:20:06.119Z",
+    "reason": "Owned integration fault fixtures never authorized these requests: actual copied-ticket/invalid-proof/initialization rejection or natural execution expiry was observed, providers are stopped and execution permission expired. Explicit zero-debit operator release only after the real reconciliation deadline; preserve audit and ledger.",
+    "results": [
+        {
+            "buyerId": "a33b2eb9-2b99-4d81-ada4-f010bdf9cb9c",
+            "before": {
+                "balance": "1000",
+                "held": "2",
+                "settlements": 0
+            },
+            "after": {
+                "balance": "1000",
+                "held": "0",
+                "settlements": 0
+            },
+            "released": [
+                {
+                    "requestId": "4b85109f-09a4-4111-abf6-195ade09b318",
+                    "receiptId": "6fe8a97c-15fc-427b-ac10-b3b61febb1fe",
+                    "auditId": "6d918bb3-306f-4458-8991-18a10ddc15a2",
+                    "action": "release",
+                    "reconcileAfter": "2026-10-29T15:10:02.461Z",
+                    "observedAfterRealDeadline": true
+                }
+            ],
+            "ledgerImbalanceCount": 0,
+            "heldMismatchCount": 0
+        },
+        {
+            "buyerId": "3ddc4c84-56b2-4589-a510-fec69b10044f",
+            "before": {
+                "balance": "1000",
+                "held": "3",
+                "settlements": 0
+            },
+            "after": {
+                "balance": "1000",
+                "held": "0",
+                "settlements": 0
+            },
+            "released": [
+                {
+                    "requestId": "b85e32d5-ca46-4b6e-9584-ebb572a1b09c",
+                    "receiptId": "2677967e-aaf2-4e42-ba85-5a95cdec3037",
+                    "auditId": "043f0e36-d8f7-424c-aa89-0fd8026680ec",
+                    "action": "release",
+                    "reconcileAfter": "2026-10-29T15:14:16.412Z",
+                    "observedAfterRealDeadline": true
+                },
+                {
+                    "requestId": "2960ea4e-27df-46b9-998e-41b8ea15763a",
+                    "receiptId": "4ac053a3-eee9-46a1-afb3-2824c7f5e221",
+                    "auditId": "ef38b300-86c8-43ed-844c-b127b28c8a3b",
+                    "action": "release",
+                    "reconcileAfter": "2026-10-29T15:14:23.540Z",
+                    "observedAfterRealDeadline": true
+                }
+            ],
+            "ledgerImbalanceCount": 0,
+            "heldMismatchCount": 0
+        },
+        {
+            "buyerId": "72960929-a93f-4a81-8e23-b99a2a226295",
+            "before": {
+                "balance": "999",
+                "held": "2",
+                "settlements": 1
+            },
+            "after": {
+                "balance": "999",
+                "held": "0",
+                "settlements": 1
+            },
+            "released": [
+                {
+                    "requestId": "bff6454b-8861-441e-a2aa-56e821e4c18d",
+                    "receiptId": "4af099d7-db2c-43e6-9b2e-21db3fe0a891",
+                    "auditId": "687a41ae-b640-46c3-b3a3-021e7ccf3bc6",
+                    "action": "release",
+                    "reconcileAfter": "2026-10-29T15:17:19.364Z",
+                    "observedAfterRealDeadline": true
+                }
+            ],
+            "ledgerImbalanceCount": 0,
+            "heldMismatchCount": 0
+        }
+    ]
+}
