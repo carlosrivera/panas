@@ -107,7 +107,7 @@ export async function verifyRelease(
         status: 401,
     });
     console.log("Checking authenticated_mcp");
-    const secret = process.env.PANAS_DISCOVERY_TOKEN;
+    const secret = process.env.PANAS_DISCOVERY_TOKEN?.trim();
     ensure(
         secret,
         "Read-only discovery credential required for actual MCP probe",
