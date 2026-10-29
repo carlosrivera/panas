@@ -21,6 +21,7 @@ export interface StoredRequest {
         inputTokens: number;
         outputTokens: number;
         durationMs: number;
+        finishReason?: "stop" | "length" | "unknown";
     };
     error?: string;
     authorization?: unknown;
