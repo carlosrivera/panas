@@ -151,7 +151,7 @@ export async function runFaultSeams(path: string): Promise<string> {
                 : {}),
         });
     const buy = async (providerId: string): Promise<Purchase> => {
-        const quote = z.object({ quote: quoteSchema }).parse(
+        const quote = quoteSchema.parse(
             await cloud.quote({
                 providerId,
                 sessionId: owner.sessionId,
@@ -159,7 +159,7 @@ export async function runFaultSeams(path: string): Promise<string> {
                 payloadDigest: digest(payload),
                 maxOutputTokens: payload.maxOutputTokens,
             }),
-        ).quote;
+        );
         const purchase = purchaseSchema.parse(
             await cloud.purchase({
                 quoteId: quote.quoteId,
