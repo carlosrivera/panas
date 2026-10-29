@@ -61,11 +61,11 @@ export default function Home() {
                             aria-label="your agent, handshake, a pana's mac"
                         >
                             <span>your agent</span>
-                            <i className="node"></i>
-                            <i className="line"></i>
+                            <i className="node agent"></i>
+                            <i className="line out"></i>
                             <span className="pill">panas_ai</span>
-                            <i className="line"></i>
-                            <i className="node on"></i>
+                            <i className="line in"></i>
+                            <i className="node on mac"></i>
                             <span>a pana's mac</span>
                         </div>
                     </div>
