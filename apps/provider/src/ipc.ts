@@ -7,6 +7,7 @@ export async function serveLocal(
     daemon: ProviderDaemon,
     socketPath: string,
     token: string,
+    paidHandler?: (operation: unknown) => Promise<unknown>,
 ): Promise<Server> {
     try {
         await lstat(socketPath);
@@ -45,6 +46,22 @@ export async function serveLocal(
                         throw new Error("UNAUTHORIZED");
                     let result: unknown;
                     switch (body.method) {
+                        case "paid":
+                            if (!paidHandler)
+                                throw new ProviderError(
+                                    "PAID_HOST_UNAVAILABLE",
+                                );
+                            result = await paidHandler(body.operation);
+                            break;
+                        case "verify-peer":
+                            // Administrative trusted-local-only; the controller supplies real probe evidence.
+                            daemon.verifyPeer(
+                                body.evidence as Parameters<
+                                    ProviderDaemon["verifyPeer"]
+                                >[0],
+                            );
+                            result = daemon.status;
+                            break;
                         case "status":
                             result = daemon.status;
                             break;
