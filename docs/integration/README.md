@@ -1,6 +1,6 @@
 # Integration reproduction and evidence gates
 
-Issue #10 remains open until the actual two-physical-Mac validation and the #9 release gate are satisfied. The second Mac exists but is inaccessible to this agent. Two provider processes on the available Mac are a **local simulation of the topology**, not two machines or two GPU resource pools.
+Issue #10 remains open until the actual two-physical-Mac validation and outstanding end-to-end fault observations are satisfied. The #9 release gate is now backed by the final verified release and the real one-request smoke below. The second Mac exists but is inaccessible to this agent. Two provider processes on the available Mac are a **local simulation of the topology**, not two machines or two GPU resource pools.
 
 ## Modes
 
@@ -62,3 +62,5 @@ pnpm --filter @panas/integration run release-smoke --config /private/path/new-ru
 ```
 
 This mode refuses to launch or purchase if the release reference is absent or invalid. It runs the actual provider startup/discovery/quote/purchase/inference/receipt and reconnect checks, performs only one new paid request, and records the referenced release commit separately from the harness commit. The hardware gate remains pending.
+
+[The final release smoke](evidence/release-smoke-2026-10-29.json) passed on clean harness commit `22e33941a0b9931147bfd474a8159b7bb624fe51` against verified Volcano release `759c14e8141ed04e4ef8d907f4d79cf5a2ce627e`. In 42.98 seconds, two real provider processes on one physical Mac published startup-tested readiness; the buyer selected the intended lower fixed price, completed exactly one new paid request through MCPWire and the pinned model, then retrieved the same receipt after adapter replacement and duplicate attempts. The receipt balanced 1 buyer debit / 1 provider earnings / 0 fee in atomic TEST_CREDIT units, with 6 input tokens, 16 output tokens, and actual finish reason `length`. Both owned inference processes stopped and both dedicated runtime ports closed. The referenced full-release report passed all seven named checks; `release9` is `referenced_verified_report`. Physical two-Mac evidence and the seven explicit end-to-end fault drills remain pending; `issue10Complete` stays false.
