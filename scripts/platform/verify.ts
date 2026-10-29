@@ -8,6 +8,8 @@ import { pathToFileURL } from "node:url";
 import { PLATFORM } from "./config.js";
 import {
     probeFrontend,
+    probeFunctions,
+    type FunctionDeployment,
     assertOperationalHealth,
     VerificationError,
     verificationError,
@@ -26,14 +28,6 @@ import {
     volcano,
 } from "./runtime.js";
 
-interface CloudFunction {
-    id: string;
-    project_id: string;
-    name: string;
-    status: string;
-    invoke_url: string;
-    current_deployment_id: string | null;
-}
 export interface ReleaseCheck {
     name: string;
     passed: true;
@@ -53,6 +47,24 @@ async function request(url: string, init: RequestInit = {}) {
         throw new Error("Release endpoint request failed");
     }
 }
+async function readinessManagement<T>(
+    stage: VerificationStage,
+    path: string,
+    signal: AbortSignal,
+): Promise<T> {
+    try {
+        return await management<T>(path, { signal });
+    } catch (error) {
+        if (error instanceof ManagementRequestError)
+            throw new VerificationError(
+                stage,
+                error.status ? "HTTP_STATUS" : "REQUEST_FAILED",
+                undefined,
+                error.status,
+            );
+        throw error;
+    }
+}
 async function probeRelease(
     frontend: boolean,
     migration: Record<string, unknown>,
@@ -62,6 +74,13 @@ async function probeRelease(
     await assertProjectBinding();
     assertClean();
     const checks: ReleaseCheck[] = [];
+    function reportRetry(failure: VerificationError, attempt: number) {
+        const diagnostic = { ...failure.diagnostic, attempt };
+        failures.push(diagnostic);
+        console.warn(
+            JSON.stringify({ event: "release_readiness_retry", ...diagnostic }),
+        );
+    }
     checking("anonymous_public_api");
     const publicUrl = `${PLATFORM.registryUrl}/public/providers?limit=1`;
     const publicResponse = await request(publicUrl, {
@@ -159,21 +178,21 @@ async function probeRelease(
         passed: true,
         endpoint: `${PLATFORM.registryUrl}/mcp`,
     });
+    checking("functions_deployment");
+    const functionProbe = await probeFunctions({
+        projectId: PLATFORM.projectId,
+        load: async (signal) =>
+            (
+                await readinessManagement<{ data: FunctionDeployment[] }>(
+                    "functions_deployment",
+                    `/projects/${PLATFORM.projectId}/functions`,
+                    signal,
+                )
+            ).data,
+        onRetry: reportRetry,
+    });
+    const functions = functionProbe.records;
     checking("private_operational_health");
-    const functions = (
-        await management<{ data: CloudFunction[] }>(
-            `/projects/${PLATFORM.projectId}/functions`,
-        )
-    ).data;
-    for (const name of ["health", "registry", "accounting", "operations"]) {
-        const fn = functions.find((fn) => fn.name === name);
-        ensure(
-            fn?.project_id === PLATFORM.projectId &&
-                fn.status === "active" &&
-                fn.current_deployment_id,
-            `Function ${name} has no active deployment`,
-        );
-    }
     const operation = functions.find((fn) => fn.name === "operations")!;
     const invocation = (await invokeOperations(operation, {
         job: "health",
@@ -197,35 +216,16 @@ async function probeRelease(
             projectId: PLATFORM.projectId,
             onStage: checking,
             deployment: async (signal) => {
-                let records: { data: FrontendDeployment[] };
-                try {
-                    records = await management<{
-                        data: FrontendDeployment[];
-                    }>(`/projects/${PLATFORM.projectId}/frontends`, {
-                        signal,
-                    });
-                } catch (error) {
-                    if (error instanceof ManagementRequestError)
-                        throw new VerificationError(
-                            "frontend_deployment",
-                            error.status ? "HTTP_STATUS" : "REQUEST_FAILED",
-                            undefined,
-                            error.status,
-                        );
-                    throw error;
-                }
+                const records = await readinessManagement<{
+                    data: FrontendDeployment[];
+                }>(
+                    "frontend_deployment",
+                    `/projects/${PLATFORM.projectId}/frontends`,
+                    signal,
+                );
                 return records.data.find((f) => f.name === "panas");
             },
-            onRetry: (failure, attempt) => {
-                const diagnostic = { ...failure.diagnostic, attempt };
-                failures.push(diagnostic);
-                console.warn(
-                    JSON.stringify({
-                        event: "release_readiness_retry",
-                        ...diagnostic,
-                    }),
-                );
-            },
+            onRetry: reportRetry,
         });
         frontendRecord = result.record;
         frontendProbe = {
@@ -288,6 +288,7 @@ async function probeRelease(
               }
             : {}),
         checks,
+        functionProbe: { attempts: functionProbe.attempts },
         ...(frontendProbe ? { frontendProbe } : {}),
         migration,
     };

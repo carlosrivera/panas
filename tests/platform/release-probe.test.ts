@@ -7,6 +7,7 @@ import {
 import { once } from "node:events";
 import {
     probeFrontend,
+    probeFunctions,
     assertOperationalHealth,
     VerificationError,
     verificationError,
@@ -254,4 +255,69 @@ it("fails closed on a wrong release and either financial invariant", () => {
             VerificationError,
         );
     }
+});
+
+it("waits for backend resource metadata separately and names a stuck function", async () => {
+    const names = ["health", "registry", "accounting", "operations"];
+    const records = names.map((name) => ({
+        id: name,
+        name,
+        project_id: "project",
+        status: "active",
+        invoke_url: "https://example.invalid",
+        current_deployment_id: "deployment",
+    }));
+    let requests = 0;
+    const failures: unknown[] = [];
+    const result = await probeFunctions({
+        projectId: "project",
+        ...clock(),
+        load: async () => {
+            requests++;
+            return records.map((r) => ({
+                ...r,
+                status:
+                    r.name === "registry" && requests === 1
+                        ? "provisioning"
+                        : r.status,
+            }));
+        },
+        onRetry: (e) => failures.push(e.diagnostic),
+    });
+    expect(result.attempts).toBe(2);
+    expect(failures).toEqual([
+        {
+            stage: "functions_deployment",
+            code: "DEPLOYMENT_NOT_ACTIVE",
+            resource: "registry",
+            resourceState: "provisioning",
+        },
+    ]);
+    await expect(
+        probeFunctions({
+            projectId: "project",
+            ...clock(),
+            load: async () => records.filter((r) => r.name !== "registry"),
+        }),
+    ).rejects.toMatchObject({
+        diagnostic: {
+            stage: "functions_deployment",
+            code: "DEPLOYMENT_NOT_ACTIVE",
+            resource: "registry",
+        },
+    });
+    await expect(
+        probeFunctions({
+            projectId: "project",
+            ...clock(),
+            load: async () =>
+                records.map((r) => ({ ...r, project_id: "wrong" })),
+        }),
+    ).rejects.toMatchObject({
+        diagnostic: {
+            stage: "functions_deployment",
+            code: "CHECK_FAILED",
+            resource: "health",
+        },
+    });
 });
