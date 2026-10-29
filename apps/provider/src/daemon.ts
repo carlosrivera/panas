@@ -100,6 +100,7 @@ export class ProviderDaemon {
         if (
             !report ||
             report.startupId !== evidence.startupId ||
+            !Number.isFinite(Date.parse(evidence.testedAt)) ||
             Date.parse(evidence.testedAt) < Date.parse(report.testedAt) ||
             Date.parse(evidence.testedAt) > this.now() + 5000
         )
@@ -176,7 +177,7 @@ export class ProviderDaemon {
     resume(): void {
         this.paused = false;
         this.draining = false;
-        void this.pump();
+        this.kick();
     }
     drain(): void {
         this.draining = true;
@@ -184,14 +185,17 @@ export class ProviderDaemon {
     async emergencyStop(): Promise<void> {
         this.paused = true;
         this.invalidate();
-        for (const task of [...this.queue])
-            await this.cancel(task.request.requestId, task.buyerKeyId);
-        if (this.active)
-            await this.cancel(
-                this.active.request.requestId,
-                this.active.buyerKeyId,
-            );
-        await this.runtime.stop();
+        try {
+            for (const task of [...this.queue])
+                await this.cancel(task.request.requestId, task.buyerKeyId);
+            if (this.active)
+                await this.cancel(
+                    this.active.request.requestId,
+                    this.active.buyerKeyId,
+                );
+        } finally {
+            await this.runtime.stop();
+        }
     }
     async get(
         requestId: string,
@@ -263,8 +267,14 @@ export class ProviderDaemon {
             };
             this.queue.push(task);
             this.buyerAdmissions.set(buyerKeyId, [...recent, this.now()]);
-            void this.pump();
+            this.kick();
             return record;
+        });
+    }
+    private kick(): void {
+        void this.pump().catch(() => {
+            this.invalidate();
+            void this.runtime.stop().catch(() => {});
         });
     }
     private async pump(): Promise<void> {
@@ -329,7 +339,7 @@ export class ProviderDaemon {
                     };
                     await this.store.save(queued.record);
                 }
-            } else void this.pump();
+            } else this.kick();
         }
     }
     async cancel(

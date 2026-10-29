@@ -294,6 +294,31 @@ describe("daemon admission and durable lifecycle", () => {
         await daemon.emergencyStop();
     });
 });
+describe("storage failure isolation", () => {
+    it("stops the owned runtime and fails readiness if terminal persistence fails", async () => {
+        const { daemon, runtime, store } = await fixture();
+        ready(daemon);
+        runtime.block = true;
+        const r = request();
+        await daemon.submit(r, "a");
+        vi.spyOn(store, "save").mockRejectedValue(new Error("disk full"));
+        runtime.complete.shift()?.();
+        await waitUntil(() => runtime.stopped > 0);
+        expect(daemon.heartbeat()).toBeNull();
+        expect((await daemon.get(r.requestId, "a"))?.status).toBe("running");
+    });
+    it("rejects malformed probe timestamps even when startup identity matches", async () => {
+        const { daemon } = await fixture();
+        expect(() =>
+            daemon.verifyPeer({
+                startupId: daemon.report!.startupId,
+                status: "verified",
+                testedAt: "not-a-date",
+            }),
+        ).toThrow("STALE_PEER_PROBE");
+        expect(daemon.heartbeat()).toBeNull();
+    });
+});
 describe("deadlines and rate authority", () => {
     it("fails timed-out work and never leaves the worker available", async () => {
         const { daemon, runtime } = await fixture();

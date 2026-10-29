@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:net";
 import { chmod, lstat, unlink } from "node:fs/promises";
 import { timingSafeEqual } from "node:crypto";
-import { ProviderDaemon } from "./daemon.js";
+import { ProviderDaemon, ProviderError } from "./daemon.js";
 
 export async function serveLocal(
     daemon: ProviderDaemon,
@@ -95,11 +95,14 @@ export async function serveLocal(
                         JSON.stringify({ ok: true, result: result ?? null }) +
                             "\n",
                     );
-                } catch {
+                } catch (error) {
                     socket.end(
                         JSON.stringify({
                             ok: false,
-                            error: "IPC_REQUEST_REJECTED",
+                            error:
+                                error instanceof ProviderError
+                                    ? error.code
+                                    : "IPC_REQUEST_REJECTED",
                         }) + "\n",
                     );
                 }
