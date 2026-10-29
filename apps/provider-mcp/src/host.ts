@@ -81,6 +81,7 @@ let closing = false;
 async function stop() {
     if (closing) return;
     closing = true;
+    runtime.beginShutdown();
     if (timer) clearInterval(timer);
     try {
         await controller.stop();
