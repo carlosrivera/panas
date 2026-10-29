@@ -25,18 +25,28 @@ export async function callDaemon(
         });
         socket.once("error", () => reject(new Error("DAEMON_UNAVAILABLE")));
         socket.once("end", () => {
+            let result: { ok?: boolean; result?: unknown; error?: unknown };
             try {
-                const result = JSON.parse(buffer) as {
-                    ok?: boolean;
-                    result?: unknown;
-                    error?: string;
-                };
-                if (!result.ok)
-                    throw new Error(result.error ?? "DAEMON_REJECTED");
-                resolve(result.result);
+                result = JSON.parse(buffer) as typeof result;
+                if (!result || typeof result !== "object") throw new Error();
             } catch {
                 reject(new Error("DAEMON_REJECTED"));
+                return;
             }
+            if (result.ok !== true) {
+                // Only bounded code tokens cross this private boundary. The MCP adapter
+                // applies its narrower public allowlist before returning a tool error.
+                reject(
+                    new Error(
+                        typeof result.error === "string" &&
+                            /^[A-Z_]{1,64}$/.test(result.error)
+                            ? result.error
+                            : "DAEMON_REJECTED",
+                    ),
+                );
+                return;
+            }
+            resolve(result.result);
         });
     });
 }
