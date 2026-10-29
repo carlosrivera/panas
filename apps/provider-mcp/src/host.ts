@@ -105,6 +105,11 @@ process.once("SIGINT", () => {
 });
 try {
     if (ownership.recovered) await waitForPreviousRuntime(runtime.url);
+    let initialized = false;
+    timer = setInterval(() => {
+        controller.observeLiveness();
+        if (initialized) void controller.tick();
+    }, 15000);
     await daemon.launch();
     if (closing) throw new Error("HOST_SHUTDOWN");
     await service.init();
@@ -114,11 +119,9 @@ try {
     );
     await writeFile(paths.tokenPath, token, { mode: 0o600 });
     await chmod(paths.tokenPath, 0o600);
+    initialized = true;
     await controller.tick();
     if (closing) throw new Error("HOST_SHUTDOWN");
-    timer = setInterval(() => {
-        void controller.tick();
-    }, 15000);
     console.log(
         JSON.stringify({
             providerId: config.providerId,

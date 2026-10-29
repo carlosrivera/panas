@@ -23,12 +23,30 @@ export class ProviderController {
     private descriptorExpires = 0;
     private ticking = false;
     private stopped = false;
+    private retiring: Promise<void> = Promise.resolve();
     constructor(
         readonly config: ControllerConfig,
         readonly daemon: ProviderDaemon,
         readonly host: ProviderHostService,
         readonly accounting: AccountingPort,
     ) {}
+    /** Runs before the tick lock so a suspended in-flight probe cannot retain its share. */
+    observeLiveness(): void {
+        if (!this.stopped && this.daemon.observeLiveness()) this.retireShare();
+    }
+    private retireShare(): void {
+        const session = this.share;
+        this.share = undefined;
+        this.startupId = undefined;
+        this.reportDigest = undefined;
+        this.descriptorExpires = 0;
+        if (session) {
+            this.retiring = Promise.all([this.retiring, session.stop()]).then(
+                () => {},
+            );
+            void this.retiring.catch(() => {});
+        }
+    }
     private async registry(
         path: string,
         body: unknown,
@@ -72,11 +90,18 @@ export class ProviderController {
         return (await response.json()) as Record<string, unknown>;
     }
     private async openShare(): Promise<void> {
-        const report = this.daemon.status;
+        // Test connectivity while preserving an owner's paused/draining publication state.
+        const report = this.daemon.report;
         if (!report || report.state !== "testing") return;
-        await this.share?.stop();
-        this.share = undefined;
-        this.reportDigest = undefined;
+        this.retireShare();
+        await this.retiring;
+        this.observeLiveness();
+        if (
+            this.stopped ||
+            this.daemon.report !== report ||
+            report.state !== "testing"
+        )
+            return;
         const session = superviseShare({
             command: process.execPath,
             args: [
@@ -87,6 +112,16 @@ export class ProviderController {
         });
         this.share = session;
         this.startupId = report.startupId;
+        const assertCurrent = () => {
+            this.observeLiveness();
+            if (
+                this.stopped ||
+                this.share !== session ||
+                this.daemon.report !== report ||
+                report.state === "unhealthy"
+            )
+                throw new Error("STALE_TRANSPORT");
+        };
         void session.closed
             .then(() => {
                 if (this.share !== session || this.stopped) return;
@@ -100,11 +135,13 @@ export class ProviderController {
             })
             .catch(() => {});
         const ready = await session.ready;
+        assertCurrent();
         if (ready.kind !== "ready") throw new Error("TRANSPORT_NOT_READY");
         const evidence = await probePeer({
             ticket: ready.ticket,
             startupId: report.startupId,
         });
+        assertCurrent();
         this.daemon.verifyPeer(evidence);
         if (evidence.status !== "verified")
             throw new Error("PEER_NOT_VERIFIED");
@@ -113,6 +150,7 @@ export class ProviderController {
             report: current,
             price: this.config.price,
         });
+        assertCurrent();
         if (typeof registered.reportDigest !== "string")
             throw new Error("REGISTRY_REPORT_NOT_BOUND");
         this.reportDigest = registered.reportDigest;
@@ -124,10 +162,13 @@ export class ProviderController {
             providerPublicKeyPem: this.config.providerPublicKeyPem,
             expiresAt: new Date(this.descriptorExpires).toISOString(),
         });
+        assertCurrent();
     }
     async tick(): Promise<void> {
+        this.observeLiveness();
         if (this.ticking || this.stopped) return;
         this.ticking = true;
+        let observedReport = this.daemon.report;
         try {
             await this.daemon.health();
             const report = this.daemon.status;
@@ -136,20 +177,18 @@ export class ProviderController {
                 this.descriptorExpires &&
                 this.descriptorExpires < Date.now() + 60000
             ) {
-                this.daemon.drain();
                 try {
                     await this.daemon.retest();
-                    this.daemon.resume();
                 } catch {
                     return;
                 }
             }
             if (this.startupId !== this.daemon.report?.startupId) {
-                await this.share?.stop();
-                this.share = undefined;
-                this.reportDigest = undefined;
+                this.retireShare();
+                await this.retiring;
             }
             if (!this.share) {
+                observedReport = this.daemon.report;
                 await this.openShare();
             }
             const heartbeat = this.daemon.heartbeat();
@@ -162,8 +201,14 @@ export class ProviderController {
                     state: heartbeat.state,
                 });
         } catch {
+            this.retireShare();
             // Fail closed; registry readiness expires on its own TTL. Do not disclose child output/tickets.
-            if (this.daemon.report && this.daemon.report.state !== "unhealthy")
+            if (
+                !this.daemon.observeLiveness() &&
+                this.daemon.report &&
+                this.daemon.report === observedReport &&
+                this.daemon.report.state !== "unhealthy"
+            )
                 this.daemon.verifyPeer({
                     startupId: this.daemon.report.startupId,
                     status: "failed",
@@ -180,8 +225,8 @@ export class ProviderController {
     }
     async stop(): Promise<void> {
         this.stopped = true;
-        await this.share?.stop();
-        this.share = undefined;
+        this.retireShare();
+        await this.retiring;
         await this.daemon.emergencyStop();
         try {
             await this.host.flushTerminals();

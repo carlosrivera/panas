@@ -18,7 +18,17 @@ const daemon = new ProviderDaemon(
     new EncryptedStore(paths.storePath),
     () => inspectHost(config.dataPath),
 );
+let initialized = false;
+const timer = setInterval(() => {
+    daemon.observeLiveness();
+    if (initialized)
+        void daemon.health().catch(() => {
+            void daemon.emergencyStop();
+        });
+}, 15000);
+timer.unref();
 const earlyStop = () => {
+    clearInterval(timer);
     void runtime.stop().finally(() => process.exit(0));
 };
 process.once("SIGINT", earlyStop);
@@ -43,11 +53,7 @@ console.log(
     }),
 );
 let closing = false;
-const timer = setInterval(() => {
-    void daemon.health().catch(() => {
-        void daemon.emergencyStop();
-    });
-}, 15000);
+initialized = true;
 const cleanup = async () => {
     if (closing) return;
     closing = true;

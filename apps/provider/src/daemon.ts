@@ -38,6 +38,10 @@ export class ProviderDaemon {
     private tail: Promise<unknown> = Promise.resolve();
     private testing: Promise<CapabilityReport> | undefined;
     private lastHeartbeatAt = 0;
+    private lastProgressAt: number;
+    private livenessEpoch = 0;
+    private recoveryRequired = false;
+    private wakeStop: Promise<void> | undefined;
     private buyerAdmissions = new Map<string, number[]>();
     private uncertainRequests = new Set<string>();
     constructor(
@@ -47,7 +51,37 @@ export class ProviderDaemon {
         readonly host: () => Promise<HostInfo>,
         readonly now = () => Date.now(),
         readonly hooks: RequestHooks = {},
-    ) {}
+    ) {
+        this.lastProgressAt = now();
+    }
+    /** Called by the host pulse even while a controller operation is awaiting I/O. */
+    observeLiveness(): boolean {
+        const now = this.now();
+        const gap = now - this.lastProgressAt;
+        this.lastProgressAt = now;
+        if (
+            gap < 0 ||
+            gap >= 45000 ||
+            (this.report?.peerProbe.status === "verified" &&
+                now - this.lastHeartbeatAt >= 45000)
+        ) {
+            this.livenessEpoch++;
+            this.recoveryRequired = true;
+            this.invalidate(new ProviderError("PROVIDER_SUSPENDED"));
+            // Start stopping the owned runtime immediately, including during capability tests.
+            const stopping = this.wakeStop ?? this.runtime.stop();
+            this.wakeStop = stopping;
+            void stopping.then(
+                () => {
+                    if (this.wakeStop === stopping) this.wakeStop = undefined;
+                },
+                () => {
+                    if (this.wakeStop === stopping) this.wakeStop = undefined;
+                },
+            );
+        }
+        return this.recoveryRequired;
+    }
     private exclusive<T>(action: () => Promise<T>): Promise<T> {
         const result = this.tail.then(action);
         this.tail = result.catch(() => {});
@@ -62,14 +96,21 @@ export class ProviderDaemon {
         if (this.testing) return this.testing;
         if (this.active || this.queue.length)
             throw new ProviderError("BUSY_CANNOT_RETEST");
+        this.observeLiveness();
         this.report = undefined;
         this.testing = (async () => {
+            await this.wakeStop;
+            const epoch = this.livenessEpoch;
             const report = await testCapabilities(
                 this.config,
                 this.runtime,
                 await this.host(),
                 randomUUID(),
+                this.now,
             );
+            this.observeLiveness();
+            if (epoch !== this.livenessEpoch) report.state = "unhealthy";
+            else this.recoveryRequired = false;
             this.report = report;
             this.lastHeartbeatAt = this.now();
             return report;
@@ -81,6 +122,7 @@ export class ProviderDaemon {
         }
     }
     get status(): CapabilityReport | undefined {
+        this.observeLiveness();
         if (!this.report) return;
         const state =
             this.report.state === "unhealthy"
@@ -99,6 +141,7 @@ export class ProviderDaemon {
         status: "verified" | "failed" | "unverified";
         testedAt: string;
     }): void {
+        if (this.observeLiveness()) throw new ProviderError("STALE_PEER_PROBE");
         const report = this.report;
         if (
             !report ||
@@ -140,12 +183,18 @@ export class ProviderDaemon {
         return { ...report, sequence: this.report!.sequence };
     }
     async health(): Promise<void> {
+        this.observeLiveness();
         if (!this.report || this.testing) return;
-        if (
-            this.report.state === "unhealthy" &&
-            !this.active &&
-            !this.queue.length
-        ) {
+        if (this.recoveryRequired) {
+            await this.wakeStop;
+            if (this.active) return;
+            // Accepted work is never replayed after a liveness interruption, even while paused.
+            await this.exclusive(() => this.failQueued());
+            await this.retest();
+            return;
+        }
+        if (this.report.state === "unhealthy" && !this.active) {
+            await this.exclusive(() => this.failQueued());
             await this.retest();
             return;
         }
@@ -156,6 +205,7 @@ export class ProviderDaemon {
         }
         try {
             const info = await this.runtime.info();
+            if (this.observeLiveness()) return;
             if (
                 info.digest !== this.config.expectedDigest ||
                 info.version !== this.config.expectedRuntimeVersion
@@ -168,12 +218,12 @@ export class ProviderDaemon {
         }
         await this.store.recoverAndCleanup(false);
     }
-    private invalidate(): void {
+    private invalidate(reason?: Error): void {
         if (this.report) {
             this.report.state = "unhealthy";
             this.report.peerProbe = { status: "unverified" };
         }
-        this.active?.abort.abort();
+        this.active?.abort.abort(reason);
     }
     pause(): void {
         this.paused = true;
@@ -322,7 +372,14 @@ export class ProviderDaemon {
         });
     }
     private async pump(): Promise<void> {
-        if (this.active || this.paused || !this.queue.length) return;
+        if (
+            this.active ||
+            this.paused ||
+            !this.queue.length ||
+            this.recoveryRequired ||
+            this.report?.state !== "ready"
+        )
+            return;
         const task = this.queue.shift()!;
         this.active = task;
         let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -336,11 +393,23 @@ export class ProviderDaemon {
                 executionTimeout > prototypeLimits.timeoutMs
             )
                 throw new ProviderError("INVALID_EXECUTION_LIMIT");
+            const startedAt = this.now();
+            const deadline = startedAt + executionTimeout;
+            const assertLive = () => {
+                this.observeLiveness();
+                if (this.recoveryRequired)
+                    task.abort.abort(new ProviderError("PROVIDER_SUSPENDED"));
+                if (this.now() >= deadline)
+                    task.abort.abort(new ProviderError("DEADLINE_EXCEEDED"));
+                if (task.abort.signal.aborted) throw task.abort.signal.reason;
+            };
+            assertLive();
             timeout = setTimeout(
                 () => task.abort.abort(new Error("DEADLINE_EXCEEDED")),
                 executionTimeout,
             );
             const info = await this.runtime.info(task.abort.signal);
+            assertLive();
             if (
                 info.digest !== this.config.expectedDigest ||
                 info.version !== this.config.expectedRuntimeVersion
@@ -351,15 +420,16 @@ export class ProviderDaemon {
                 task.request,
                 task.abort.signal,
             );
-            if (task.abort.signal.aborted)
-                throw new ProviderError("DEADLINE_EXCEEDED");
+            assertLive();
             const result = await this.runtime.generate(
                 task.request.prompt,
                 task.request.maxOutputTokens,
                 task.abort.signal,
             );
             await this.exclusive(async () => {
-                if (task.cancelled || task.abort.signal.aborted) return;
+                if (task.cancelled) return;
+                // A native response can resume before the timer callback on wake.
+                assertLive();
                 task.record = {
                     ...task.record,
                     status: "completed",
@@ -382,7 +452,10 @@ export class ProviderDaemon {
                     status: "failed",
                     updatedAt: this.now(),
                     error: task.abort.signal.aborted
-                        ? "DEADLINE_EXCEEDED"
+                        ? task.abort.signal.reason instanceof ProviderError &&
+                          task.abort.signal.reason.code === "PROVIDER_SUSPENDED"
+                            ? "PROVIDER_SUSPENDED"
+                            : "DEADLINE_EXCEEDED"
                         : "RUNTIME_FAILED",
                 };
                 this.invalidate();
@@ -392,20 +465,24 @@ export class ProviderDaemon {
             if (timeout) clearTimeout(timeout);
             if (task.abort.signal.aborted) {
                 this.invalidate();
-                await this.runtime.stop();
+                await (this.wakeStop ?? this.runtime.stop());
             }
             this.active = undefined;
-            if (this.report?.state === "unhealthy") {
-                for (const queued of this.queue.splice(0)) {
-                    queued.record = {
-                        ...queued.record,
-                        status: "failed",
-                        error: "PROVIDER_UNAVAILABLE",
-                        updatedAt: this.now(),
-                    };
-                    await this.persistTerminal(queued.record);
-                }
+            if (this.status?.state === "unhealthy") {
+                await this.exclusive(() => this.failQueued());
             } else this.kick();
+        }
+    }
+    private async failQueued(): Promise<void> {
+        while (this.queue.length) {
+            const queued = this.queue.shift()!;
+            queued.record = {
+                ...queued.record,
+                status: "failed",
+                error: "PROVIDER_UNAVAILABLE",
+                updatedAt: this.now(),
+            };
+            await this.persistTerminal(queued.record);
         }
     }
     private async persistTerminal(record: StoredRequest): Promise<void> {
