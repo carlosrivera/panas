@@ -1,3 +1,4 @@
+import { hostErrorCodes } from "./errors.js";
 import { createConnection } from "node:net";
 import { readFile } from "node:fs/promises";
 
@@ -39,7 +40,7 @@ export async function callDaemon(
                 reject(
                     new Error(
                         typeof result.error === "string" &&
-                            /^[A-Z_]{1,64}$/.test(result.error)
+                            hostErrorCodes.has(result.error)
                             ? result.error
                             : "DAEMON_REJECTED",
                     ),
