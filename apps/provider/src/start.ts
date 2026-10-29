@@ -6,9 +6,11 @@ import { inspectHost } from "./capabilities.js";
 import { EncryptedStore } from "./store.js";
 import { ProviderDaemon } from "./daemon.js";
 import { serveLocal } from "./ipc.js";
+import { claimProviderHost, waitForPreviousRuntime } from "./ownership.js";
 
 const config = configFromEnv(),
     paths = await prepareDataPath(config.dataPath);
+const ownership = await claimProviderHost(config.dataPath);
 const runtime = new OllamaRuntime(config);
 const daemon = new ProviderDaemon(
     config,
@@ -23,6 +25,7 @@ process.once("SIGINT", earlyStop);
 process.once("SIGTERM", earlyStop);
 const token = randomBytes(32).toString("hex");
 // The private parent directory and socket permissions limit access to this local account.
+if (ownership.recovered) await waitForPreviousRuntime(runtime.url);
 const report = await daemon.launch();
 const server = await serveLocal(daemon, paths.socketPath, token).catch(
     async (error: unknown) => {

@@ -47,3 +47,7 @@ Ollama API behavior follows the official [generation API](https://docs.ollama.co
 A real Apple Silicon Mac running macOS 27.0.1 with 16 GiB memory passed all nine local checks using Ollama 0.40.12 and the explicitly downloaded model digest `a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67`. One short eight-output-token warm fixture measured 60.55 ms / 132.13 output tokens per second; this is a smoke measurement, not a service-level guarantee.
 
 The real daemon CLI also launched its own loopback runtime, exposed a mode 0600 Unix socket, reported `testing/unverified`, returned no eligible heartbeat, rejected an unverified inference submission, supported pause/resume, and closed its dedicated runtime on SIGTERM. It did not touch the separate setup runtime or download a model. No separate-peer test, remote paid authorization, registry publication, or cloud deployment is claimed by this evidence.
+
+### Host crash recovery
+
+The paid host and local daemon claim their private data directory before recovery and refuse a live predecessor. Detached runtime/transport groups are guarded by parent-liveness IPC; restart retains request/nonce encryption keys and treats interrupted work as unknown, without automatic replay or settlement. See [recovery behavior and the deferred live drill](../../docs/integration/provider-crash.md). Legacy/untracked sockets and incomplete startup claims require conservative owner review.

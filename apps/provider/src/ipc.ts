@@ -1,5 +1,5 @@
 import { createServer, type Server } from "node:net";
-import { chmod, lstat, unlink } from "node:fs/promises";
+import { chmod, lstat } from "node:fs/promises";
 import { timingSafeEqual } from "node:crypto";
 import { ProviderDaemon, ProviderError } from "./daemon.js";
 
@@ -134,8 +134,7 @@ export async function serveLocal(
         });
     });
     await chmod(socketPath, 0o600);
-    server.once("close", () => {
-        void unlink(socketPath).catch(() => {});
-    });
+    // Node removes its bound Unix socket on close. A delayed extra unlink here
+    // could remove a successor host's socket after a restart.
     return server;
 }

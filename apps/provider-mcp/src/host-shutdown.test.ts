@@ -124,8 +124,20 @@ setTimeout(()=>createServer((req,res)=>res.writeHead(200).end('{}')).listen(Numb
                             stdio: ["ignore", "pipe", "ignore"],
                         },
                     );
-                    if (command.includes(binary))
-                        process.kill(-nativePid, "SIGKILL");
+                    if (command.includes(binary)) {
+                        const group = Number(
+                            execFileSync(
+                                "ps",
+                                ["-p", String(nativePid), "-o", "pgid="],
+                                {
+                                    encoding: "utf8",
+                                    stdio: ["ignore", "pipe", "ignore"],
+                                },
+                            ).trim(),
+                        );
+                        if (Number.isSafeInteger(group) && group > 1)
+                            process.kill(-group, "SIGKILL");
+                    }
                 } catch {
                     /* Fixture already reaped. */
                 }
