@@ -1,0 +1,370 @@
+import { createHash, randomUUID } from "node:crypto";
+import {
+    prototypeLimits,
+    inferenceRequestSchema,
+    type InferenceRequest,
+} from "@panas/contracts";
+import {
+    passedLocalCapabilities,
+    type CapabilityReport,
+} from "@panas/contracts/provider";
+import {
+    testCapabilities,
+    type CapabilityConfig,
+    type HostInfo,
+} from "./capabilities.js";
+import type { InferenceRuntime } from "./runtime.js";
+import { EncryptedStore, type StoredRequest } from "./store.js";
+
+export class ProviderError extends Error {
+    constructor(readonly code: string) {
+        super(code);
+    }
+}
+interface Task {
+    request: InferenceRequest;
+    buyerKeyId: string;
+    record: StoredRequest;
+    abort: AbortController;
+    cancelled: boolean;
+}
+export class ProviderDaemon {
+    report: CapabilityReport | undefined;
+    private active: Task | undefined;
+    private queue: Task[] = [];
+    private paused = false;
+    private draining = false;
+    private tail: Promise<unknown> = Promise.resolve();
+    private testing: Promise<CapabilityReport> | undefined;
+    private lastHeartbeatAt = 0;
+    private buyerAdmissions = new Map<string, number[]>();
+    constructor(
+        readonly config: CapabilityConfig,
+        readonly runtime: InferenceRuntime,
+        readonly store: EncryptedStore,
+        readonly host: () => Promise<HostInfo>,
+        readonly now = () => Date.now(),
+    ) {}
+    private exclusive<T>(action: () => Promise<T>): Promise<T> {
+        const result = this.tail.then(action);
+        this.tail = result.catch(() => {});
+        return result;
+    }
+    async launch(): Promise<CapabilityReport> {
+        await this.store.init();
+        await this.store.recoverAndCleanup();
+        return this.retest();
+    }
+    async retest(): Promise<CapabilityReport> {
+        if (this.testing) return this.testing;
+        if (this.active || this.queue.length)
+            throw new ProviderError("BUSY_CANNOT_RETEST");
+        this.report = undefined;
+        this.testing = (async () => {
+            const report = await testCapabilities(
+                this.config,
+                this.runtime,
+                await this.host(),
+                randomUUID(),
+            );
+            this.report = report;
+            this.lastHeartbeatAt = this.now();
+            return report;
+        })();
+        try {
+            return await this.testing;
+        } finally {
+            this.testing = undefined;
+        }
+    }
+    get status(): CapabilityReport | undefined {
+        if (!this.report) return;
+        const state =
+            this.report.state === "unhealthy"
+                ? "unhealthy"
+                : this.paused
+                  ? "paused"
+                  : this.draining
+                    ? "draining"
+                    : this.active
+                      ? "busy"
+                      : this.report.state;
+        return { ...this.report, state };
+    }
+    verifyPeer(evidence: {
+        startupId: string;
+        status: "verified" | "failed" | "unverified";
+        testedAt: string;
+    }): void {
+        const report = this.report;
+        if (
+            !report ||
+            report.startupId !== evidence.startupId ||
+            !Number.isFinite(Date.parse(evidence.testedAt)) ||
+            Date.parse(evidence.testedAt) < Date.parse(report.testedAt) ||
+            Date.parse(evidence.testedAt) > this.now() + 5000
+        )
+            throw new ProviderError("STALE_PEER_PROBE");
+        report.peerProbe = {
+            status: evidence.status,
+            testedAt: evidence.testedAt,
+        };
+        report.state =
+            passedLocalCapabilities(report) && evidence.status === "verified"
+                ? "ready"
+                : evidence.status === "failed"
+                  ? "unhealthy"
+                  : "testing";
+    }
+    heartbeat(): CapabilityReport | null {
+        const report = this.status;
+        if (
+            !report ||
+            !passedLocalCapabilities(report) ||
+            report.peerProbe.status !== "verified" ||
+            report.state === "unhealthy" ||
+            report.state === "testing" ||
+            this.now() - Date.parse(report.testedAt) > 86400000
+        )
+            return null;
+        if (this.lastHeartbeatAt && this.now() - this.lastHeartbeatAt > 45000) {
+            this.invalidate();
+            return null;
+        }
+        this.lastHeartbeatAt = this.now();
+        this.report!.sequence++;
+        return { ...report, sequence: this.report!.sequence };
+    }
+    async health(): Promise<void> {
+        if (!this.report || this.testing) return;
+        if (
+            this.report.state === "unhealthy" &&
+            !this.active &&
+            !this.queue.length
+        ) {
+            await this.retest();
+            return;
+        }
+        if (this.lastHeartbeatAt && this.now() - this.lastHeartbeatAt > 45000) {
+            this.invalidate();
+            if (!this.active && !this.queue.length) await this.retest();
+            return;
+        }
+        try {
+            const info = await this.runtime.info();
+            if (
+                info.digest !== this.config.expectedDigest ||
+                info.version !== this.config.expectedRuntimeVersion
+            ) {
+                this.invalidate();
+                if (!this.active && !this.queue.length) await this.retest();
+            }
+        } catch {
+            this.invalidate();
+        }
+        await this.store.recoverAndCleanup(false);
+    }
+    private invalidate(): void {
+        if (this.report) {
+            this.report.state = "unhealthy";
+            this.report.peerProbe = { status: "unverified" };
+        }
+        this.active?.abort.abort();
+    }
+    pause(): void {
+        this.paused = true;
+    }
+    resume(): void {
+        this.paused = false;
+        this.draining = false;
+        this.kick();
+    }
+    drain(): void {
+        this.draining = true;
+    }
+    async emergencyStop(): Promise<void> {
+        this.paused = true;
+        this.invalidate();
+        try {
+            for (const task of [...this.queue])
+                await this.cancel(task.request.requestId, task.buyerKeyId);
+            if (this.active)
+                await this.cancel(
+                    this.active.request.requestId,
+                    this.active.buyerKeyId,
+                );
+        } finally {
+            await this.runtime.stop();
+        }
+    }
+    async get(
+        requestId: string,
+        buyerKeyId: string,
+    ): Promise<StoredRequest | undefined> {
+        const r = await this.store.get(requestId);
+        if (r && r.buyerKeyId !== buyerKeyId)
+            throw new ProviderError("FORBIDDEN");
+        return r;
+    }
+    // Called only by trusted local IPC/host adapter. Paid entitlement verification belongs to host issue #6.
+    async submit(input: unknown, buyerKeyId: string): Promise<StoredRequest> {
+        const request = inferenceRequestSchema.parse(input);
+        if (!buyerKeyId || buyerKeyId.length > 512)
+            throw new ProviderError("INVALID_BUYER");
+        // qwen2 byte-BPE raw mode: UTF8 bytes conservatively upper-bound prompt tokens.
+        // Reserve output + special-token headroom so the runtime never silently truncates a valid admitted input.
+        if (
+            Buffer.byteLength(request.prompt, "utf8") >
+            prototypeLimits.maxContextTokens - request.maxOutputTokens - 16
+        )
+            throw new ProviderError("CONTEXT_TOO_LARGE");
+        const fingerprint = createHash("sha256")
+            .update(JSON.stringify({ request, buyerKeyId }))
+            .digest("hex");
+        return this.exclusive(async () => {
+            const existing = await this.get(request.requestId, buyerKeyId);
+            if (existing) {
+                if (existing.fingerprint !== fingerprint)
+                    throw new ProviderError("IDEMPOTENCY_CONFLICT");
+                return existing;
+            }
+            const report = this.status;
+            if (
+                report &&
+                (this.now() - Date.parse(report.testedAt) > 86400000 ||
+                    this.now() - this.lastHeartbeatAt > 45000)
+            ) {
+                this.invalidate();
+                throw new ProviderError("PROVIDER_UNAVAILABLE");
+            }
+            if (
+                !report ||
+                !passedLocalCapabilities(report) ||
+                report.peerProbe.status !== "verified" ||
+                !["ready", "busy"].includes(report.state)
+            )
+                throw new ProviderError("PROVIDER_UNAVAILABLE");
+            if (this.queue.length >= prototypeLimits.queueDepth && this.active)
+                throw new ProviderError("QUEUE_FULL");
+            const recent = (this.buyerAdmissions.get(buyerKeyId) ?? []).filter(
+                (at) => this.now() - at < 60000,
+            );
+            if (recent.length >= 6) throw new ProviderError("RATE_LIMITED");
+            const record: StoredRequest = {
+                requestId: request.requestId,
+                buyerKeyId,
+                fingerprint,
+                status: "running",
+                updatedAt: this.now(),
+            };
+            await this.store.save(record);
+            const task: Task = {
+                request,
+                buyerKeyId,
+                record,
+                abort: new AbortController(),
+                cancelled: false,
+            };
+            this.queue.push(task);
+            this.buyerAdmissions.set(buyerKeyId, [...recent, this.now()]);
+            this.kick();
+            return record;
+        });
+    }
+    private kick(): void {
+        void this.pump().catch(() => {
+            this.invalidate();
+            void this.runtime.stop().catch(() => {});
+        });
+    }
+    private async pump(): Promise<void> {
+        if (this.active || this.paused || !this.queue.length) return;
+        const task = this.queue.shift()!;
+        this.active = task;
+        let timeout: ReturnType<typeof setTimeout> | undefined;
+        try {
+            timeout = setTimeout(
+                () => task.abort.abort(new Error("DEADLINE_EXCEEDED")),
+                prototypeLimits.timeoutMs,
+            );
+            const info = await this.runtime.info(task.abort.signal);
+            if (
+                info.digest !== this.config.expectedDigest ||
+                info.version !== this.config.expectedRuntimeVersion
+            )
+                throw new ProviderError("RUNTIME_CHANGED");
+            const result = await this.runtime.generate(
+                task.request.prompt,
+                task.request.maxOutputTokens,
+                task.abort.signal,
+            );
+            await this.exclusive(async () => {
+                if (task.cancelled || task.abort.signal.aborted) return;
+                task.record = {
+                    ...task.record,
+                    status: "completed",
+                    result,
+                    updatedAt: this.now(),
+                };
+                await this.store.save(task.record);
+            });
+        } catch {
+            await this.exclusive(async () => {
+                if (task.cancelled) return;
+                task.record = {
+                    ...task.record,
+                    status: "failed",
+                    updatedAt: this.now(),
+                    error: task.abort.signal.aborted
+                        ? "DEADLINE_EXCEEDED"
+                        : "RUNTIME_FAILED",
+                };
+                this.invalidate();
+                await this.store.save(task.record);
+            });
+        } finally {
+            if (timeout) clearTimeout(timeout);
+            if (task.abort.signal.aborted) {
+                this.invalidate();
+                await this.runtime.stop();
+            }
+            this.active = undefined;
+            if (this.report?.state === "unhealthy") {
+                for (const queued of this.queue.splice(0)) {
+                    queued.record = {
+                        ...queued.record,
+                        status: "failed",
+                        error: "PROVIDER_UNAVAILABLE",
+                        updatedAt: this.now(),
+                    };
+                    await this.store.save(queued.record);
+                }
+            } else this.kick();
+        }
+    }
+    async cancel(
+        requestId: string,
+        buyerKeyId: string,
+    ): Promise<StoredRequest | undefined> {
+        return this.exclusive(async () => {
+            const record = await this.get(requestId, buyerKeyId);
+            if (!record || record.status !== "running") return record;
+            const task =
+                this.active?.request.requestId === requestId
+                    ? this.active
+                    : this.queue.find((t) => t.request.requestId === requestId);
+            if (!task) return record;
+            task.cancelled = true;
+            if (task === this.active) this.invalidate();
+            task.abort.abort();
+            this.queue = this.queue.filter((t) => t !== task);
+            task.record = {
+                ...record,
+                status: "cancelled",
+                updatedAt: this.now(),
+            };
+            await this.store.save(task.record);
+            return task.record;
+        });
+    }
+}
