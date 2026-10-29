@@ -78,16 +78,21 @@ const controller = new ProviderController(
 let server: Awaited<ReturnType<typeof serveLocal>> | undefined;
 let timer: ReturnType<typeof setInterval> | undefined;
 let closing = false;
-async function stop() {
-    if (closing) return;
+let stopping: Promise<void> | undefined;
+function stop(): Promise<void> {
+    if (stopping) return stopping;
     closing = true;
+    runtime.beginShutdown();
     if (timer) clearInterval(timer);
-    try {
-        await controller.stop();
-    } finally {
-        server?.close();
-        await runtime.stop();
-    }
+    stopping = (async () => {
+        try {
+            await controller.stop();
+        } finally {
+            server?.close();
+            await runtime.stop();
+        }
+    })();
+    return stopping;
 }
 process.once("SIGTERM", () => {
     void stop();
