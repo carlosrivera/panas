@@ -64,3 +64,53 @@ pnpm --filter @panas/integration run release-smoke --config /private/path/new-ru
 This mode refuses to launch or purchase if the release reference is absent or invalid. It runs the actual provider startup/discovery/quote/purchase/inference/receipt and reconnect checks, performs only one new paid request, and records the referenced release commit separately from the harness commit. The hardware gate remains pending.
 
 [The final release smoke](evidence/release-smoke-2026-10-29.json) passed on clean harness commit `22e33941a0b9931147bfd474a8159b7bb624fe51` against verified Volcano release `759c14e8141ed04e4ef8d907f4d79cf5a2ce627e`. In 42.98 seconds, two real provider processes on one physical Mac published startup-tested readiness; the buyer selected the intended lower fixed price, completed exactly one new paid request through MCPWire and the pinned model, then retrieved the same receipt after adapter replacement and duplicate attempts. The receipt balanced 1 buyer debit / 1 provider earnings / 0 fee in atomic TEST_CREDIT units, with 6 input tokens, 16 output tokens, and actual finish reason `length`. Both owned inference processes stopped and both dedicated runtime ports closed. The referenced full-release report passed all seven named checks; `release9` is `referenced_verified_report`. Physical two-Mac evidence and the seven explicit end-to-end fault drills remain pending; `issue10Complete` stays false.
+
+## Actual authorization and queue fault seams
+
+Create a fresh isolated setup directory/buyer (existing held requests are rejected), then run:
+
+```sh
+pnpm --filter @panas/integration run fault-seams --config /private/path/new-run/run.json
+```
+
+This mode uses a raw owner-controlled MCPWire peer because the normal buyer facade deliberately prevents sending malformed authorization. It purchases real cloud grants and checks copied-ticket/no-entitlement rejection, altered grant/payload/buyer identity, actual short-proof expiry, exact signed-nonce replay, and natural cloud `executeBefore` expiry using a fresh proof after the real deadline. Invalid authorization must leave no fabricated provider request/terminal state or settlement; the original legitimate request is executed once and kept retrievable.
+
+The queue seam briefly sends SIGSTOP only to the actual Ollama listener after verifying its dedicated port, exact command and ancestry under the controller this runner launched. A three-second independent SIGCONT watchdog, finally cleanup and signal cleanup prevent an assertion failure leaving it stopped. Four pre-purchased requests fill one active/two queued slots and require a genuine QUEUE_FULL rejection for the fourth. That decline must create a durable failed zero-charge cloud receipt. The other requests are explicitly cancelled and require durable cancelled zero-charge receipts. This is process-level injection on this Mac, not physical sleep or two-Mac evidence.
+
+The natural execution-expiry request deliberately retains its reservation: an unexecuted request has no provider terminal decision, so missing local state must not be relabeled cancelled. Keep its request ID for bounded reconciliation and the existing audited operator resolution path after the real reconciliation deadline. The harness never silently releases, refunds, deletes a ledger row or alters the clock. Controlled early/late cancellation observations do not claim a simultaneous cancellation/completion race. Actual crash, deadline, physical sleep/wake and service outage remain separate gates unless later artifacts establish them.
+
+[The actual fault-seam report](evidence/fault-seams-2026-10-29.json) records six passing observations on clean source `7e2d26f6bacb338e45b65e2b040398775b93ef11`, against deployed release `1e022ae871fd9e26a4331ca02dbdb7fd0f82e117`. It took 139 seconds including natural execution-permission expiry. One legitimate request settled once; the queued cancellations and capacity decline had zero charges. The expiry reservation remained held pending the real reconciliation deadline and audited operator review. Prior pre-dispatch harness failures are not passing evidence and their own reserved requests require the same explicit reconciliation; no financial rows are deleted.
+
+The new raw peer checks exposed a production boundary bug: the private IPC client caught and replaced every valid daemon rejection code while parsing JSON. The fix shares an explicit safe error-code allowlist between IPC and public MCP. A real Unix-socket test verifies capacity, authorization and replay codes survive the boundary, while malformed/unknown/private errors remain generic.
+
+A separate owned response-delay wrapper supports actual deadline validation. It forwards real native Ollama version/tags and generation, then can hold only a completed generation response. Its authenticated metadata counters distinguish completed native work, held responses and continuing health traffic. The wrapper owns its native upstream child and refuses to adopt an occupied port.
+
+```sh
+pnpm --filter @panas/integration run deadline-seam --config /private/path/new-run/run.json
+```
+
+The deadline mode requires the real 60-second host deadline, durable `DEADLINE_EXCEEDED`, matching authenticated buyer retrieval, a zero-charge receipt and no settlement. It clears the delay before capability retesting and checks ports 11601, 11602 and the owned native upstream 11612 during cleanup. A delayed completed response is explicitly transport fault injection; it does not claim physical sleep or a model stalled mid-generation.
+
+[The actual deadline report](evidence/deadline-2026-10-29.json) passed on clean source `df4c626`: authenticated wrapper counters proved one real native generation completed, one response was held, and six later metadata responses stayed live. The host’s actual 60,000ms deadline produced durable `DEADLINE_EXCEEDED`; the observed dispatch-to-failure interval was 65.48 seconds, including the initial buyer-peer handshake and polling. Buyer retrieval verified the provider’s failed state and a zero-debit receipt with no settlement. All three dedicated ports closed.
+
+Owner fixture cleanup is a separate explicit command, never part of purchase, dispatch or automatic failure handling:
+
+```sh
+pnpm --filter @panas/integration run reconcile-fixtures --config /private/path/operator-review.json
+```
+
+Its mode-0600 configuration contains `runConfigPaths` (the exact owner fixture run files), `outputDirectory`, and a factual `reason`. It restricts review to the matching buyer key with the `integration-test-credits-only` policy, pinned platform key and test URLs; owned runtimes must be stopped. Only never-authorized requests with expired execution permission qualify. It waits for each real ten-minute reconciliation deadline, then invokes the existing audited `operatorResolve` release transaction. It refuses authorized uncertain work and never backdates clocks or mutates financial rows directly. Metadata evidence verifies zero-debit release receipts, retained audit IDs, unchanged buyer balances and settlement counts, zero remaining fixture holds, and global balanced-ledger/held-reservation invariants.
+
+[The explicit operator review](evidence/operator-review-2026-10-29.json) released four never-authorized requests across all three isolated fixture buyers after their actual ten-minute deadlines: held balances 2→0, 3→0 and 2→0. Each release retained its audit ID and zero-debit receipt; buyer balances and settlement counts stayed unchanged. Global ledger imbalance and held-reservation mismatch counts were zero. This includes the pre-dispatch failed attempts and the observed execution-expiry case; those failures are not relabeled successful test runs.
+
+A true concurrent cancellation seam is also available:
+
+```sh
+pnpm --filter @panas/integration run cancel-race-seam --config /private/path/new-run/run.json
+```
+
+After actual native generation completes behind the response-delay wrapper, the owner prefetches a fresh action-only cloud cancellation grant and initializes a real MCPWire peer. Releasing the completed response and sending signed cancellation start concurrently. The test accepts the actual observed completion/cancellation winner, then requires matching authenticated retrieval, one immutable coherent receipt and the correct single charge or zero-charge cancellation. It does not claim the native model was still computing.
+
+[The concurrent race report](evidence/cancel-race-2026-10-29.json) observed cancellation winning against completed native-response delivery. Authenticated retrieval and a repeated read returned the same zero-charge receipt with no settlement. All owned ports closed, and [a final operator check](evidence/operator-final-invariants-2026-10-29.json) found zero holds across all three fixture buyers. The report identifies clean source `463c37a` at run start. A type-only storage generic correction was applied during the run; [the exact patch](evidence/cancel-race-source-type-only.patch) and [TypeScript emit comparison](evidence/cancel-race-runtime-equivalence.json) prove it produces byte-identical JavaScript. Full checks pass on the corrected types; no paid work was repeated solely to improve source metadata.
+
+Remaining actual gates in this batch are two physical Macs, provider-crash recovery during accepted work, physical sleep/wake, and an actual deployed Volcano service outage. The local queue suspension and HTTP response-delay controls are not substituted for those observations. Startup binding, full 24-hour action-grant expiry and rate-cap subcases have component coverage where documented, but are not claimed as new live negative observations.

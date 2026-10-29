@@ -1,0 +1,21 @@
+diff --git a/packages/integration/src/deadline-seam.ts b/packages/integration/src/deadline-seam.ts
+index a54ac30..5c25fbf 100644
+--- a/packages/integration/src/deadline-seam.ts
++++ b/packages/integration/src/deadline-seam.ts
+@@ -18,6 +18,7 @@ import { superviseJoin } from "@panas/mcpwire";
+ import { createCloudClient } from "../../../apps/buyer-mcp/src/clients.js";
+ import { PrivateStore } from "../../../apps/buyer-mcp/src/store.js";
+ import {
++    type BuyerState,
+     buyerStateSchema,
+     descriptorSchema,
+ } from "../../../apps/buyer-mcp/src/state.js";
+@@ -175,7 +176,7 @@ export async function runDeadlineSeam(
+             // Close the sole writer before owner inspection of its actual encrypted purchase artifact.
+             await buyer.close();
+             buyer = undefined;
+-            const state = new PrivateStore(
++            const state = new PrivateStore<BuyerState>(
+                 owner.dataDir,
+                 (value) => buyerStateSchema.parse(value),
+                 () => ({

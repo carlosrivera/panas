@@ -9,7 +9,11 @@
         "manual-two-machine": "tsx src/cli.ts manual-two-machine",
         "failure-fixtures": "tsx src/cli.ts failure-fixtures",
         "setup": "tsx src/cli.ts prepare",
-        "release-smoke": "tsx src/cli.ts release-smoke"
+        "release-smoke": "tsx src/cli.ts release-smoke",
+        "fault-seams": "tsx src/cli.ts fault-seams",
+        "deadline-seam": "tsx src/cli.ts deadline-seam",
+        "reconcile-fixtures": "tsx src/cli.ts reconcile-fixtures",
+        "cancel-race-seam": "tsx src/cli.ts cancel-race-seam"
     },
     "dependencies": {
         "@panas/accounting": "workspace:*",
@@ -17,7 +21,8 @@
         "@panas/contracts": "workspace:*",
         "@modelcontextprotocol/sdk": "1.32.2",
         "pg": "8.23.1",
-        "zod": "4.6.7"
+        "zod": "4.6.7",
+        "@panas/mcpwire": "workspace:*"
     },
     "devDependencies": {
         "@panas/typescript-config": "workspace:*",
