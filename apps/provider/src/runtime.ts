@@ -1,5 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { createConnection } from "node:net";
+import { fileURLToPath } from "node:url";
+import { signalOwnedGroup } from "../../../scripts/owned-signal.js";
 import { setTimeout as delay } from "node:timers/promises";
 
 export interface RuntimeInfo {
@@ -98,21 +100,34 @@ export class OllamaRuntime implements InferenceRuntime {
         if (this.shuttingDown || generation !== this.generation)
             throw new Error("Dedicated Ollama startup cancelled");
         let launchError: Error | undefined;
-        const child = spawn(this.config.binary, ["serve"], {
-            detached: true,
-            stdio: "ignore",
-            env: {
-                PATH: process.env.PATH,
-                HOME: process.env.HOME,
-                TMPDIR: process.env.TMPDIR,
-                OLLAMA_HOST: this.url.host,
-                OLLAMA_MODELS: this.config.modelsPath,
-                OLLAMA_NUM_PARALLEL: "1",
-                OLLAMA_MAX_LOADED_MODELS: "1",
-                OLLAMA_CONTEXT_LENGTH: "2048",
-                OLLAMA_NO_CLOUD: "1",
+        const child = spawn(
+            process.execPath,
+            [
+                fileURLToPath(
+                    new URL(
+                        "../../../scripts/owned-process.mjs",
+                        import.meta.url,
+                    ),
+                ),
+                this.config.binary,
+                "serve",
+            ],
+            {
+                detached: true,
+                stdio: ["ignore", "ignore", "ignore", "ipc"],
+                env: {
+                    PATH: process.env.PATH,
+                    HOME: process.env.HOME,
+                    TMPDIR: process.env.TMPDIR,
+                    OLLAMA_HOST: this.url.host,
+                    OLLAMA_MODELS: this.config.modelsPath,
+                    OLLAMA_NUM_PARALLEL: "1",
+                    OLLAMA_MAX_LOADED_MODELS: "1",
+                    OLLAMA_CONTEXT_LENGTH: "2048",
+                    OLLAMA_NO_CLOUD: "1",
+                },
             },
-        });
+        );
         this.child = child;
         child.on("error", (error) => {
             launchError = error;
@@ -150,24 +165,16 @@ export class OllamaRuntime implements InferenceRuntime {
         const child = this.child;
         this.child = undefined;
         if (!child?.pid) return;
-        const kill = (signal: NodeJS.Signals) => {
-            try {
-                process.kill(-child.pid!, signal);
-            } catch (error) {
-                if ((error as NodeJS.ErrnoException).code !== "ESRCH")
-                    throw error;
-            }
-        };
-        kill("SIGTERM");
+        await signalOwnedGroup(child, "SIGTERM");
         await Promise.race([
             new Promise<void>((resolve) =>
-                child.exitCode !== null
+                child.exitCode !== null || child.signalCode !== null
                     ? resolve()
                     : child.once("exit", () => resolve()),
             ),
             delay(1000),
         ]);
-        kill("SIGKILL");
+        await signalOwnedGroup(child, "SIGKILL");
     }
     private async json(
         path: string,
