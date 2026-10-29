@@ -337,6 +337,14 @@ export async function runFaultSeams(path: string): Promise<string> {
         for (const env of config.providerEnvs)
             owned.push(await launchProvider(env));
         await poll(async () => {
+            if (
+                owned.some(
+                    (p) =>
+                        p.child.exitCode !== null ||
+                        p.child.signalCode !== null,
+                )
+            )
+                throw new SeamFailure("HOST_EXITED_BEFORE_READINESS");
             const value = z
                 .object({
                     providers: z.array(
