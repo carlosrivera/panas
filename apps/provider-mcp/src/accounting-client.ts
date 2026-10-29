@@ -11,7 +11,10 @@ import {
 
 export interface AccountingPort {
     authorize(grant: Grant, signal: AbortSignal): Promise<void>;
-    terminal(event: SignedDocument<TerminalEvent>): Promise<void>;
+    terminal(
+        event: SignedDocument<TerminalEvent>,
+        signal?: AbortSignal,
+    ): Promise<void>;
     descriptor(body: Record<string, unknown>): Promise<void>;
 }
 export class AccountingHttpClient implements AccountingPort {
@@ -43,7 +46,7 @@ export class AccountingHttpClient implements AccountingPort {
     async post(
         path: string,
         body: unknown,
-        signal = AbortSignal.timeout(10000),
+        signal?: AbortSignal,
     ): Promise<unknown> {
         const now = Date.now();
         const proof = signDocument(
@@ -70,7 +73,9 @@ export class AccountingHttpClient implements AccountingPort {
                 ),
             },
             body: JSON.stringify(body),
-            signal,
+            signal: signal
+                ? AbortSignal.any([signal, AbortSignal.timeout(10000)])
+                : AbortSignal.timeout(10000),
             redirect: "error",
         });
         if (!response.ok) throw new Error("ACCOUNTING_REJECTED");
@@ -99,10 +104,14 @@ export class AccountingHttpClient implements AccountingPort {
         )
             throw new Error("ACCOUNTING_NOT_AUTHORIZED");
     }
-    async terminal(event: SignedDocument<TerminalEvent>): Promise<void> {
+    async terminal(
+        event: SignedDocument<TerminalEvent>,
+        signal?: AbortSignal,
+    ): Promise<void> {
         const result = await this.post(
             `/provider/requests/${event.payload.requestId}/terminal`,
             { event },
+            signal,
         );
         if (
             !result ||

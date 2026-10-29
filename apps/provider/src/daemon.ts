@@ -35,6 +35,7 @@ export class ProviderDaemon {
     private queue: Task[] = [];
     private paused = false;
     private draining = false;
+    private controlPlaneAvailable = true;
     private tail: Promise<unknown> = Promise.resolve();
     private testing: Promise<CapabilityReport> | undefined;
     private lastHeartbeatAt = 0;
@@ -121,7 +122,7 @@ export class ProviderDaemon {
             this.testing = undefined;
         }
     }
-    get status(): CapabilityReport | undefined {
+    get localStatus(): CapabilityReport | undefined {
         this.observeLiveness();
         if (!this.report) return;
         const state =
@@ -135,6 +136,23 @@ export class ProviderDaemon {
                       ? "busy"
                       : this.report.state;
         return { ...this.report, state };
+    }
+    get status(): CapabilityReport | undefined {
+        const report = this.localStatus;
+        if (
+            report &&
+            !this.controlPlaneAvailable &&
+            ["ready", "busy"].includes(report.state)
+        )
+            return { ...report, state: "draining" };
+        return report;
+    }
+    setControlPlaneAvailable(available: boolean): void {
+        this.controlPlaneAvailable = available;
+    }
+    async suspendControlPlane(): Promise<void> {
+        this.controlPlaneAvailable = false;
+        await this.exclusive(() => this.failQueued());
     }
     verifyPeer(evidence: {
         startupId: string;
@@ -375,6 +393,7 @@ export class ProviderDaemon {
         if (
             this.active ||
             this.paused ||
+            !this.controlPlaneAvailable ||
             !this.queue.length ||
             this.recoveryRequired ||
             this.report?.state !== "ready"

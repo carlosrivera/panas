@@ -173,8 +173,8 @@ it("drains paused accepted work and keeps later queued work recoverable after a 
             (await f.daemon.get(work[0]!.requestId, "buyer"))?.status ===
             "completed",
     );
-    // Let the active worker finish cleanup while accepted queued work remains paused.
-    await delay(5);
+    // Serialize behind durable completion; visibility after rename can precede fsync cleanup.
+    await f.daemon.cancel(work[0]!.requestId, "buyer");
     const save = f.store.save.bind(f.store);
     vi.spyOn(f.store, "save").mockImplementation(async (record) => {
         if (
