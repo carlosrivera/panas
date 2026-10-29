@@ -10,7 +10,8 @@
         "failure-fixtures": "tsx src/cli.ts failure-fixtures",
         "setup": "tsx src/cli.ts prepare",
         "release-smoke": "tsx src/cli.ts release-smoke",
-        "fault-seams": "tsx src/cli.ts fault-seams"
+        "fault-seams": "tsx src/cli.ts fault-seams",
+        "deadline-seam": "tsx src/cli.ts deadline-seam"
     },
     "dependencies": {
         "@panas/accounting": "workspace:*",
