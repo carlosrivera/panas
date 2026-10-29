@@ -3,6 +3,7 @@ import { runDeadlineSeam } from "./deadline-seam.js";
 import { parseArgs } from "node:util";
 import { runFaultSeams } from "./fault-seams.js";
 import { runCrashSeam } from "./crash-seam.js";
+import { runLocalBoundaries } from "./local-boundaries-seam.js";
 import { prepare } from "./prepare.js";
 import { run } from "./runner.js";
 import { runFailureFixtures } from "./fixtures.js";
@@ -27,6 +28,8 @@ try {
         artifact = await runFaultSeams(values.config);
     else if (mode === "crash-seam" && values.config)
         artifact = await runCrashSeam(values.config);
+    else if (mode === "local-boundaries-seam" && values.config)
+        artifact = await runLocalBoundaries(values.config);
     else if (mode === "release-smoke" && values.config)
         artifact = await run(values.config, false, true);
     else if (mode === "manual-two-machine" && values.config)
