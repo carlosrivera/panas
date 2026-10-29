@@ -1,0 +1,111 @@
+import { generateKeyPairSync, randomUUID } from "node:crypto";
+import { expect, it } from "vitest";
+import {
+    digest,
+    DOMAIN,
+    verifyDocument,
+    signedCloudRequestSchema,
+} from "@panas/protocol";
+import { createCloudClient, safeProvider } from "./clients";
+import { prototypeLimits } from "@panas/contracts";
+it("binds HTTP proof to exact actor, method, path, and parsed body without forwarding private prompts", async () => {
+    const pair = generateKeyPairSync("ed25519");
+    const buyerId = randomUUID();
+    let calls = 0;
+    const client = createCloudClient({
+        url: "https://account.test",
+        buyerId,
+        privateKey: pair.privateKey,
+        fetch: async (input, options) => {
+            calls++;
+            const request = new Request(input, options);
+            const raw = request.headers.get("x-panas-proof")!;
+            const signed = signedCloudRequestSchema.parse(
+                JSON.parse(Buffer.from(raw, "base64url").toString()),
+            );
+            expect(verifyDocument(DOMAIN.cloud, signed, pair.publicKey)).toBe(
+                true,
+            );
+            expect(signed.payload.actorId).toBe(buyerId);
+            expect(signed.payload.path).toBe(new URL(request.url).pathname);
+            expect(signed.payload.method).toBe(request.method);
+            const body = request.method === "GET" ? null : await request.json();
+            expect(signed.payload.bodyDigest).toBe(digest(body));
+            return Response.json({ ok: true });
+        },
+    });
+    await client.quote({
+        providerId: randomUUID(),
+        requestId: randomUUID(),
+        sessionId: randomUUID(),
+        payloadDigest: "a".repeat(64),
+        maxOutputTokens: 1,
+    });
+    await client.get(randomUUID());
+    expect(calls).toBe(2);
+});
+it("does not disclose remote diagnostics or infrastructure failures", async () => {
+    const pair = generateKeyPairSync("ed25519");
+    const options = {
+        url: "https://account.test",
+        buyerId: randomUUID(),
+        privateKey: pair.privateKey,
+    };
+    const errorClient = createCloudClient({
+        ...options,
+        fetch: async () =>
+            Response.json(
+                {
+                    error: {
+                        code: "UNAVAILABLE",
+                        message: "wire://secret postgres://private-token",
+                    },
+                },
+                { status: 503 },
+            ),
+    });
+    await expect(errorClient.get(randomUUID())).rejects.toMatchObject({
+        code: "UNAVAILABLE",
+        safeMessage: "Cloud service unavailable",
+    });
+    const failureClient = createCloudClient({
+        ...options,
+        fetch: async () => {
+            throw new Error("private-token");
+        },
+    });
+    await expect(failureClient.get(randomUUID())).rejects.not.toThrow(
+        "private-token",
+    );
+});
+
+it("returns useful bounded provider information while excluding private connection fields", () => {
+    const date = new Date().toISOString();
+    const value = {
+        providerId: randomUUID(),
+        startupId: randomUUID(),
+        model: {
+            name: "qwen2.5:0.5b",
+            digest: "a".repeat(64),
+            runtimeVersion: "0.40.12",
+        },
+        profile: prototypeLimits,
+        price: { version: "1", totalAtomic: "3", currency: "TEST_CREDIT" },
+        benchmark: { warmLatencyMs: 10, tokensPerSecond: 20 },
+        evidence: { source: "provider-reported", peerProbe: "verified" },
+        state: "ready",
+        readiness: { ready: true, reason: "ready" },
+        testedAt: date,
+        lastSeenAt: date,
+        expiresAt: date,
+        ticket: "private connection material",
+        signedGrant: "private authorization",
+    };
+    const projected = safeProvider(value);
+    expect(projected.benchmark).toEqual(value.benchmark);
+    expect(projected.price).toEqual(value.price);
+    expect(JSON.stringify(projected)).not.toContain(
+        "private connection material",
+    );
+    expect(JSON.stringify(projected)).not.toContain("private authorization");
+});
