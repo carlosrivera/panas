@@ -332,7 +332,7 @@ describe.skipIf(!databaseUrl)(
             const bought = await purchase(await quote());
             const next = randomUUID();
             await pool.query(
-                "UPDATE panas_registry_current SET startup_id=$2,report=jsonb_set(report,'{startupId}',to_jsonb($2::text)) WHERE provider_id=$1",
+                "UPDATE panas_registry_current SET startup_id=$2::uuid,report=jsonb_set(report,'{startupId}',to_jsonb(($2::uuid)::text)) WHERE provider_id=$1",
                 [providerId, next],
             );
             await expect(
