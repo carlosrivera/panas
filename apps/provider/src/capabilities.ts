@@ -98,8 +98,12 @@ export async function testCapabilities(
     try {
         await runtime.start();
         const info = await runtime.info();
-        report.model.digest = info.digest;
-        report.model.runtimeVersion = info.version;
+        report.model.digest = /^(sha256:)?[a-f0-9]{64}$/.test(info.digest)
+            ? info.digest
+            : null;
+        report.model.runtimeVersion = /^\d+\.\d+\.\d+$/.test(info.version)
+            ? info.version
+            : null;
         check(
             "runtime",
             info.version === config.expectedRuntimeVersion,

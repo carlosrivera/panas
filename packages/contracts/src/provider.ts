@@ -30,8 +30,14 @@ export const capabilityReportSchema = z
         model: z
             .object({
                 name: z.literal("qwen2.5:0.5b"),
-                digest: z.string().min(1).nullable(),
-                runtimeVersion: z.string().min(1).nullable(),
+                digest: z
+                    .string()
+                    .regex(/^(sha256:)?[a-f0-9]{64}$/)
+                    .nullable(),
+                runtimeVersion: z
+                    .string()
+                    .regex(/^\d+\.\d+\.\d+$/)
+                    .nullable(),
             })
             .strict(),
         profile: requestLimitsSchema,
