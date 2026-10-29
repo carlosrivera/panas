@@ -9,6 +9,8 @@ import {
     EncryptedStore,
     inspectHost,
     serveLocal,
+    claimProviderHost,
+    waitForPreviousRuntime,
 } from "@panas/provider";
 import { registryPriceSchema } from "@panas/contracts/registry";
 import { AccountingHttpClient } from "./accounting-client.js";
@@ -22,6 +24,7 @@ function required(name: string): string {
 }
 const config = configFromEnv(),
     paths = await prepareDataPath(config.dataPath);
+const ownership = await claimProviderHost(config.dataPath);
 const keyPath = required("PANAS_PROVIDER_PRIVATE_KEY_PATH");
 if ((await stat(keyPath)).mode & 0o077)
     throw new Error(
@@ -101,6 +104,7 @@ process.once("SIGINT", () => {
     void stop();
 });
 try {
+    if (ownership.recovered) await waitForPreviousRuntime(runtime.url);
     await daemon.launch();
     if (closing) throw new Error("HOST_SHUTDOWN");
     await service.init();
