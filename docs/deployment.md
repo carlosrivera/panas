@@ -17,3 +17,7 @@ Run `volcano cloud deploy --help` against the installed CLI before deploying; fl
 Verify deployment status, deployed frontend health, and actual page response before reporting success. Database, remote MCP authentication, registry, accounting, and scheduled reconciliation are follow-up issues; the health scaffold does not implement them. Native inference and MCPWire host processes run on the Mac, outside Volcano.
 
 Official references: [frontend deployment](https://docs.volcano.dev/platform/frontends/deploy), [Volcano documentation](https://docs.volcano.dev/). The same corpus is available through `volcano docs search` and `volcano docs get`.
+
+## Verified foundation deployment
+
+The initial informational frontend is deployed at https://b694dc37-574c-4668-adf0-9371a728f16f.frontends.volcano.run/. The cloud build succeeded with Node.js 24.11.1 and pnpm 12.16.1. The health handler uses ESM exports to match the workspace package type. Provisioned/active status alone does not establish a healthy invocation; verify the actual response.
