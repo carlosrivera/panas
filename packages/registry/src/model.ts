@@ -21,6 +21,15 @@ export interface StoredProvider {
     receivedAt: Date;
     createdAt: Date;
 }
+/** An expired lease cannot be revived by a delayed heartbeat or the same startup. */
+export function requireLiveLease(record: StoredProvider, now: Date): void {
+    if (record.receivedAt.getTime() + HEARTBEAT_TTL_MS <= now.getTime())
+        throw new RegistryError(
+            "STALE_REPORT",
+            409,
+            "Expired heartbeat requires a new startup and fresh tests",
+        );
+}
 export function canonicalJson(value: unknown): string {
     if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
     if (value !== null && typeof value === "object")
