@@ -59,6 +59,7 @@ export async function verifyRelease(
     await assertProjectBinding();
     assertClean();
     const checks: ReleaseCheck[] = [];
+    console.log("Checking anonymous_public_api");
     const publicUrl = `${PLATFORM.registryUrl}/public/providers?limit=1`;
     const publicResponse = await request(publicUrl, {
         headers: { Origin: "https://panas.example" },
@@ -79,6 +80,7 @@ export async function verifyRelease(
         endpoint: publicUrl,
         status: 200,
     });
+    console.log("Checking anonymous_api_authorization");
     const denied = await request(`${PLATFORM.registryUrl}/providers`);
     ensure(
         denied.status === 401,
@@ -89,6 +91,7 @@ export async function verifyRelease(
         passed: true,
         status: 401,
     });
+    console.log("Checking accounting_authorization");
     const accounting = await request(`${PLATFORM.accountingUrl}/quotes`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -103,6 +106,7 @@ export async function verifyRelease(
         passed: true,
         status: 401,
     });
+    console.log("Checking authenticated_mcp");
     const secret = process.env.PANAS_DISCOVERY_TOKEN;
     ensure(
         secret,
@@ -152,6 +156,7 @@ export async function verifyRelease(
         passed: true,
         endpoint: `${PLATFORM.registryUrl}/mcp`,
     });
+    console.log("Checking private_operational_health");
     const functions = (
         await management<{ data: CloudFunction[] }>(
             `/projects/${PLATFORM.projectId}/functions`,
@@ -194,6 +199,7 @@ export async function verifyRelease(
     checks.push({ name: "private_operational_health", passed: true });
     let frontendRecord: CloudFrontend | undefined;
     if (frontend) {
+        console.log("Checking frontend");
         const page = await request(PLATFORM.frontendUrl);
         ensure(page.status === 200, "Frontend page failed");
         const html = await page.text();
@@ -207,6 +213,7 @@ export async function verifyRelease(
             endpoint: PLATFORM.frontendUrl,
             status: 200,
         });
+        console.log("Checking frontend_assets");
         const assets = [
             ...new Set(
                 [
