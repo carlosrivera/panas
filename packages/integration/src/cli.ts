@@ -1,3 +1,4 @@
+import { reconcileFixtures } from "./reconcile-fixtures.js";
 import { runDeadlineSeam } from "./deadline-seam.js";
 import { parseArgs } from "node:util";
 import { runFaultSeams } from "./fault-seams.js";
@@ -15,6 +16,8 @@ try {
         artifact = await prepare(values.config);
     else if (mode === "local-simulation" && values.config)
         artifact = await run(values.config);
+    else if (mode === "reconcile-fixtures" && values.config)
+        artifact = await reconcileFixtures(values.config);
     else if (mode === "deadline-seam" && values.config)
         artifact = await runDeadlineSeam(values.config);
     else if (mode === "fault-seams" && values.config)

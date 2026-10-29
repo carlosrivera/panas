@@ -90,3 +90,13 @@ pnpm --filter @panas/integration run deadline-seam --config /private/path/new-ru
 ```
 
 The deadline mode requires the real 60-second host deadline, durable `DEADLINE_EXCEEDED`, matching authenticated buyer retrieval, a zero-charge receipt and no settlement. It clears the delay before capability retesting and checks ports 11601, 11602 and the owned native upstream 11612 during cleanup. A delayed completed response is explicitly transport fault injection; it does not claim physical sleep or a model stalled mid-generation.
+
+[The actual deadline report](evidence/deadline-2026-10-29.json) passed on clean source `df4c626`: authenticated wrapper counters proved one real native generation completed, one response was held, and six later metadata responses stayed live. The host’s actual 60,000ms deadline produced durable `DEADLINE_EXCEEDED`; the observed dispatch-to-failure interval was 65.48 seconds, including the initial buyer-peer handshake and polling. Buyer retrieval verified the provider’s failed state and a zero-debit receipt with no settlement. All three dedicated ports closed.
+
+Owner fixture cleanup is a separate explicit command, never part of purchase, dispatch or automatic failure handling:
+
+```sh
+pnpm --filter @panas/integration run reconcile-fixtures --config /private/path/operator-review.json
+```
+
+Its mode-0600 configuration contains `runConfigPaths` (the exact owner fixture run files), `outputDirectory`, and a factual `reason`. It restricts review to the matching buyer key with the `integration-test-credits-only` policy, pinned platform key and test URLs; owned runtimes must be stopped. Only never-authorized requests with expired execution permission qualify. It waits for each real ten-minute reconciliation deadline, then invokes the existing audited `operatorResolve` release transaction. It refuses authorized uncertain work and never backdates clocks or mutates financial rows directly. Metadata evidence verifies zero-debit release receipts, retained audit IDs, unchanged buyer balances and settlement counts, zero remaining fixture holds, and global balanced-ledger/held-reservation invariants.

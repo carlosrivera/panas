@@ -1,0 +1,42 @@
+{
+    "version": 1,
+    "runId": "57ee2455-56d5-4385-ba83-0cea4aa5d4fc",
+    "mode": "deadline-seam",
+    "startedAt": "2026-10-29T15:15:28.254Z",
+    "finishedAt": "2026-10-29T15:17:43.911Z",
+    "gitCommit": "df4c6269f6be6bcf5675810bd2918b5799ad062a",
+    "releaseReference": {
+        "projectId": "7db5f8f4-c378-4ba5-a48f-f435bc4c034b",
+        "commit": "1e022ae871fd9e26a4331ca02dbdb7fd0f82e117",
+        "verifiedAt": "2026-10-29T14:50:11.171Z"
+    },
+    "sourceTreeDirty": false,
+    "physicalMachineCount": 1,
+    "logicalProviderCount": 1,
+    "caseEvidence": [
+        {
+            "id": "deadline-e2e",
+            "status": "passed",
+            "source": "fault_injected_cloud_one_mac",
+            "detail": "Actual buyer MCP, cloud authorization, MCPWire and native Ollama completed generation; only its HTTP response was held. Authenticated counters observed 1 completed native generation(s), one held response and 6 later metadata responses. Real 60000ms deadline produced durable DEADLINE_EXCEEDED; signed buyer retrieval matched failed state and a zero-charge receipt with no settlement. This is transport-delay injection, not physical sleep or a stalled native model.",
+            "durationMs": 65480,
+            "requestIds": ["14e6517e-417d-46a0-9907-d56f1bd03000"],
+            "receiptIds": ["f99d5a2a-408f-4075-bfc5-4e7871d1188f"]
+        },
+        {
+            "id": "two-physical-macs",
+            "status": "pending",
+            "source": "manual_pending",
+            "detail": "Second physical Mac exists but is inaccessible to this agent. Local logical providers are not separate physical machines."
+        }
+    ],
+    "gates": {
+        "twoPhysicalMacs": "pending",
+        "release9": "referenced_verified_report",
+        "issue10Complete": false
+    },
+    "cleanup": {
+        "ownedProcessesStopped": true,
+        "runtimePortsClosed": true
+    }
+}
