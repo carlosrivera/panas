@@ -32,6 +32,8 @@ export interface HostIdentity {
 }
 export class ProviderHostService {
     private operations: Promise<unknown> = Promise.resolve();
+    private flushing: Promise<void> | undefined;
+    private terminalCursor: string | undefined;
     daemon: ProviderDaemon | undefined;
     constructor(
         readonly identity: HostIdentity,
@@ -283,12 +285,42 @@ export class ProviderHostService {
         return { body, proof: response };
     }
     async flushTerminals(): Promise<void> {
-        for (const record of await this.worker.pendingTerminals()) {
-            if (!record.terminalEvent || record.terminalDelivered) continue;
-            await this.accounting.terminal(
-                record.terminalEvent as SignedDocument<TerminalEvent>,
-            );
-            await this.worker.acknowledgeTerminal(record.requestId);
+        if (this.flushing) return this.flushing;
+        this.flushing = this.deliverTerminals();
+        try {
+            await this.flushing;
+        } finally {
+            this.flushing = undefined;
         }
+    }
+    private async deliverTerminals(): Promise<void> {
+        const pending = (await this.worker.pendingTerminals()).sort((a, b) =>
+            a.requestId < b.requestId ? -1 : a.requestId > b.requestId ? 1 : 0,
+        );
+        const after = pending.filter(
+            (r) => !this.terminalCursor || r.requestId > this.terminalCursor,
+        );
+        const before = pending.filter(
+            (r) => this.terminalCursor && r.requestId <= this.terminalCursor,
+        );
+        const budget = AbortSignal.timeout(10000);
+        let failed = false;
+        for (const record of [...after, ...before].slice(0, 16)) {
+            if (budget.aborted) {
+                failed = true;
+                break;
+            }
+            this.terminalCursor = record.requestId;
+            try {
+                await this.accounting.terminal(
+                    record.terminalEvent as SignedDocument<TerminalEvent>,
+                    budget,
+                );
+                await this.worker.acknowledgeTerminal(record.requestId);
+            } catch {
+                failed = true; // One rejected/uncertain acknowledgement must not starve other records.
+            }
+        }
+        if (failed) throw new Error("TERMINAL_DELIVERY_UNAVAILABLE");
     }
 }

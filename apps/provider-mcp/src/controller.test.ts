@@ -100,8 +100,20 @@ async function fixture() {
     vi.mocked(probePeer).mockImplementation(async ({ startupId }) =>
         evidence(startupId),
     );
-    const publication = vi.fn(async () =>
-        Response.json({ reportDigest: "a".repeat(64) }),
+    const response = (post: { body: Record<string, unknown> }) => {
+        const report = post.body.report as
+            { startupId: string; state: string; sequence: number } | undefined;
+        return Response.json({
+            providerId: config.providerId,
+            startupId: report?.startupId ?? post.body.startupId,
+            state: report?.state ?? post.body.state,
+            sequence: report?.sequence,
+            expiresAt: new Date(clock.now + 45000).toISOString(),
+            reportDigest: "a".repeat(64),
+        });
+    };
+    const publication = vi.fn(async (post: { body: Record<string, unknown> }) =>
+        response(post),
     );
     const posts: { path: string; body: Record<string, unknown> }[] = [];
     vi.stubGlobal(
@@ -111,7 +123,7 @@ async function fixture() {
                 path: url.pathname,
                 body: JSON.parse(String(init.body)) as Record<string, unknown>,
             });
-            return publication();
+            return publication(posts.at(-1)!);
         }),
     );
     const accounting = {
@@ -149,6 +161,8 @@ async function fixture() {
         accounting,
         publication,
         evidence,
+        runtime,
+        response,
     };
 }
 
@@ -165,10 +179,7 @@ it.each(["probe", "register", "descriptor"] as const)(
         } else if (phase === "register") {
             const boundary = deferred<Response>();
             f.publication.mockImplementationOnce(() => boundary.promise);
-            resume = () =>
-                boundary.resolve(
-                    Response.json({ reportDigest: "a".repeat(64) }),
-                );
+            resume = () => boundary.resolve(f.response(f.posts[0]!));
         } else {
             const boundary = deferred<void>();
             f.accounting.descriptor.mockImplementationOnce(
@@ -228,8 +239,133 @@ it.each(["pause", "drain"] as const)(
         const registrations = f.posts.filter((p) =>
             p.path.endsWith("register"),
         );
-        expect((registrations[1]!.body.report as { state: string }).state).toBe(
-            mode === "pause" ? "paused" : "draining",
+        expect(
+            (registrations.at(-1)!.body.report as { state: string }).state,
+        ).toBe(mode === "pause" ? "paused" : "draining");
+    },
+);
+
+it("stages discovery until accounting acknowledges its descriptor and retries without another capability run", async () => {
+    const f = await fixture();
+    f.accounting.descriptor.mockRejectedValueOnce(new Error("offline"));
+    await f.controller.tick();
+    expect(f.daemon.status?.state).toBe("draining");
+    expect(
+        f.posts.map((p) => (p.body.report as { state?: string })?.state),
+    ).toEqual(["testing"]);
+    expect(f.shares[0]!.stop).not.toHaveBeenCalled();
+    await expect(
+        f.daemon.submit(
+            {
+                requestId: randomUUID(),
+                quoteId: randomUUID(),
+                prompt: "fixture",
+                maxOutputTokens: 8,
+            },
+            "buyer",
+        ),
+    ).rejects.toThrow("PROVIDER_UNAVAILABLE");
+    await f.controller.tick();
+    expect(f.accounting.descriptor).toHaveBeenCalledTimes(1); // Backoff prevents immediate retry.
+    f.clock.now += 15000;
+    await f.controller.tick();
+    expect(f.daemon.status?.state).toBe("ready");
+    expect(f.runtime.generate).toHaveBeenCalledTimes(2);
+    expect(f.shares).toHaveLength(1);
+});
+
+it("retries the exact final registration after a lost acknowledgement", async () => {
+    const f = await fixture();
+    let lost = false;
+    f.publication.mockImplementation(async (post) => {
+        if (
+            (post.body.report as { state?: string })?.state === "ready" &&
+            !lost
+        ) {
+            lost = true;
+            throw new Error("Commit observed by fixture server; reply lost");
+        }
+        return f.response(post);
+    });
+    await f.controller.tick();
+    const first = f.posts[1]!.body;
+    expect(f.daemon.status?.state).toBe("draining");
+    f.clock.now += 15000;
+    await f.controller.tick();
+    expect(f.posts[2]!.body).toEqual(first);
+    expect(f.daemon.status?.state).toBe("ready");
+    expect(f.runtime.generate).toHaveBeenCalledTimes(2);
+});
+
+it.each([false, true])(
+    "keeps accepted active work bounded through a registry outage, expired lease=%s",
+    async (expire) => {
+        const f = await fixture();
+        await f.controller.tick();
+        const startup = f.daemon.report!.startupId;
+        const result = {
+            text: "fixture",
+            inputTokens: 4,
+            outputTokens: 4,
+            durationMs: 10,
+        };
+        const native = deferred<typeof result>();
+        f.runtime.generate.mockImplementationOnce(() => native.promise);
+        const work = [0, 1, 2].map(() => ({
+            requestId: randomUUID(),
+            quoteId: randomUUID(),
+            prompt: "fixture",
+            maxOutputTokens: 8,
+        }));
+        for (const request of work) await f.daemon.submit(request, "buyer");
+        await until(() => f.runtime.generate.mock.calls.length === 3);
+        f.publication.mockRejectedValue(new Error("offline"));
+        await f.controller.tick();
+        expect(f.daemon.status?.state).toBe("draining");
+        expect(f.daemon.localStatus?.state).toBe("busy");
+        expect(f.runtime.stop).not.toHaveBeenCalled();
+        expect((await f.daemon.get(work[1]!.requestId, "buyer"))?.status).toBe(
+            "failed",
+        );
+        expect((await f.daemon.get(work[2]!.requestId, "buyer"))?.status).toBe(
+            "failed",
+        );
+        const pulses = expire ? 3 : 1;
+        if (!expire)
+            f.publication.mockImplementation(async (post) => f.response(post));
+        for (let i = 0; i < pulses; i++) {
+            f.clock.now += 15000;
+            await f.controller.tick();
+        }
+        expect(f.runtime.stop).not.toHaveBeenCalled();
+        expect(f.shares[0]!.stop).not.toHaveBeenCalled();
+        native.resolve(result);
+        for (let i = 0; i < 300; i++) {
+            if (
+                (await f.daemon.get(work[0]!.requestId, "buyer"))?.status ===
+                "completed"
+            )
+                break;
+            await delay(5);
+        }
+        await f.daemon.cancel(work[0]!.requestId, "buyer");
+        f.publication.mockImplementation(async (post) => f.response(post));
+        f.clock.now += 15000;
+        await f.controller.tick();
+        expect(f.daemon.status?.state).toBe("ready");
+        expect(f.daemon.report!.startupId === startup).toBe(!expire);
+        expect(f.runtime.generate).toHaveBeenCalledTimes(expire ? 5 : 3);
+        expect((await f.daemon.get(work[0]!.requestId, "buyer"))?.status).toBe(
+            "completed",
         );
     },
 );
+
+it("rejects a malformed HTTP200 heartbeat acknowledgement", async () => {
+    const f = await fixture();
+    await f.controller.tick();
+    f.publication.mockResolvedValueOnce(Response.json({}));
+    await f.controller.tick();
+    expect(f.daemon.status?.state).toBe("draining");
+    expect(f.shares[0]!.stop).not.toHaveBeenCalled();
+});
