@@ -170,6 +170,7 @@ pnpm install --frozen-lockfile`}</CodeSample>
                 <div
                     className="guide-table"
                     tabIndex={0}
+                    role="region"
                     aria-label="Seven buyer MCP tools"
                 >
                     <table>
