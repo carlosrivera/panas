@@ -195,14 +195,26 @@ export async function runFaultSeams(path: string): Promise<string> {
         };
     };
     const connect = async (p: Purchase) => {
-        const session = superviseJoin({
-            ticket: p.descriptor.ticket,
-            startupTimeoutMs: 35000,
-        });
-        sessions.push(session);
-        if ((await session.ready).kind !== "ready")
-            throw new SeamFailure("PEER_CONNECTION_FAILED");
-        return session;
+        // Initialization can reconnect; no tool invocation or paid operation has been dispatched.
+        const outcomes: string[] = [];
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const session = superviseJoin({
+                ticket: p.descriptor.ticket,
+                startupTimeoutMs: 35000,
+            });
+            sessions.push(session);
+            const outcome = await session.ready;
+            if (outcome.kind === "ready") return session;
+            outcomes.push(outcome.code);
+            await session.stop();
+            await delay(500);
+        }
+        await writeFile(
+            join(config.privateDir, "peer-startup.private.json"),
+            JSON.stringify({ outcomes }),
+            { mode: 0o600 },
+        );
+        throw new SeamFailure("PEER_INITIALIZATION_FAILED_WITHOUT_DISPATCH");
     };
     const call = (s: Session, tool: HostOperation, request: unknown) =>
         s.request(
