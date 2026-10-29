@@ -128,9 +128,10 @@ function request(prompt = "hello") {
     };
 }
 async function waitUntil(check: () => boolean | Promise<boolean>) {
-    for (let i = 0; i < 100; i++) {
+    // Each result is fsynced before completion; CI storage can exceed a 200 ms budget.
+    for (let i = 0; i < 300; i++) {
         if (await check()) return;
-        await delay(2);
+        await delay(10);
     }
     throw new Error("condition timed out");
 }
