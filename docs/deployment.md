@@ -21,3 +21,19 @@ Official references: [frontend deployment](https://docs.volcano.dev/platform/fro
 ## Verified foundation deployment
 
 The initial informational frontend is deployed at https://b694dc37-574c-4668-adf0-9371a728f16f.frontends.volcano.run/. The cloud build succeeded with Node.js 24.11.1 and pnpm 12.16.1. The health handler uses ESM exports to match the workspace package type. Provisioned/active status alone does not establish a healthy invocation; verify the actual response.
+
+## Release verification and diagnostics
+
+Use `pnpm platform:deploy` for the current control-plane and website release; the foundation-only commands above describe the initial scaffold. The script checks the pinned toolchain, repository, project and database migrations before invoking the CLI. A deployment is verified only after authenticated discovery, authorization boundaries, operational release identity, financial invariants, the public page and its built assets pass.
+
+The frontend probe allows up to three minutes for bounded network/HTTP readiness failures and management status to converge. Each attempt fetches the public landing page again and checks **every** referenced same-origin Next.js asset, so a retry cannot silently skip a broken chunk or keep probing only a superseded HTML snapshot. External asset URLs, HTML masquerading as an asset, wrong release identity and nonzero financial invariant counts fail closed.
+
+CI prints separate `frontend`, `frontend_assets` and `frontend_deployment` stages. `artifacts/verification.json` retains bounded failure codes, public paths without query strings and HTTP status; raw errors, credentials and response bodies are excluded. A successful `artifacts/release.json` also records asset count and frontend attempt count. Artifact upload runs on failure as well as success, while maintenance runs only after release verification succeeds.
+
+Pushes to `main` deploy the full test project. The legacy platform bootstrap branch and dispatches from other refs remain functions-only. Dispatch from `main` to verify the full workflow, including frontend checks:
+
+```sh
+gh workflow run platform.yml --repo carlosrivera/panas --ref main
+```
+
+Volcano documents deployment and edge readiness separately from a serving previous version: [frontend status](https://docs.volcano.dev/platform/api-reference/frontend-endpoints), [frontend deployment](https://docs.volcano.dev/platform/frontends/deploy). A green deployment job must include verification and maintenance; active resource metadata alone is insufficient.

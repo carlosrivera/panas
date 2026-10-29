@@ -1,4 +1,3 @@
-import { setTimeout as delay } from "node:timers/promises";
 import pg from "pg";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -95,19 +94,7 @@ try {
         ...(frontend ? [] : ["--no-frontends"]),
     ]);
     assertClean();
-    for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-            await verifyRelease(frontend, migration);
-            break;
-        } catch {
-            if (attempt === 3)
-                throw new Error("Remote release checks did not become ready");
-            console.log(
-                `Release checks not ready; retrying in 10 seconds (attempt ${attempt}/3)`,
-            );
-            await delay(10000);
-        }
-    }
+    await verifyRelease(frontend, migration);
     // Confirm the manifest itself was part of this clean committed release.
     await readFile(resolve(root, "volcano-config.yaml"), "utf8");
 } catch {
