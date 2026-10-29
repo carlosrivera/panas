@@ -505,3 +505,22 @@ it("keeps cancellation financially pending and rejects unowned request retrieval
         service.get({ requestId: randomUUID() }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
 });
+
+it("rejects prompts outside the accepted conservative context profile before any purchase or hold", async () => {
+    const s = setup();
+    const service = s.service();
+    await expect(
+        service.quote({
+            providerId: s.providerId,
+            prompt: "á".repeat(1100),
+            maxOutputTokens: 64,
+        }),
+    ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+    expect(s.cloud.purchase).not.toHaveBeenCalled();
+    expect(
+        Object.values(s.state.requests).every(
+            (request) =>
+                request.reservedAtomic === "0" && request.quote === null,
+        ),
+    ).toBe(true);
+});

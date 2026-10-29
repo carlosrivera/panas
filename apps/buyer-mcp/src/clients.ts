@@ -214,13 +214,25 @@ export function createDiscoveryClient(options: {
         getProvider: (id) => send(`/providers/${z.uuid().parse(id)}`),
     };
 }
-export function createPeerClient(): PeerClient {
+export function createPeerClient(): PeerClient & { close(): Promise<void> } {
+    const sessions = new Set<ReturnType<typeof superviseJoin>>();
+    let closed = false;
     return {
+        async close() {
+            closed = true;
+            await Promise.all([...sessions].map((session) => session.stop()));
+        },
         async call(descriptor, envelope, timeoutMs) {
+            if (closed)
+                throw new BuyerError(
+                    "UNAVAILABLE",
+                    "Buyer peer client is shutting down",
+                );
             const session = superviseJoin({
                 ticket: descriptor.ticket,
                 startupTimeoutMs: 35_000,
             });
+            sessions.add(session);
             try {
                 const ready = await session.ready;
                 if (ready.kind !== "ready")
@@ -260,6 +272,7 @@ export function createPeerClient(): PeerClient {
                 );
             } finally {
                 await session.stop();
+                sessions.delete(session);
             }
         },
     };

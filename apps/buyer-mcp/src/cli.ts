@@ -29,24 +29,32 @@ async function main() {
         (value) => buyerStateSchema.parse(value),
         () => ({ version: 1 as const, buyerId: owner.buyerId, requests: {} }),
     );
-    const server = createBuyerMcp(
-        new BuyerService({
-            owner,
-            privateKey,
-            platformPublicKey,
-            store,
-            cloud: createCloudClient({
-                url: owner.accountingUrl,
-                buyerId: owner.buyerId,
+    const peer = createPeerClient();
+    let server: ReturnType<typeof createBuyerMcp>;
+    try {
+        server = createBuyerMcp(
+            new BuyerService({
+                owner,
                 privateKey,
+                platformPublicKey,
+                store,
+                cloud: createCloudClient({
+                    url: owner.accountingUrl,
+                    buyerId: owner.buyerId,
+                    privateKey,
+                }),
+                discovery: createDiscoveryClient({
+                    url: owner.registryUrl,
+                    token: discoveryToken,
+                }),
+                peer,
             }),
-            discovery: createDiscoveryClient({
-                url: owner.registryUrl,
-                token: discoveryToken,
-            }),
-            peer: createPeerClient(),
-        }),
-    );
+        );
+    } catch (error) {
+        store.close();
+        await peer.close();
+        throw error;
+    }
     let stopping = false;
     const close = async () => {
         if (stopping) return;
@@ -54,6 +62,7 @@ async function main() {
         try {
             await server.close();
         } finally {
+            await peer.close();
             store.close();
         }
     };

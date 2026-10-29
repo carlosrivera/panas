@@ -227,6 +227,14 @@ export class BuyerService {
             },
             this.clock(),
         );
+        if (
+            Buffer.byteLength(payload.prompt) >
+            quote.limits.maxContextTokens - payload.maxOutputTokens - 16
+        )
+            throw new BuyerError(
+                "INVALID_INPUT",
+                "Prompt exceeds the accepted provider's conservative context budget",
+            );
         if (keyId(quote.providerPublicKeyPem) !== quote.providerKeyId)
             throw new BuyerError(
                 "CONFLICT",
@@ -572,10 +580,17 @@ export class BuyerService {
             if (
                 (receipt.status === "completed" &&
                     (receipt.buyerDebitAtomic !== record.quote.totalAtomic ||
+                        receipt.providerEarningsAtomic !==
+                            record.quote.providerAtomic ||
+                        receipt.feeAtomic !== record.quote.feeAtomic ||
                         debit !==
                             BigInt(receipt.providerEarningsAtomic) +
                                 BigInt(receipt.feeAtomic))) ||
-                (receipt.status !== "completed" && debit !== 0n)
+                (receipt.status !== "completed" &&
+                    (debit !== 0n ||
+                        receipt.providerEarningsAtomic !== "0" ||
+                        receipt.feeAtomic !== "0")) ||
+                cloud.status !== receipt.status
             )
                 throw new BuyerError(
                     "CONFLICT",
@@ -626,6 +641,15 @@ export class BuyerService {
                     descriptor,
                     operation,
                 );
+                if (
+                    cloud.receipt?.resultDigest &&
+                    body.result &&
+                    digest(body.result) !== cloud.receipt.resultDigest
+                )
+                    throw new BuyerError(
+                        "UNAUTHORIZED",
+                        "Retrieved result differs from the settled receipt",
+                    );
                 result = body.result ?? null;
                 providerStatus = body.status;
                 if (body.status === "completed")
@@ -634,7 +658,12 @@ export class BuyerService {
                             "completed";
                     });
             } catch (error) {
-                if (!cloud.receipt) throw error;
+                if (
+                    !cloud.receipt ||
+                    (error instanceof BuyerError &&
+                        error.code === "UNAUTHORIZED")
+                )
+                    throw error;
                 return {
                     requestId,
                     status: cloud.status,

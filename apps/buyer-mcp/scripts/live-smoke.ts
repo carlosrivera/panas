@@ -14,6 +14,7 @@ import { PrivateStore } from "../src/store";
 import { BuyerService } from "../src/service";
 import { createBuyerMcp } from "../src/mcp";
 
+let stage = "startup";
 async function main() {
     const configPath = process.env.PANAS_BUYER_CONFIG;
     if (!configPath)
@@ -33,6 +34,7 @@ async function main() {
         (value) => buyerStateSchema.parse(value),
         () => ({ version: 1 as const, buyerId: owner.buyerId, requests: {} }),
     );
+    const peer = createPeerClient();
     const server = createBuyerMcp(
         new BuyerService({
             owner,
@@ -45,12 +47,13 @@ async function main() {
                 privateKey,
             }),
             discovery: createDiscoveryClient({ url: owner.registryUrl, token }),
-            peer: createPeerClient(),
+            peer,
         }),
     );
     const client = new Client({ name: "panas-real-buyer-smoke", version: "1" });
     const [a, b] = InMemoryTransport.createLinkedPair();
     const invoke = async (name: string, args: Record<string, unknown>) => {
+        stage = name;
         const result = await client.callTool({ name, arguments: args });
         if (result.isError)
             throw new Error(`Buyer ${name} failed; private details suppressed`);
@@ -137,12 +140,13 @@ async function main() {
     } finally {
         await client.close();
         await server.close();
+        await peer.close();
         store.close();
     }
 }
 void main().catch(() => {
     process.stderr.write(
-        "Panas buyer live smoke failed; private diagnostics suppressed.\n",
+        `Panas buyer live smoke failed at ${stage}; private diagnostics suppressed.\n`,
     );
     process.exitCode = 1;
 });
