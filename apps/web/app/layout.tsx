@@ -1,7 +1,8 @@
 import "@panas/ui/globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { SiteHeader, SiteFooter } from "../components/site-shell";
+
+import { SiteFrame } from "../components/site-frame";
 export const metadata: Metadata = {
     title: {
         default: "Panas — Spare compute, useful connections",
@@ -17,9 +18,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <a href="#main" className="skip-link">
                     Skip to content
                 </a>
-                <SiteHeader />
-                {children}
-                <SiteFooter />
+                <SiteFrame>{children}</SiteFrame>
             </body>
         </html>
     );

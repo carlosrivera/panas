@@ -1,64 +1,48 @@
 import Link from "next/link";
-
 export function SiteHeader() {
     return (
-        <>
-            <div className="prototype-strip">
-                A test-credit prototype. <span>Real Macs, no real money.</span>
-            </div>
-            <header className="site-header shell">
-                <Link href="/" className="wordmark" aria-label="Panas home">
-                    panas<span aria-hidden="true">✳</span>
-                </Link>
-                <nav aria-label="Main navigation" className="main-nav">
-                    <Link href="/providers">Providers</Link>
-                    <Link href="/guides/buyer">For buyers</Link>
-                    <Link href="/guides/provider">For providers</Link>
-                </nav>
-                <a
-                    className="wire-link"
-                    href="https://github.com/carlosrivera/mcpwire"
-                >
-                    Built on MCPWire <span aria-hidden="true">↗</span>
-                </a>
-            </header>
-        </>
+        <header className="site-header shell">
+            <Link href="/" className="wordmark" aria-label="Panas home">
+                <span aria-hidden="true">🤝</span> panas
+                <span className="wordmark-cursor" aria-hidden="true">
+                    _
+                </span>
+            </Link>
+            <nav aria-label="Main navigation" className="main-nav">
+                <Link href="/guides/buyer">docs</Link>
+                <Link href="/providers">find a pana</Link>
+                <a href="https://github.com/carlosrivera/mcpwire">mcpwire ↗</a>
+            </nav>
+        </header>
     );
 }
 export function SiteFooter() {
     return (
-        <footer className="site-footer">
-            <div className="shell footer-grid">
-                <div>
-                    <Link href="/" className="wordmark" aria-label="Panas home">
-                        panas<span aria-hidden="true">✳</span>
-                    </Link>
-                    <p>
-                        A useful connection
-                        <br />
-                        for your spare compute.
-                    </p>
-                </div>
-                <nav aria-label="Footer navigation">
-                    <Link href="/providers">Provider directory</Link>
-                    <Link href="/guides/buyer">Buyer setup</Link>
-                    <Link href="/guides/provider">Provider setup</Link>
-                    <a href="https://github.com/carlosrivera/mcpwire">
-                        MCPWire source ↗
-                    </a>
-                </nav>
-                <p className="footer-note">
-                    Made for agent-led discovery.
-                    <br />
-                    Browsing never reserves capacity
-                    <br />
-                    or authorizes a purchase.
-                </p>
+        <footer className="site-footer shell">
+            <div>
+                <Link href="/" className="wordmark" aria-label="Panas home">
+                    panas
+                    <span className="wordmark-cursor" aria-hidden="true">
+                        _
+                    </span>
+                </Link>
+                <p>spare compute, between panas.</p>
             </div>
-            <div className="shell footer-bottom">
-                <span>Panas · Share the spare.</span>
-                <span>Test credits only · Prototype</span>
-            </div>
+            <nav aria-label="Footer navigation">
+                <Link href="/providers">provider directory</Link>
+                <Link href="/guides/buyer">buyer setup</Link>
+                <Link href="/guides/provider">provider setup</Link>
+                <a href="https://github.com/carlosrivera/mcpwire">
+                    MCPWire source ↗
+                </a>
+            </nav>
+            <p className="footer-note">
+                Browsing never reserves capacity
+                <br />
+                or authorizes a purchase.
+                <br />
+                Test-credit prototype. No real money.
+            </p>
         </footer>
     );
 }

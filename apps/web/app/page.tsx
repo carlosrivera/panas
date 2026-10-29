@@ -1,242 +1,275 @@
-import Link from "next/link";
-import { Button } from "@panas/ui/components/ui/button";
-
-const flow = [
-    ["Discover", "Your agent finds a suitable provider."],
-    ["Quote", "Inspect a fixed price and request bounds."],
-    ["Authorize", "Purchase within owner-set limits."],
-    ["Connect", "MCPWire opens the peer connection."],
-    ["Infer", "The approved model runs on the Mac."],
-    ["Receipt", "Retrieve output and the financial outcome."],
-];
+import "./pr27.css";
+import { LandingRuntime } from "../components/landing-runtime";
 export default function Home() {
     return (
-        <main id="main">
-            <section className="hero shell" aria-labelledby="hero-title">
-                <div className="hero-copy">
-                    <p className="eyebrow">
-                        <span className="eyebrow-line" />
-                        Compute works better with panas
-                    </p>
-                    <h1 id="hero-title">
-                        Your agent’s
-                        <br />
-                        next <em>pana.</em>
-                    </h1>
-                    <p className="hero-lede">
-                        Put spare Mac compute to work. Let agents discover a
-                        provider, agree on a fixed quote, and make a useful
-                        connection.
-                    </p>
-                    <div className="hero-actions">
-                        <Button asChild size="lg">
-                            <Link href="/providers">
-                                Explore providers{" "}
-                                <span aria-hidden="true">↗</span>
-                            </Link>
-                        </Button>
-                        <Link href="/guides/buyer" className="text-link">
-                            Connect your agent <span aria-hidden="true">→</span>
-                        </Link>
-                    </div>
-                    <p className="hero-footnote">
-                        Agent-led discovery. Encrypted peer connections. Test
-                        credits only.
-                    </p>
-                </div>
-                <aside
-                    className="connection-card"
-                    aria-label="Panas prototype: a local Mac serves inference to a buyer agent"
-                >
-                    <div className="connection-top">
-                        <span className="tiny-label">
-                            A little compute.
-                            <br />A useful connection.
-                        </span>
-                        <span className="round-star" aria-hidden="true">
-                            ✳
-                        </span>
-                    </div>
-                    <div className="device-illustration" aria-hidden="true">
-                        <svg viewBox="0 0 390 230" fill="none">
-                            <circle cx="194" cy="110" r="91" fill="#e4e8d3" />
-                            <rect
-                                x="77"
-                                y="45"
-                                width="222"
-                                height="143"
-                                rx="12"
-                                fill="#284b3a"
-                            />
-                            <rect
-                                x="87"
-                                y="55"
-                                width="202"
-                                height="121"
-                                rx="5"
-                                fill="#f8f4e8"
-                            />
-                            <path
-                                d="M56 188h264l-16 17H72l-16-17Z"
-                                fill="#41634b"
-                            />
-                            <path
-                                d="M162 188h52l-5 6h-42l-5-6Z"
-                                fill="#a6b89e"
-                            />
-                            <rect
-                                x="118"
-                                y="79"
-                                width="141"
-                                height="70"
-                                rx="8"
-                                fill="#e9eddf"
-                            />
-                            <path
-                                d="m149 101 11 11-11 11m23 0h21"
-                                stroke="#284b3a"
-                                strokeWidth="5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            />
-                            <circle cx="291" cy="62" r="37" fill="#b33e24" />
-                            <path
-                                d="M280 62h22m-11-11v22m-8-19 16 16m-16 0 16-16"
-                                stroke="#fff9ed"
-                                strokeWidth="3"
-                                strokeLinecap="round"
-                            />
-                        </svg>
-                    </div>
-                    <div className="connection-caption">
-                        <span className="tag">Apple Silicon</span>
-                        <span className="tag">Native Ollama</span>
-                    </div>
-                    <div className="connection-bottom">
-                        <div>
-                            <span className="tiny-label">Starting small</span>
-                            <p>qwen2.5:0.5b</p>
-                        </div>
-                        <span className="prototype-seal">
-                            Prototype
-                            <br />
-                            not a live listing
-                        </span>
-                    </div>
-                </aside>
-            </section>
-            <section className="belief-band">
-                <div className="shell belief-inner">
-                    <p>
-                        Share a capability.
-                        <br />
-                        <em>Keep control of your Mac.</em>
-                    </p>
-                    <div>
-                        <span>Fixed, bounded requests</span>
-                        <span>Owner-set spending limits</span>
-                        <span>Private connection handoff</span>
-                    </div>
-                </div>
-            </section>
-            <section className="section shell" aria-labelledby="how-title">
-                <div className="section-heading">
-                    <div>
-                        <p className="eyebrow">How it works</p>
-                        <h2 id="how-title">
-                            From “who can help?”
-                            <br />
-                            to a useful result.
-                        </h2>
-                    </div>
-                    <p>
-                        One stable MCP facade handles the journey. Your agent
-                        can discover and use a provider without visiting this
-                        website.
-                    </p>
-                </div>
-                <ol className="flow-grid">
-                    {flow.map(([title, detail], index) => (
-                        <li key={title}>
-                            <span className="step-number">0{index + 1}</span>
-                            <h3>{title}</h3>
-                            <p>{detail}</p>
+        <>
+            <video
+                id="v"
+                src="/video.mp4"
+                muted
+                playsInline
+                preload="auto"
+            ></video>
+
+            <div className="pr27-page page">
+                <nav aria-label="Main">
+                    <a className="logo" href="/">
+                        🤝 panas<span>_</span>
+                    </a>
+                    <ul>
+                        <li>
+                            <a href="/guides/buyer">docs</a>
                         </li>
-                    ))}
-                </ol>
-            </section>
-            <section
-                className="section shell audience-section"
-                aria-label="Choose your setup guide"
-            >
-                <article className="audience-card buyer-card">
-                    <p className="eyebrow">For the buyer</p>
-                    <h2>
-                        Give your agent
-                        <br />a new connection.
-                    </h2>
-                    <p>
-                        Discover live capabilities, compare bounded quotes, and
-                        retrieve results with a receipt. You set the spending
-                        authority.
+                        <li>
+                            <a href="/providers">find a pana</a>
+                        </li>
+                        <li>
+                            <a href="https://github.com/carlosrivera/mcpwire">
+                                github
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+
+                <main id="main">
+                    <div className="clip a" aria-hidden="true">
+                        <header>epichandshake.vid</header>
+                        <canvas></canvas>
+                    </div>
+                    <div className="clip b" aria-hidden="true">
+                        <header>epichandshake.vid</header>
+                        <canvas></canvas>
+                    </div>
+                    <div className="clip c" aria-hidden="true">
+                        <header>epichandshake.vid</header>
+                        <canvas></canvas>
+                    </div>
+
+                    <p className="kicker">
+                        panas (n.) — spanish for friends. also: this.
                     </p>
-                    <Link href="/guides/buyer" className="text-link">
-                        Set up a buyer agent <span aria-hidden="true">→</span>
-                    </Link>
-                </article>
-                <article className="audience-card provider-card">
-                    <p className="eyebrow">For the provider</p>
-                    <h2>
-                        Your Mac.
-                        <br />A little more useful.
-                    </h2>
-                    <p>
-                        Run an approved small model natively. Launch checks
-                        establish what your Mac can offer before it becomes
-                        discoverable.
+                    <h1>
+                        free compute,
+                        <br />
+                        between panas.
+                    </h1>
+
+                    <div className="handshake">
+                        <div
+                            className="wire"
+                            role="img"
+                            aria-label="your agent, handshake, a pana's mac"
+                        >
+                            <span>your agent</span>
+                            <i className="node"></i>
+                            <i className="line"></i>
+                            <span className="pill">panas_ai</span>
+                            <i className="line"></i>
+                            <i className="node on"></i>
+                            <span>a pana's mac</span>
+                        </div>
+                    </div>
+                </main>
+
+                <dialog id="pick" aria-labelledby="pick-title">
+                    <div className="pick-header">
+                        <span className="pick-label">pick a side</span>
+                        <button
+                            type="button"
+                            className="pick-close"
+                            aria-label="close"
+                        >
+                            esc ✕
+                        </button>
+                    </div>
+                    <h2 id="pick-title">what kind of pana are you?</h2>
+                    <div className="pick-options">
+                        <a className="pick-option" href="/guides/buyer">
+                            <span className="pick-verb">seek</span>
+                            <span className="pick-line">
+                                my agent needs compute.
+                            </span>
+                            <span className="pick-detail">
+                                one local mcp server · test credits · caps you
+                                set
+                            </span>
+                            <span className="pick-link">
+                                connect your agent →
+                            </span>
+                        </a>
+                        <a className="pick-option" href="/guides/provider">
+                            <span className="pick-verb">expose</span>
+                            <span className="pick-line">my mac is bored.</span>
+                            <span className="pick-detail">
+                                apple silicon · native ollama · tests itself
+                                every launch
+                            </span>
+                            <span className="pick-link">share your mac →</span>
+                        </a>
+                    </div>
+                    <div className="pick-footer">
+                        you can be both. most panas are.
+                    </div>
+                </dialog>
+
+                <section
+                    className="use-cases"
+                    aria-labelledby="use-cases-title"
+                >
+                    <p className="prototype-annotation">
+                        concept / planned use cases · current prototype: one
+                        bounded model request with fixed test credits
                     </p>
-                    <Link href="/guides/provider" className="text-link">
-                        Prepare a provider Mac <span aria-hidden="true">→</span>
-                    </Link>
-                </article>
-            </section>
-            <section
-                className="section shell trust-section"
-                aria-labelledby="trust-title"
-            >
-                <p className="eyebrow">Clear expectations</p>
-                <h2 id="trust-title">
-                    A connection built
-                    <br />
-                    on clear terms.
-                </h2>
-                <div className="trust-grid">
-                    <article>
-                        <h3>A fixed quote, within limits.</h3>
-                        <p>
-                            The prototype charges test credits per successful
-                            bounded request. Token counts are diagnostics, not
-                            the billing unit. There are no real-money payments.
+                    <div className="use-cases-inner">
+                        <h2 id="use-cases-title">
+                            a friend in need
+                            <br />
+                            is a friend in <span>deed.</span>
+                        </h2>
+                        <p className="sub">
+                            one small model is a toy. a network of free friends
+                            is a tool.
                         </p>
-                    </article>
-                    <article>
-                        <h3>Encrypted in transit.</h3>
-                        <p>
-                            MCPWire protects the peer connection. The provider
-                            can still inspect workloads on their own Mac; this
-                            is not confidential inference.
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th scope="col">the need</th>
+                                    <th scope="col">the deed</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        your agent hit its rate limit at 3am.
+                                    </td>
+                                    <td>
+                                        a pana is awake. one bounded request,
+                                        free.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>500 tiny jobs. zero budget.</td>
+                                    <td>
+                                        split them across every pana online.
+                                        map-reduce among friends.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>"is this pana lying to me?"</td>
+                                    <td>
+                                        ask a second pana. same pinned model,
+                                        temperature 0, compare answers.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section className="paid" aria-labelledby="paid-title">
+                    <p className="prototype-annotation">
+                        concept / planned · prototype: qwen2.5:0.5b only; no
+                        real-money payments, bigger models, or multi-provider
+                        fan-out
+                    </p>
+                    <div className="paid-inner">
+                        <h2 id="paid-title">
+                            panas don't let panas
+                            <br />
+                            spend gpu without <span className="lime">pay.</span>
+                        </h2>
+                        <p className="sub">
+                            free is for friends. paid is for friends with an m4
+                            max.
                         </p>
-                    </article>
-                    <article>
-                        <h3>Claims, with context.</h3>
-                        <p>
-                            Capability checks and benchmarks are reported by
-                            providers. A signed report identifies its source; it
-                            does not provide hardware attestation.
-                        </p>
-                    </article>
-                </div>
-            </section>
-        </main>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th scope="col">the situation</th>
+                                    <th scope="col">the move</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        bought a mac mini to run open claw for
+                                        one week. it's been a paperweight since.
+                                    </td>
+                                    <td>
+                                        list it. set a price. it pays itself off
+                                        one request at a time.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        your 128gb m4 max spends the night
+                                        rendering a screensaver.
+                                    </td>
+                                    <td>
+                                        paid panas run bigger models. your ram
+                                        finally has a job.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        your agent needs 10,000 jobs done by
+                                        morning.
+                                    </td>
+                                    <td>
+                                        fan out to every paid pana. pay per
+                                        request, not per hour.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>"what if the pana flakes halfway?"</td>
+                                    <td>
+                                        reserved up front. charged once, only on
+                                        success. refunded otherwise.
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>"my agent will spend my rent."</td>
+                                    <td>
+                                        owner-set caps per request, session and
+                                        day. the agent can't raise them.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p className="prototype-annotation prototype-policy">
+                        prototype settlement: uncertain work stays held for
+                        reconciliation; definitive failed work settles zero.
+                    </p>
+                </section>
+
+                {/*  sticky call to action: a dark arch that rises over the page  */}
+                <aside className="dock" aria-label="Get started with Panas">
+                    <button
+                        type="button"
+                        id="cta"
+                        className="dock-cta"
+                        aria-haspopup="dialog"
+                        aria-controls="pick"
+                    >
+                        🤝 become a pana
+                    </button>
+                    <p className="dock-note">
+                        prototype · fixed test-credit quotes
+                    </p>
+                </aside>
+
+                <footer>
+                    <span>
+                        hackathon build. may contain bugs. will contain vibes.
+                    </span>
+                    <span>
+                        no gpus were rented by the hour in the making of this.
+                    </span>
+                </footer>
+            </div>
+
+            <LandingRuntime />
+        </>
     );
 }
