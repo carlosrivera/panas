@@ -1,0 +1,152 @@
+{
+    "version": 1,
+    "runId": "226522eb-e871-4ed0-9a20-e95e12b28e54",
+    "mode": "local-simulation",
+    "startedAt": "2026-10-29T04:44:16.126Z",
+    "finishedAt": "2026-10-29T04:47:46.972Z",
+    "gitCommit": "8bcc2c1a35d6ff5642f007269fd930caa5ea48cf",
+    "sourceTreeDirty": false,
+    "physicalMachineCount": 1,
+    "logicalProviderCount": 2,
+    "caseEvidence": [
+        {
+            "id": "startup-ready-discovery",
+            "status": "passed",
+            "source": "real_cloud_one_mac",
+            "detail": "Two real provider processes on one physical Mac published startup-tested readiness through the cloud registry."
+        },
+        {
+            "id": "price-profile-selection",
+            "status": "passed",
+            "source": "real_cloud_one_mac",
+            "detail": "Buyer queried live readiness/model/profile and selected the lowest listed fixed provider price among this run's two providers."
+        },
+        {
+            "id": "paid-inference-receipt",
+            "status": "passed",
+            "source": "real_cloud_one_mac",
+            "detail": "Actual buyer MCP → registry/accounting → MCPWire → pinned Ollama completed with a balanced fixed-price receipt and authenticated retrieval.",
+            "metrics": {
+                "buyerDebitAtomic": "1",
+                "providerEarningsAtomic": "1",
+                "feeAtomic": "0",
+                "inputTokens": 6,
+                "outputTokens": 16,
+                "finishReason": "length"
+            },
+            "requestIds": ["3297da9f-0d88-43de-9942-7c4de8f5da57"],
+            "receiptIds": ["149ce1f8-6e82-4943-8582-fe6603d16501"]
+        },
+        {
+            "id": "buyer-adapter-disconnect",
+            "status": "passed",
+            "source": "real_cloud_one_mac",
+            "detail": "Buyer MCP adapter was closed after dispatch and replaced; retrieval used the original request. The fast model may have completed before disconnect.",
+            "requestIds": ["3297da9f-0d88-43de-9942-7c4de8f5da57"],
+            "receiptIds": ["149ce1f8-6e82-4943-8582-fe6603d16501"]
+        },
+        {
+            "id": "duplicate-purchase-and-execution",
+            "status": "passed",
+            "source": "real_cloud_one_mac",
+            "detail": "Repeated purchase key kept the request; repeated execution was rejected. Fresh-peer retrieval retained the exact receipt and debit.",
+            "requestIds": ["3297da9f-0d88-43de-9942-7c4de8f5da57"],
+            "receiptIds": ["149ce1f8-6e82-4943-8582-fe6603d16501"]
+        },
+        {
+            "id": "controlled-purchase-outage",
+            "status": "passed",
+            "source": "fault_injected_cloud_one_mac",
+            "detail": "Isolated HTTPS transport proxy returned503 before forwarding this owner's purchase. Cloud had no request/reservation/settlement and unchanged balance/hold; recovery reused the original key and settled once.",
+            "requestIds": ["144dfda4-0bf0-4be1-8003-f70db576d6c2"],
+            "receiptIds": ["32f08087-00ec-4f5c-b1b4-be6dc1325e32"]
+        },
+        {
+            "id": "controlled-terminal-outage",
+            "status": "passed",
+            "source": "fault_injected_cloud_one_mac",
+            "detail": "Actual reserved authorization and Ollama inference completed while this run's isolated HTTPS proxy blocked terminal delivery. Cloud remained authorized with no receipt/settlement; restoring delivery reconciled the durable outbox exactly once.",
+            "requestIds": ["5493e501-e0bb-4f82-9848-adb244c952d9"],
+            "receiptIds": ["bc3d1911-4666-4477-acb0-c6e4f5475133"]
+        },
+        {
+            "id": "concurrent-cloud-spending",
+            "status": "passed",
+            "source": "real_cloud_one_mac",
+            "detail": "Two separate buyer MCP processes raced purchases against one owner/session/balance cap. Exactly one reserved and executed; one was rejected.",
+            "requestIds": ["2e34fbba-7f9f-4fd6-b45e-db300955828c"],
+            "receiptIds": ["e334f236-4511-4940-98e5-390327d69678"]
+        },
+        {
+            "id": "pause-and-provider-fallback",
+            "status": "passed",
+            "source": "real_cloud_one_mac",
+            "detail": "The selected provider was paused through private local administration; cloud discovery excluded it and the buyer completed a new request on the other process.",
+            "requestIds": ["eb6fcc45-8a9e-411e-829a-c31694f76b8b"],
+            "receiptIds": ["0229e653-4bbf-4120-af56-67c3bf579987"]
+        },
+        {
+            "id": "heartbeat-expiry",
+            "status": "passed",
+            "source": "real_cloud_one_mac",
+            "detail": "Stopped owned provider expired from cloud readiness under the configured heartbeat TTL; the second provider remained independent."
+        },
+        {
+            "id": "two-physical-macs",
+            "status": "pending",
+            "source": "manual_pending",
+            "detail": "Second physical Mac exists but is inaccessible to this agent. Local logical providers are not separate physical machines."
+        },
+        {
+            "id": "ticket-and-grant-negative-e2e",
+            "status": "not_run",
+            "source": "real_cloud_one_mac",
+            "detail": "No actual end-to-end fault observation recorded by this run. Owning-package injected checks belong to the separate component_fixture artifact and do not complete this gate."
+        },
+        {
+            "id": "queue-overflow-e2e",
+            "status": "not_run",
+            "source": "real_cloud_one_mac",
+            "detail": "No actual end-to-end fault observation recorded by this run. Owning-package injected checks belong to the separate component_fixture artifact and do not complete this gate."
+        },
+        {
+            "id": "cancel-completion-race-e2e",
+            "status": "not_run",
+            "source": "real_cloud_one_mac",
+            "detail": "No actual end-to-end fault observation recorded by this run. Owning-package injected checks belong to the separate component_fixture artifact and do not complete this gate."
+        },
+        {
+            "id": "deadline-e2e",
+            "status": "not_run",
+            "source": "real_cloud_one_mac",
+            "detail": "No actual end-to-end fault observation recorded by this run. Owning-package injected checks belong to the separate component_fixture artifact and do not complete this gate."
+        },
+        {
+            "id": "provider-crash-e2e",
+            "status": "not_run",
+            "source": "real_cloud_one_mac",
+            "detail": "No actual end-to-end fault observation recorded by this run. Owning-package injected checks belong to the separate component_fixture artifact and do not complete this gate."
+        },
+        {
+            "id": "sleep-wake-e2e",
+            "status": "not_run",
+            "source": "real_cloud_one_mac",
+            "detail": "No actual end-to-end fault observation recorded by this run. Owning-package injected checks belong to the separate component_fixture artifact and do not complete this gate."
+        },
+        {
+            "id": "volcano-outage-e2e",
+            "status": "not_run",
+            "source": "real_cloud_one_mac",
+            "detail": "No actual end-to-end fault observation recorded by this run. Owning-package injected checks belong to the separate component_fixture artifact and do not complete this gate."
+        }
+    ],
+    "gates": {
+        "twoPhysicalMacs": "pending",
+        "release9": "pending",
+        "issue10Complete": false
+    },
+    "cleanup": {
+        "ownedProcessesStopped": true,
+        "runtimePortsClosed": true
+    }
+}

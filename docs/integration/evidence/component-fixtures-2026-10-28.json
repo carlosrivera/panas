@@ -1,0 +1,82 @@
+{
+    "version": 1,
+    "runId": "d9cdef78-bb53-4e22-b1bd-353df4a35595",
+    "mode": "failure-fixtures",
+    "startedAt": "2026-10-29T04:47:47.497Z",
+    "finishedAt": "2026-10-29T04:47:49.225Z",
+    "gitCommit": "8bcc2c1a35d6ff5642f007269fd930caa5ea48cf",
+    "sourceTreeDirty": false,
+    "physicalMachineCount": 0,
+    "logicalProviderCount": 0,
+    "caseEvidence": [
+        {
+            "id": "ticket-and-authorization-tamper",
+            "status": "passed",
+            "source": "component_fixture",
+            "detail": "Component fixtures only; no end-to-end claim. Exact passing checks: provider authentication rejects ticket-only, wrong platform, wrong buyer, altered payload, stale startup and wrong provider; provider authentication rejects expiry, operation substitution, model change, limit overflow, and proof replay durably. Required checks: rejects ticket-only, wrong platform, wrong buyer, altered payload, stale startup and wrong provider; rejects expiry, operation substitution, model change, limit overflow, and proof replay durably"
+        },
+        {
+            "id": "nonce-replay-and-reconnect",
+            "status": "passed",
+            "source": "component_fixture",
+            "detail": "Component fixtures only; no end-to-end claim. Exact passing checks: provider authentication rejects expiry, operation substitution, model change, limit overflow, and proof replay durably; disposable stdio adapter survives adapter death without losing paid request state and exposes no resource/prompt bypass. Required checks: rejects expiry, operation substitution, model change, limit overflow, and proof replay durably; survives adapter death without losing paid request state and exposes no resource/prompt bypass"
+        },
+        {
+            "id": "queue-overflow",
+            "status": "passed",
+            "source": "component_fixture",
+            "detail": "Component fixtures only; no end-to-end claim. Exact passing checks: authenticated admission declines declines a full queue without overwriting another accepted request. Required checks: declines a full queue without overwriting another accepted request"
+        },
+        {
+            "id": "cancel-before-completion",
+            "status": "passed",
+            "source": "component_fixture",
+            "detail": "Component fixtures only; no end-to-end claim. Exact passing checks: provider authentication signs durable cancellation but never releases accounting directly. Required checks: signs durable cancellation but never releases accounting directly"
+        },
+        {
+            "id": "deadline",
+            "status": "passed",
+            "source": "component_fixture",
+            "detail": "Component fixtures only; no end-to-end claim. Exact passing checks: deadlines and rate authority fails timed-out work and never leaves the worker available; deadlines and rate authority includes metadata inspection within the execution deadline. Required checks: fails timed-out work and never leaves the worker available; includes metadata inspection within the execution deadline"
+        },
+        {
+            "id": "unknown-recovery",
+            "status": "passed",
+            "source": "component_fixture",
+            "detail": "Component fixtures only; no end-to-end claim. Exact passing checks: encrypted retention and recovery marks interrupted requests unknown instead of executing them again. Required checks: marks interrupted requests unknown instead of executing them again"
+        },
+        {
+            "id": "wake-gap-invalidation",
+            "status": "passed",
+            "source": "component_fixture",
+            "detail": "Component fixtures only; no end-to-end claim. Exact passing checks: capabilities invalidates readiness after runtime change and wake gap. Required checks: invalidates readiness after runtime change and wake gap"
+        },
+        {
+            "id": "terminal-delivery-client-outage",
+            "status": "passed",
+            "source": "component_fixture",
+            "detail": "Component fixtures only; no end-to-end claim. Exact passing checks: provider authentication retains a signed terminal outbox across adapter/service loss and retries idempotently. Required checks: retains a signed terminal outbox across adapter/service loss and retries idempotently"
+        },
+        {
+            "id": "no-automatic-replay",
+            "status": "passed",
+            "source": "component_fixture",
+            "detail": "Component fixtures only; no end-to-end claim. Exact passing checks: does not replay inference after lost response or facade restart; refreshes retrieval after execution expiry. Required checks: does not replay inference after lost response or facade restart; refreshes retrieval after execution expiry"
+        },
+        {
+            "id": "cancel-completion-race-e2e",
+            "status": "not_run",
+            "source": "component_fixture",
+            "detail": "Cancellation-before-completion fixture is not evidence that both actual distributed race outcomes were observed."
+        }
+    ],
+    "gates": {
+        "twoPhysicalMacs": "pending",
+        "release9": "pending",
+        "issue10Complete": false
+    },
+    "cleanup": {
+        "ownedProcessesStopped": true,
+        "runtimePortsClosed": true
+    }
+}
