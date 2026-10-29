@@ -57,6 +57,11 @@ export function token() {
         );
     return value;
 }
+export class ManagementRequestError extends Error {
+    constructor(readonly status?: number) {
+        super("Volcano management request failed");
+    }
+}
 export async function management<T = Record<string, unknown>>(
     path: string,
     init: RequestInit = {},
@@ -73,17 +78,12 @@ export async function management<T = Record<string, unknown>>(
         response = await fetch(`${PLATFORM.apiUrl}${path}`, {
             ...init,
             headers,
-            signal: AbortSignal.timeout(30000),
+            signal: init.signal ?? AbortSignal.timeout(30000),
         });
     } catch {
-        throw new Error(
-            "Volcano management request failed; no credential or response diagnostics disclosed",
-        );
+        throw new ManagementRequestError();
     }
-    if (!response.ok)
-        throw new Error(
-            `Volcano management request returned ${response.status}`,
-        );
+    if (!response.ok) throw new ManagementRequestError(response.status);
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
 }

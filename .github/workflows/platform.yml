@@ -28,7 +28,8 @@ jobs:
             - run: pnpm platform:deploy ${{ github.ref != 'refs/heads/main' && '--functions-only' || '' }}
             - run: node scripts/platform/maintain.mjs
             - uses: actions/upload-artifact@v7.0.0
+              if: always()
               with:
                   name: panas-test-release-${{ github.sha }}
                   path: artifacts/*.json
-                  if-no-files-found: error
+                  if-no-files-found: ${{ job.status == 'success' && 'error' || 'warn' }}
