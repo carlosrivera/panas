@@ -6,6 +6,7 @@ export type VerificationStage =
     | "anonymous_api_authorization"
     | "accounting_authorization"
     | "authenticated_mcp"
+    | "functions_deployment"
     | "private_operational_health"
     | "frontend"
     | "frontend_assets"
@@ -27,17 +28,37 @@ export class VerificationError extends Error {
         code: FailureCode;
         path?: string;
         status?: number;
+        resource?: string;
+        resourceState?: string;
     };
     constructor(
         stage: VerificationStage,
         code: FailureCode,
         path?: string,
         status?: number,
+        resource?: "health" | "registry" | "accounting" | "operations",
+        resourceState?: string,
     ) {
         super(`${stage}: ${code}`);
         this.diagnostic = {
             stage,
             code,
+            ...(resource ? { resource } : {}),
+            ...(resourceState
+                ? {
+                      resourceState: [
+                          "active",
+                          "provisioning",
+                          "failed",
+                          "degraded",
+                          "deleting",
+                          "missing",
+                          "queued",
+                      ].includes(resourceState)
+                          ? resourceState
+                          : "unknown",
+                  }
+                : {}),
             ...(path && /^\/[A-Za-z0-9_./-]*$/.test(path) ? { path } : {}),
             ...(typeof status === "number" &&
             Number.isInteger(status) &&
@@ -207,16 +228,88 @@ export async function probeFrontend(options: {
             return { record, assetCount: paths.length, attempts: attempt };
         } catch (error) {
             const failure = verificationError(error, stage);
-            const { code, status } = failure.diagnostic;
-            const retry =
-                code === "REQUEST_FAILED" ||
-                code === "DEPLOYMENT_NOT_ACTIVE" ||
-                (code === "HTTP_STATUS" &&
-                    [404, 408, 429, 500, 502, 503, 504].includes(status ?? 0));
-            if (!retry || now() >= until) throw failure;
+            if (!retryable(failure) || now() >= until) throw failure;
             options.onRetry?.(failure, attempt);
             await (options.sleep ?? delay)(Math.min(retryMs, until - now()));
             if (now() >= until) throw failure;
         }
     }
+}
+
+export interface FunctionDeployment {
+    id: string;
+    project_id: string;
+    name: string;
+    status: string;
+    invoke_url: string;
+    current_deployment_id: string | null;
+}
+/** CLI deployment completion and resource-list readiness are separate observations. */
+export async function probeFunctions(options: {
+    projectId: string;
+    load: (signal: AbortSignal) => Promise<FunctionDeployment[]>;
+    now?: () => number;
+    sleep?: (milliseconds: number) => Promise<unknown>;
+    timeoutMs?: number;
+    retryMs?: number;
+    onRetry?: (failure: VerificationError, attempt: number) => void;
+}) {
+    const now = options.now ?? (() => performance.now());
+    const until = now() + (options.timeoutMs ?? 180000);
+    for (let attempt = 1; ; attempt++) {
+        try {
+            const records = await options.load(
+                AbortSignal.timeout(
+                    Math.max(1, Math.min(15000, until - now())),
+                ),
+            );
+            for (const name of [
+                "health",
+                "registry",
+                "accounting",
+                "operations",
+            ] as const) {
+                const record = records.find((r) => r.name === name);
+                if (record && record.project_id !== options.projectId)
+                    throw new VerificationError(
+                        "functions_deployment",
+                        "CHECK_FAILED",
+                        undefined,
+                        undefined,
+                        name,
+                    );
+                if (
+                    !record ||
+                    record.status !== "active" ||
+                    !record.current_deployment_id
+                )
+                    throw new VerificationError(
+                        "functions_deployment",
+                        "DEPLOYMENT_NOT_ACTIVE",
+                        undefined,
+                        undefined,
+                        name,
+                        record?.status ?? "missing",
+                    );
+            }
+            return { records, attempts: attempt };
+        } catch (error) {
+            const failure = verificationError(error, "functions_deployment");
+            if (!retryable(failure) || now() >= until) throw failure;
+            options.onRetry?.(failure, attempt);
+            await (options.sleep ?? delay)(
+                Math.min(options.retryMs ?? 5000, until - now()),
+            );
+            if (now() >= until) throw failure;
+        }
+    }
+}
+function retryable(failure: VerificationError) {
+    const { code, status } = failure.diagnostic;
+    return (
+        code === "REQUEST_FAILED" ||
+        code === "DEPLOYMENT_NOT_ACTIVE" ||
+        (code === "HTTP_STATUS" &&
+            [404, 408, 429, 500, 502, 503, 504].includes(status ?? 0))
+    );
 }
