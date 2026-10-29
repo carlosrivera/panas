@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 import { spawn } from "node:child_process";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { createServer } from "node:net";
+import { createServer as createHttpServer } from "node:http";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { setTimeout as delay } from "node:timers/promises";
@@ -32,6 +33,11 @@ if(process.argv[2]==='--version') { console.log('fixture-version'); process.exit
 const port=Number(process.env.OLLAMA_HOST.split(':').at(-1));
 const server=createServer(async(req,res)=>{
  const chunks=[]; for await(const c of req)chunks.push(c);
+ if(req.url==='/api/generate' && JSON.parse(Buffer.concat(chunks).toString() || '{}').stream) {
+  res.writeHead(200,{'content-type':'application/x-ndjson'});
+  res.write(JSON.stringify({done:false,response:'fixture'})+'\\n');
+  setTimeout(()=>res.end(JSON.stringify({done:true,response:'',eval_count:1})+'\\n'),200); return;
+ }
  res.writeHead(200,{'content-type':'application/json'}).end(JSON.stringify({nativePath:req.url,body:Buffer.concat(chunks).toString(),pid:process.pid}));
 });
 server.listen(port,'127.0.0.1');
@@ -41,11 +47,26 @@ process.on('SIGTERM',()=>{server.closeAllConnections();server.close(()=>process.
     );
     const externalPort = await port(),
         upstreamPort = await port();
+    const observations: { nonFinal: boolean }[] = [];
+    const observer = createHttpServer(async (request, response) => {
+        let body = "";
+        for await (const chunk of request) body += chunk;
+        observations.push(JSON.parse(body));
+        response.writeHead(200).end("{}");
+    });
+    await new Promise<void>((resolve) =>
+        observer.listen(0, "127.0.0.1", resolve),
+    );
+    const observerPort = (observer.address() as { port: number }).port;
     const wrapper = await prepareDelayedRuntime({
         privateDir: directory,
         binary,
         externalPort,
         upstreamPort,
+        firstTokenObserver: {
+            url: `http://127.0.0.1:${observerPort}/observe`,
+            token: "component-fixture",
+        },
     });
     const child = spawn(wrapper.binaryPath, ["serve"], {
         detached: true,
@@ -104,6 +125,17 @@ process.on('SIGTERM',()=>{server.closeAllConnections();server.close(()=>process.
         abort.abort();
         await expect(aborted).rejects.toThrow();
         expect((await fetch(endpoint + "/api/version")).status).toBe(200);
+        await wrapper.observeNextGeneration(true);
+        const streamed = await fetch(endpoint + "/api/generate", {
+            method: "POST",
+            body: JSON.stringify({ prompt: "fixture-only", stream: false }),
+        });
+        expect(await streamed.json()).toMatchObject({
+            done: true,
+            response: "fixture",
+        });
+        expect(observations).toHaveLength(1);
+        expect(observations[0]?.nonFinal).toBe(true);
         await wrapper.close();
         expect(() => process.kill(native.pid, 0)).toThrow();
         await expect(
@@ -119,6 +151,7 @@ process.on('SIGTERM',()=>{server.closeAllConnections();server.close(()=>process.
             }
         }
         await rm(directory, { recursive: true, force: true });
+        await new Promise<void>((resolve) => observer.close(() => resolve()));
     }
 }, 15000);
 

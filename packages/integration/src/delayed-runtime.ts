@@ -38,7 +38,18 @@ export async function prepareDelayedRuntime(options: {
     binary: string;
     externalPort: number;
     upstreamPort: number;
+    firstTokenObserver?: { url: string; token: string };
 }) {
+    if (options.firstTokenObserver) {
+        const url = new URL(options.firstTokenObserver.url);
+        if (
+            url.protocol !== "http:" ||
+            url.hostname !== "127.0.0.1" ||
+            url.username ||
+            url.password
+        )
+            throw new Error("OBSERVER_MUST_BE_LOOPBACK");
+    }
     if (
         !isAbsolute(options.privateDir) ||
         !isAbsolute(options.binary) ||
@@ -72,6 +83,15 @@ export async function prepareDelayedRuntime(options: {
         });
         await rename(temp, controlPath);
     };
+    const observeNextGeneration = async (observe: boolean) => {
+        const temp = controlPath + ".tmp";
+        await writeFile(
+            temp,
+            JSON.stringify({ holdGenerate: false, observe }),
+            { mode: 0o600 },
+        );
+        await rename(temp, controlPath);
+    };
     await setHoldGenerate(false);
     await writeFile(
         join(directory, "config.json"),
@@ -82,6 +102,7 @@ export async function prepareDelayedRuntime(options: {
     return {
         binaryPath,
         setHoldGenerate,
+        observeNextGeneration,
         async snapshot() {
             const response = await fetch(
                 `http://127.0.0.1:${options.externalPort}/__panas_fault__/status`,
@@ -193,12 +214,41 @@ if (process.argv[2] !== 'serve') {
                 request.resume(); response.writeHead(503).end(); return;
             }
             const body = await bounded(request);
+            const control = JSON.parse(await readFile(new URL('./control.json', import.meta.url), 'utf8'));
+            const observe = request.url === '/api/generate' && control.observe && config.firstTokenObserver;
+            const forwarded = observe ? Buffer.from(JSON.stringify({...JSON.parse(body.toString('utf8')), stream:true})) : body;
             const upstream = await fetch('http://127.0.0.1:' + config.upstreamPort + request.url, {
                 method: request.method, redirect:'error', signal:controller.signal,
                 headers:{'content-type':'application/json'},
-                ...(request.method === 'POST' ? {body:new Uint8Array(body)} : {}),
+                ...(request.method === 'POST' ? {body:new Uint8Array(forwarded)} : {}),
             });
-            const result = upstream.body ? await bounded(upstream.body) : Buffer.alloc(0);
+            let result;
+            if (observe && upstream.ok && upstream.body) {
+                let buffer = '', text = '', final, notified = false, bytes = 0;
+                const decoder = new TextDecoder();
+                for await (const chunk of upstream.body) {
+                    bytes += chunk.byteLength;
+                    if (bytes > 1048576) throw new Error('BOUNDED_STREAM');
+                    buffer += decoder.decode(chunk, {stream:true});
+                    const lines = buffer.split('\n'); buffer = lines.pop();
+                    const frames = lines.filter(Boolean).map(line => JSON.parse(line));
+                    for (const frame of frames) { text += frame.response ?? ''; if (frame.done === true) final = frame; }
+                    if (!notified && !final && frames.some(frame => frame.done === false && frame.response?.trim())) {
+                        notified = true;
+                        const observedAt = new Date().toISOString();
+                        const ack = await fetch(config.firstTokenObserver.url, {
+                            method:'POST', headers:{authorization:'Bearer ' + config.firstTokenObserver.token, 'content-type':'application/json'},
+                            body:JSON.stringify({observedAt, wrapperPid:process.pid, nativePid:child.pid, nonFinal:true}),
+                            signal:AbortSignal.timeout(2000),
+                        });
+                        if (!ack.ok) throw new Error('OBSERVATION_REJECTED');
+                        await ack.body?.cancel();
+                    }
+                }
+                if (buffer.trim()) { const frame = JSON.parse(buffer); text += frame.response ?? ''; if (frame.done === true) final = frame; }
+                if (!final) throw new Error('NATIVE_STREAM_INTERRUPTED');
+                result = Buffer.from(JSON.stringify({...final, response:text}));
+            } else result = upstream.body ? await bounded(upstream.body) : Buffer.alloc(0);
             if (upstream.ok && ['/api/version','/api/tags'].includes(request.url)) counters.metadataResponses++;
             // Actual native work is already complete; only its transport response is delayed.
             if (request.url === '/api/generate' && upstream.ok) {
