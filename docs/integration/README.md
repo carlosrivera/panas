@@ -48,3 +48,17 @@ An optional `releaseEvidencePath` points to #9's actual verified `artifacts/rele
 `issue10Complete` stays false in generated reports. Completion is a reviewed decision after the physical checklist and failure matrix are satisfied; the harness cannot close the issue automatically.
 
 Continue with [the two-machine protocol](two-machine.md) and [the failure matrix](failure-matrix.md).
+
+## Evidence captured so far
+
+[The clean-source local report](evidence/local-simulation-2026-10-28.json) records ten passing actual cloud/one-Mac or explicitly injected-transport observations, one pending physical gate, and seven end-to-end fault scenarios not run. It identifies tested commit `8bcc2c1a35d6ff5642f007269fd930caa5ea48cf` and `sourceTreeDirty: false`. [The separate fixture report](evidence/component-fixtures-2026-10-28.json) records component checks with their exact passing test names; it does not fill the missing end-to-end scenarios.
+
+Later PR commits add independently tested report-parser refinements and a release smoke mode. Migration `applied`/`adopted` counts are per deployment while `total` is cumulative, so an idempotent replay with0/0/37 is valid. The original tested source identity remains unchanged in its artifact.
+
+After #9 produces its actual final full-release report, set `releaseEvidencePath` in the private run config to that report and run one final paid request without repeating the entire failure sequence:
+
+```sh
+pnpm --filter @panas/integration run release-smoke --config /private/path/new-run/run.json
+```
+
+This mode refuses to launch or purchase if the release reference is absent or invalid. It runs the actual provider startup/discovery/quote/purchase/inference/receipt and reconnect checks, performs only one new paid request, and records the referenced release commit separately from the harness commit. The hardware gate remains pending.

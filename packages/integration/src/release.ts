@@ -39,20 +39,35 @@ export function validReleaseReference(input: unknown): boolean {
         urls.has(TEST_REGISTRY_URL) &&
         urls.has(TEST_ACCOUNTING_URL) &&
         requiredReleaseChecks.every((name) => names.has(name)) &&
-        proof.migration.total ===
+        proof.migration.total >=
             proof.migration.applied + proof.migration.adopted
     );
 }
 /** Validates the referenced producer report, not an independent re-probe of the deployed endpoints. */
-export async function releaseGate(
+export async function inspectRelease(
     path?: string,
-): Promise<"pending" | "referenced_unverified" | "referenced_verified_report"> {
-    if (!path) return "pending";
+): Promise<{
+    status: "pending" | "referenced_unverified" | "referenced_verified_report";
+    reference?: { projectId: string; commit: string; verifiedAt: string };
+}> {
+    if (!path) return { status: "pending" };
     try {
-        return validReleaseReference(JSON.parse(await readFile(path, "utf8")))
-            ? "referenced_verified_report"
-            : "referenced_unverified";
+        const input: unknown = JSON.parse(await readFile(path, "utf8"));
+        if (!validReleaseReference(input))
+            return { status: "referenced_unverified" };
+        const proof = proofSchema.parse(input);
+        return {
+            status: "referenced_verified_report",
+            reference: {
+                projectId: proof.projectId,
+                commit: proof.commit,
+                verifiedAt: proof.verifiedAt,
+            },
+        };
     } catch {
-        return "referenced_unverified";
+        return { status: "referenced_unverified" };
     }
+}
+export async function releaseGate(path?: string) {
+    return (await inspectRelease(path)).status;
 }

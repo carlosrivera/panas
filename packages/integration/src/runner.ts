@@ -29,7 +29,7 @@ import {
 import { prepareRaceBuyer, inspectFixtureRequest } from "./prepare.js";
 import { startFaultProxy } from "./fault-proxy.js";
 import { privateWrite } from "./config.js";
-import { releaseGate } from "./release.js";
+import { inspectRelease } from "./release.js";
 
 const publicProviderSchema = z.object({
     providerId: z.uuid(),
@@ -118,10 +118,20 @@ async function buy(
     return { quote, purchase, args, requestId: String(purchase.requestId) };
 }
 
-export async function run(path: string, manual = false): Promise<string> {
+export async function run(
+    path: string,
+    manual = false,
+    smokeOnly = false,
+): Promise<string> {
     const config: LocalConfig | ManualConfig = manual
         ? manualConfigSchema.parse(JSON.parse(await readPrivate(path)))
         : localConfigSchema.parse(JSON.parse(await readPrivate(path)));
+    if (
+        smokeOnly &&
+        (await inspectRelease(config.releaseEvidencePath)).status !==
+            "referenced_verified_report"
+    )
+        throw new Error("VERIFIED_RELEASE_REFERENCE_REQUIRED");
     await privateDirectory(config.privateDir);
     const runId = randomUUID(),
         startedAt = new Date().toISOString(),
@@ -199,7 +209,7 @@ export async function run(path: string, manual = false): Promise<string> {
     process.once("SIGINT", onSignal);
     process.once("SIGTERM", onSignal);
     try {
-        if (config.mode === "local-simulation") {
+        if (config.mode === "local-simulation" && !smokeOnly) {
             proxy = await startFaultProxy({
                 upstream: config.accountingUrl,
                 privateDir: config.privateDir,
@@ -222,6 +232,9 @@ export async function run(path: string, manual = false): Promise<string> {
                 );
             }
         }
+        if (config.mode === "local-simulation" && smokeOnly)
+            for (const env of config.providerEnvs)
+                owned.push(await launchProvider(env));
         if (stopping) throw new Error("RUN_STOPPED");
         buyer = await connectBuyer(ownerPath, proxy?.caPath);
         clients.push(buyer);
@@ -329,7 +342,7 @@ export async function run(path: string, manual = false): Promise<string> {
                     [secondReceipt.receiptId],
                 );
             }
-        } else {
+        } else if (!smokeOnly) {
             if (!proxy) throw new Error("FAULT_PROXY_MISSING");
             const interruptedQuote = await buyer.call("quote_inference", {
                 providerId: selected.providerId,
@@ -555,16 +568,18 @@ export async function run(path: string, manual = false): Promise<string> {
             source: manual ? "operator_attested_two_mac" : "real_cloud_one_mac",
             detail: "No actual end-to-end fault observation recorded by this run. Owning-package injected checks belong to the separate component_fixture artifact and do not complete this gate.",
         });
+    const release = await inspectRelease(config.releaseEvidencePath);
     const artifact = evidenceSchema.parse({
         version: 1,
         runId,
-        mode: config.mode,
+        mode: smokeOnly ? "release-smoke" : config.mode,
         startedAt,
         finishedAt: new Date().toISOString(),
         gitCommit: execFileSync("git", ["rev-parse", "HEAD"], {
             cwd: repositoryRoot,
             encoding: "utf8",
         }).trim(),
+        ...(release.reference ? { releaseReference: release.reference } : {}),
         sourceTreeDirty,
         physicalMachineCount: config.physicalMachineCount,
         logicalProviderCount: 2,
@@ -572,7 +587,7 @@ export async function run(path: string, manual = false): Promise<string> {
         gates: {
             twoPhysicalMacs:
                 manual && !failed ? "passed_operator_attested" : "pending",
-            release9: await releaseGate(config.releaseEvidencePath),
+            release9: release.status,
             issue10Complete: false,
         },
         cleanup: {

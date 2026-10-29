@@ -34,12 +34,21 @@ export const evidenceSchema = z
         runId: z.uuid(),
         mode: z.enum([
             "local-simulation",
+            "release-smoke",
             "manual-two-machine",
             "failure-fixtures",
         ]),
         startedAt: z.iso.datetime(),
         finishedAt: z.iso.datetime(),
         gitCommit: z.string().regex(/^[a-f0-9]{40}$/),
+        releaseReference: z
+            .object({
+                projectId: z.literal("7db5f8f4-c378-4ba5-a48f-f435bc4c034b"),
+                commit: z.string().regex(/^[a-f0-9]{40}$/),
+                verifiedAt: z.iso.datetime(),
+            })
+            .strict()
+            .optional(),
         sourceTreeDirty: z.boolean(),
         physicalMachineCount: z.number().int().min(0).max(2),
         logicalProviderCount: z.number().int().min(0).max(2),
@@ -68,7 +77,7 @@ export const evidenceSchema = z
     .strict()
     .superRefine((report, ctx) => {
         if (
-            report.mode === "local-simulation" &&
+            ["local-simulation", "release-smoke"].includes(report.mode) &&
             (report.physicalMachineCount !== 1 ||
                 report.gates.twoPhysicalMacs !== "pending")
         )

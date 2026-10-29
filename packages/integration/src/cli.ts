@@ -13,6 +13,8 @@ try {
         artifact = await prepare(values.config);
     else if (mode === "local-simulation" && values.config)
         artifact = await run(values.config);
+    else if (mode === "release-smoke" && values.config)
+        artifact = await run(values.config, false, true);
     else if (mode === "manual-two-machine" && values.config)
         artifact = await run(values.config, true);
     else if (mode === "failure-fixtures" && values.output)
