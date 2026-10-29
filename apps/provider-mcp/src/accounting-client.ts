@@ -100,12 +100,62 @@ export class AccountingHttpClient implements AccountingPort {
             throw new Error("ACCOUNTING_NOT_AUTHORIZED");
     }
     async terminal(event: SignedDocument<TerminalEvent>): Promise<void> {
-        await this.post(
+        const result = await this.post(
             `/provider/requests/${event.payload.requestId}/terminal`,
             { event },
         );
+        if (
+            !result ||
+            typeof result !== "object" ||
+            !("requestId" in result) ||
+            result.requestId !== event.payload.requestId ||
+            !("status" in result) ||
+            ![
+                "completed",
+                "cancelled",
+                "failed",
+                "pending",
+                "refunded",
+            ].includes(String(result.status)) ||
+            !("receipt" in result)
+        )
+            throw new Error("TERMINAL_NOT_ACKNOWLEDGED");
+        if (result.status === "pending") {
+            if (event.payload.outcome !== "unknown" || result.receipt !== null)
+                throw new Error("TERMINAL_NOT_ACKNOWLEDGED");
+        } else {
+            const receipt = result.receipt;
+            if (
+                !receipt ||
+                typeof receipt !== "object" ||
+                !("requestId" in receipt) ||
+                receipt.requestId !== event.payload.requestId ||
+                !("status" in receipt) ||
+                receipt.status !== result.status ||
+                !("currency" in receipt) ||
+                receipt.currency !== "TEST_CREDIT"
+            )
+                throw new Error("TERMINAL_NOT_ACKNOWLEDGED");
+            if (
+                event.payload.outcome !== "unknown" &&
+                result.status !== event.payload.outcome &&
+                result.status !== "refunded"
+            )
+                throw new Error("TERMINAL_NOT_ACKNOWLEDGED");
+        }
     }
     async descriptor(body: Record<string, unknown>): Promise<void> {
-        await this.post("/provider/descriptor", body);
+        const result = await this.post("/provider/descriptor", body);
+        if (
+            !result ||
+            typeof result !== "object" ||
+            !("uploaded" in result) ||
+            result.uploaded !== true ||
+            !("providerId" in result) ||
+            result.providerId !== this.providerId ||
+            !("startupId" in result) ||
+            result.startupId !== body.startupId
+        )
+            throw new Error("DESCRIPTOR_NOT_ACKNOWLEDGED");
     }
 }

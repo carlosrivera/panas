@@ -312,6 +312,10 @@ describe("provider authentication", () => {
                 tool: "run_inference",
                 request: f.wire("run_inference", {
                     ...f.grant,
+                    requestId: randomUUID(),
+                    quoteId: randomUUID(),
+                    reservationId: randomUUID(),
+                    grantId: randomUUID(),
                     limits: { ...prototypeLimits, maxOutputTokens: 1 },
                 }),
             }),
@@ -326,7 +330,15 @@ describe("provider authentication", () => {
                 (await f.daemon.get(f.grant.requestId, f.grant.buyerKeyId))
                     ?.status === "completed",
         );
+        const retrieval = f.wire("get_request");
+        await f.service.handle({ tool: "get_request", request: retrieval });
         const restarted = await f.restart();
+        await expect(
+            restarted.service.handle({
+                tool: "get_request",
+                request: retrieval,
+            }),
+        ).rejects.toThrow("REPLAYED_OPERATION");
         await expect(
             restarted.service.handle({ tool: "run_inference", request: wire }),
         ).rejects.toThrow();
@@ -408,6 +420,121 @@ describe("provider authentication", () => {
     });
 });
 
+describe("authenticated admission declines", () => {
+    it("persists a signed failed decision for unavailable capacity and oversized bound context", async () => {
+        const f = await fixture();
+        f.daemon.pause();
+        await expect(
+            f.service.handle({ tool: "run_inference", request: f.wire() }),
+        ).rejects.toThrow("PROVIDER_UNAVAILABLE");
+        const declined = await f.daemon.get(
+            f.grant.requestId,
+            f.grant.buyerKeyId,
+        );
+        expect(declined?.status).toBe("failed");
+        expect(
+            signedTerminalEventSchema.parse(declined?.terminalEvent).payload
+                .outcome,
+        ).toBe("failed");
+        expect(f.accounting.authorized).toBe(0);
+        await f.service.flushTerminals();
+        expect(f.accounting.events).toHaveLength(1);
+        f.daemon.resume();
+        const payload = { prompt: "x".repeat(3000), maxOutputTokens: 8 };
+        const grant = {
+            ...f.grant,
+            requestId: randomUUID(),
+            quoteId: randomUUID(),
+            grantId: randomUUID(),
+            reservationId: randomUUID(),
+            payloadDigest: digest(payload),
+        };
+        await expect(
+            f.service.handle({
+                tool: "run_inference",
+                request: f.wire("run_inference", grant, payload),
+            }),
+        ).rejects.toThrow("GRANT_LIMIT_EXCEEDED");
+        expect(
+            (await f.daemon.get(grant.requestId, grant.buyerKeyId))?.status,
+        ).toBe("failed");
+    });
+    it("declines a full queue without overwriting another accepted request", async () => {
+        const f = await fixture();
+        f.runtime.block = true;
+        const grants: Grant[] = [];
+        for (let i = 0; i < 4; i++)
+            grants.push({
+                ...f.grant,
+                requestId: randomUUID(),
+                quoteId: randomUUID(),
+                grantId: randomUUID(),
+                reservationId: randomUUID(),
+            });
+        try {
+            for (const grant of grants.slice(0, 3))
+                await f.service.handle({
+                    tool: "run_inference",
+                    request: f.wire("run_inference", grant),
+                });
+            const fourth = grants[3]!;
+            await expect(
+                f.service.handle({
+                    tool: "run_inference",
+                    request: f.wire("run_inference", fourth),
+                }),
+            ).rejects.toThrow("QUEUE_FULL");
+            expect(
+                (await f.daemon.get(fourth.requestId, fourth.buyerKeyId))
+                    ?.status,
+            ).toBe("failed");
+            expect(
+                (await f.daemon.get(grants[0]!.requestId, fourth.buyerKeyId))
+                    ?.status,
+            ).toBe("running");
+            await f.service.flushTerminals();
+            expect(f.accounting.events).toHaveLength(1);
+            expect(f.accounting.events[0]?.payload.requestId).toBe(
+                fourth.requestId,
+            );
+        } finally {
+            await f.daemon.emergencyStop();
+        }
+    });
+    it("declines the seventh accepted buyer request through the durable outbox", async () => {
+        const f = await fixture();
+        for (let i = 0; i < 6; i++) {
+            const grant = {
+                ...f.grant,
+                requestId: randomUUID(),
+                quoteId: randomUUID(),
+                grantId: randomUUID(),
+                reservationId: randomUUID(),
+            };
+            await f.service.handle({
+                tool: "run_inference",
+                request: f.wire("run_inference", grant),
+            });
+            await waitUntil(
+                async () =>
+                    (await f.daemon.get(grant.requestId, grant.buyerKeyId))
+                        ?.status === "completed",
+            );
+        }
+        await expect(
+            f.service.handle({ tool: "run_inference", request: f.wire() }),
+        ).rejects.toThrow("RATE_LIMITED");
+        const declined = await f.daemon.get(
+            f.grant.requestId,
+            f.grant.buyerKeyId,
+        );
+        expect(declined?.status).toBe("failed");
+        expect(
+            signedTerminalEventSchema.parse(declined?.terminalEvent).payload
+                .outcome,
+        ).toBe("failed");
+    });
+});
 describe("disposable stdio adapter", () => {
     it("survives adapter death without losing paid request state and exposes no resource/prompt bypass", async () => {
         const f = await fixture(),

@@ -199,26 +199,50 @@ export class ProviderHostService {
                 proof.payloadDigest !== grant.payloadDigest
             )
                 throw new ProviderError("EXECUTION_BINDING_MISMATCH");
-            if (
-                payload.maxOutputTokens > grant.limits.maxOutputTokens ||
-                Buffer.byteLength(payload.prompt) >
-                    grant.limits.maxContextTokens - payload.maxOutputTokens - 16
-            )
-                throw new ProviderError("GRANT_LIMIT_EXCEEDED");
             await this.consumeNonce(
                 proof.nonce,
                 grant.buyerKeyId,
                 digest(wire),
             );
-            record = await this.worker.submit(
-                {
-                    requestId: grant.requestId,
-                    quoteId: grant.quoteId,
-                    ...payload,
-                },
-                grant.buyerKeyId,
-                wire.grant,
-            );
+            const request = {
+                requestId: grant.requestId,
+                quoteId: grant.quoteId,
+                ...payload,
+            };
+            try {
+                if (
+                    payload.maxOutputTokens > grant.limits.maxOutputTokens ||
+                    Buffer.byteLength(payload.prompt) >
+                        grant.limits.maxContextTokens -
+                            payload.maxOutputTokens -
+                            16
+                )
+                    throw new ProviderError("GRANT_LIMIT_EXCEEDED");
+                record = await this.worker.submit(
+                    request,
+                    grant.buyerKeyId,
+                    wire.grant,
+                );
+            } catch (error) {
+                if (
+                    error instanceof ProviderError &&
+                    [
+                        "QUEUE_FULL",
+                        "RATE_LIMITED",
+                        "PROVIDER_UNAVAILABLE",
+                        "CONTEXT_TOO_LARGE",
+                        "GRANT_LIMIT_EXCEEDED",
+                    ].includes(error.code)
+                ) {
+                    await this.worker.declineAuthenticated(
+                        request,
+                        grant.buyerKeyId,
+                        wire.grant,
+                        error.code,
+                    );
+                }
+                throw error;
+            }
         } else {
             await this.consumeNonce(
                 proof.nonce,
