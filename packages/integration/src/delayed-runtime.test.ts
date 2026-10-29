@@ -83,6 +83,10 @@ process.on('SIGTERM',()=>{server.closeAllConnections();server.close(()=>process.
         });
         await delay(100);
         expect(finished).toBe(false);
+        expect(await wrapper.snapshot()).toMatchObject({
+            nativeGenerationsCompleted: 1,
+            heldGenerations: 1,
+        });
         expect((await fetch(endpoint + "/api/tags")).status).toBe(200);
         await wrapper.setHoldGenerate(false);
         expect(await result).toMatchObject({

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { constants } from "node:fs";
 import {
     access,
@@ -81,6 +82,25 @@ export async function prepareDelayedRuntime(options: {
     return {
         binaryPath,
         setHoldGenerate,
+        async snapshot() {
+            const response = await fetch(
+                `http://127.0.0.1:${options.externalPort}/__panas_fault__/status`,
+                {
+                    headers: { authorization: "Bearer " + token },
+                    signal: AbortSignal.timeout(2000),
+                },
+            );
+            if (!response.ok)
+                throw new Error("DELAYED_RUNTIME_SNAPSHOT_REJECTED");
+            return z
+                .object({
+                    nativeGenerationsCompleted: z.number().int().nonnegative(),
+                    heldGenerations: z.number().int().nonnegative(),
+                    metadataResponses: z.number().int().nonnegative(),
+                })
+                .strict()
+                .parse(await response.json());
+        },
         async close() {
             if (!(await closed(options.externalPort))) {
                 try {
@@ -130,6 +150,7 @@ if (process.argv[2] !== 'serve') {
 } else {
     let child, stopping = false;
     const pending = new Set();
+    const counters = {nativeGenerationsCompleted:0,heldGenerations:0,metadataResponses:0};
     const bounded = async body => {
         const chunks = []; let bytes = 0;
         for await (const value of body) {
@@ -152,6 +173,10 @@ if (process.argv[2] !== 'serve') {
         process.exit(0);
     };
     const server = createServer(async (request, response) => {
+        if (request.url === '/__panas_fault__/status') {
+            if (request.method !== 'GET' || request.headers.authorization !== 'Bearer ' + config.token) { response.writeHead(401).end(); return; }
+            response.writeHead(200, {'content-type':'application/json'}).end(JSON.stringify(counters)); return;
+        }
         if (request.url === '/__panas_fault__/stop') {
             if (request.method !== 'POST' || request.headers.authorization !== 'Bearer ' + config.token) {
                 response.writeHead(401).end(); return;
@@ -162,6 +187,7 @@ if (process.argv[2] !== 'serve') {
         const controller = new AbortController(); pending.add(controller);
         response.once('close', () => controller.abort());
         const timer = setTimeout(() => controller.abort(), 90000);
+        let held = false;
         try {
             if (stopping || !child || !['GET','POST'].includes(request.method) || !/^\/api\/[a-z_]+$/.test(request.url)) {
                 request.resume(); response.writeHead(503).end(); return;
@@ -173,11 +199,14 @@ if (process.argv[2] !== 'serve') {
                 ...(request.method === 'POST' ? {body:new Uint8Array(body)} : {}),
             });
             const result = upstream.body ? await bounded(upstream.body) : Buffer.alloc(0);
+            if (upstream.ok && ['/api/version','/api/tags'].includes(request.url)) counters.metadataResponses++;
             // Actual native work is already complete; only its transport response is delayed.
             if (request.url === '/api/generate' && upstream.ok) {
+                counters.nativeGenerationsCompleted++;
                 while (!controller.signal.aborted && !stopping) {
                     const control = JSON.parse(await readFile(new URL('./control.json', import.meta.url), 'utf8'));
                     if (!control.holdGenerate) break;
+                    if (!held) { held = true; counters.heldGenerations++; }
                     await delay(25, undefined, {signal:controller.signal});
                 }
             }
@@ -186,7 +215,7 @@ if (process.argv[2] !== 'serve') {
             }
         } catch {
             if (!response.destroyed && !response.headersSent) response.writeHead(503).end('{"error":"LOCAL_TRANSPORT_FAULT"}');
-        } finally { clearTimeout(timer); pending.delete(controller); }
+        } finally { if (held) counters.heldGenerations--; clearTimeout(timer); pending.delete(controller); }
     });
     server.requestTimeout = 95000;
     process.once('SIGTERM', () => { void shutdown(); });

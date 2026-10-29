@@ -1,0 +1,115 @@
+{
+    "version": 1,
+    "runId": "d2725f66-8475-4443-aec6-410e0fedabc0",
+    "mode": "fault-seams",
+    "startedAt": "2026-10-29T15:07:03.744Z",
+    "finishedAt": "2026-10-29T15:09:22.741Z",
+    "gitCommit": "7e2d26f6bacb338e45b65e2b040398775b93ef11",
+    "releaseReference": {
+        "projectId": "7db5f8f4-c378-4ba5-a48f-f435bc4c034b",
+        "commit": "1e022ae871fd9e26a4331ca02dbdb7fd0f82e117",
+        "verifiedAt": "2026-10-29T14:50:11.171Z"
+    },
+    "sourceTreeDirty": false,
+    "physicalMachineCount": 1,
+    "logicalProviderCount": 2,
+    "caseEvidence": [
+        {
+            "id": "copied-ticket-without-entitlement",
+            "status": "passed",
+            "source": "real_cloud_one_mac",
+            "detail": "A raw MCP peer holding the real copied connectivity ticket invoked inference without entitlement; host rejected it and cloud reservation/local request remained unchanged.",
+            "requestIds": ["bc8ad2f4-8fd6-4306-9600-ffe33b305b89"]
+        },
+        {
+            "id": "altered-grant-payload-buyer-and-expired-proof",
+            "status": "passed",
+            "source": "real_cloud_one_mac",
+            "detail": "Actual cloud purchase rejected altered signed grant, payload tampering, another buyer key and a proof allowed to expire in real time. None minted execution, settlement or fabricated provider terminal state; original request then remained usable.",
+            "requestIds": ["bc8ad2f4-8fd6-4306-9600-ffe33b305b89"]
+        },
+        {
+            "id": "exact-operation-replay",
+            "status": "passed",
+            "source": "real_cloud_one_mac",
+            "detail": "Replayed identical signed operation/nonce through the actual peer was rejected; legitimate run settled once and late cancellation preserved the exact completed receipt.",
+            "requestIds": ["bc8ad2f4-8fd6-4306-9600-ffe33b305b89"]
+        },
+        {
+            "id": "queue-overflow-e2e",
+            "status": "passed",
+            "source": "fault_injected_cloud_one_mac",
+            "detail": "Verified owned native Ollama listener was briefly SIGSTOPed (3s automatic SIGCONT guard). One active plus two queued real paid requests filled the persistent daemon; fourth received QUEUE_FULL and durable failed zero-charge receipt. No shared process or physical sleep was used.",
+            "requestIds": [
+                "01e9317a-dee8-4dc3-8852-3984d8579f3d",
+                "700d7935-a353-41d1-926d-345c42adb2a9",
+                "7b734bfd-965d-44af-97de-33e76eb46c58",
+                "6c7b49af-9b8c-43e4-bd01-203d3ce38b16"
+            ]
+        },
+        {
+            "id": "controlled-cancel-orderings",
+            "status": "passed",
+            "source": "fault_injected_cloud_one_mac",
+            "detail": "Queued/active cancellation before model progress produced durable cancelled zero-charge receipts; the separately completed request rejected late state reversal and kept its exact one-charge receipt. This establishes controlled orderings, not a simultaneous cancel/completion race.",
+            "requestIds": [
+                "bc8ad2f4-8fd6-4306-9600-ffe33b305b89",
+                "01e9317a-dee8-4dc3-8852-3984d8579f3d",
+                "700d7935-a353-41d1-926d-345c42adb2a9",
+                "7b734bfd-965d-44af-97de-33e76eb46c58"
+            ]
+        },
+        {
+            "id": "expired-execution-grant-e2e",
+            "status": "passed",
+            "source": "real_cloud_one_mac",
+            "detail": "Real cloud-issued executeBefore elapsed with no clock mocking; a fresh buyer proof could not execute it. No local record/terminal or debit was fabricated. Its original reservation is intentionally held for bounded reconciliation and audited operator review; no silent refund.",
+            "requestIds": ["bff6454b-8861-441e-a2aa-56e821e4c18d"]
+        },
+        {
+            "id": "two-physical-macs",
+            "status": "pending",
+            "source": "manual_pending",
+            "detail": "Second physical Mac exists but is inaccessible to this agent. Local logical providers are not separate physical machines."
+        },
+        {
+            "id": "cancel-completion-simultaneous-race-e2e",
+            "status": "not_run",
+            "source": "real_cloud_one_mac",
+            "detail": "Not established by controlled cancellation/owned process suspension; requires its own actual observation."
+        },
+        {
+            "id": "deadline-e2e",
+            "status": "not_run",
+            "source": "real_cloud_one_mac",
+            "detail": "Not established by controlled cancellation/owned process suspension; requires its own actual observation."
+        },
+        {
+            "id": "provider-crash-e2e",
+            "status": "not_run",
+            "source": "real_cloud_one_mac",
+            "detail": "Not established by controlled cancellation/owned process suspension; requires its own actual observation."
+        },
+        {
+            "id": "sleep-wake-e2e",
+            "status": "not_run",
+            "source": "real_cloud_one_mac",
+            "detail": "Not established by controlled cancellation/owned process suspension; requires its own actual observation."
+        },
+        {
+            "id": "volcano-outage-e2e",
+            "status": "not_run",
+            "source": "real_cloud_one_mac",
+            "detail": "Not established by controlled cancellation/owned process suspension; requires its own actual observation."
+        }
+    ],
+    "gates": {
+        "twoPhysicalMacs": "pending",
+        "release9": "referenced_verified_report",
+        "issue10Complete": false
+    },
+    "cleanup": {
+        "ownedProcessesStopped": true,
+        "runtimePortsClosed": true
+    }
+}
