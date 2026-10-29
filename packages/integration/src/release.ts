@@ -44,9 +44,7 @@ export function validReleaseReference(input: unknown): boolean {
     );
 }
 /** Validates the referenced producer report, not an independent re-probe of the deployed endpoints. */
-export async function inspectRelease(
-    path?: string,
-): Promise<{
+export async function inspectRelease(path?: string): Promise<{
     status: "pending" | "referenced_unverified" | "referenced_verified_report";
     reference?: { projectId: string; commit: string; verifiedAt: string };
 }> {
