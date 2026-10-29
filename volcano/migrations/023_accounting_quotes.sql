@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS panas_accounting_quotes (quote_id uuid PRIMARY KEY, buyer_id uuid NOT NULL REFERENCES panas_accounting_buyers(buyer_id), request_id uuid NOT NULL, fingerprint text NOT NULL, quote jsonb NOT NULL, created_at timestamptz NOT NULL, UNIQUE(buyer_id,request_id));

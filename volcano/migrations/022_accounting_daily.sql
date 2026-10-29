@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS panas_accounting_daily (buyer_id uuid NOT NULL REFERENCES panas_accounting_buyers(buyer_id), usage_day date NOT NULL, held numeric(30,0) NOT NULL DEFAULT 0 CHECK(held>=0), spent numeric(30,0) NOT NULL DEFAULT 0 CHECK(spent>=0), PRIMARY KEY(buyer_id,usage_day));

@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS panas_accounting_operator_audit (audit_id uuid PRIMARY KEY, action text NOT NULL, reference_id uuid NOT NULL, reason text NOT NULL, metadata jsonb NOT NULL, created_at timestamptz NOT NULL);
