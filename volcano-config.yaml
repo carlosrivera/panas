@@ -1,0 +1,10 @@
+version: 1
+functions:
+    - name: health
+      visibility: private
+      variable_scope: scoped
+      variables: []
+frontends:
+    - name: panas
+      variable_scope: scoped
+      variables: []

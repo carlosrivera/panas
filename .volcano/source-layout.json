@@ -1,0 +1,10 @@
+{
+    "version": 1,
+    "frontends": [
+        {
+            "name": "panas",
+            "workspace": "",
+            "app_root": "apps/web"
+        }
+    ]
+}

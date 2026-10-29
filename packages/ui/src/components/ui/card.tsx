@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { cn } from "@panas-ai/ui/lib/utils";
+import { cn } from "@panas/ui/lib/utils";
 
 const Card = React.forwardRef<
     HTMLDivElement,
@@ -30,7 +30,7 @@ const CardHeader = React.forwardRef<
 CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<
-    HTMLParagraphElement,
+    HTMLHeadingElement,
     React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
     <h3

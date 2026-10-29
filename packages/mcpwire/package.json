@@ -1,0 +1,20 @@
+{
+    "name": "@panas/mcpwire",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "scripts": {
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@mcpwire/cli": "1.1.0"
+    },
+    "devDependencies": {
+        "@panas/typescript-config": "workspace:*",
+        "@types/node": "24.19.2",
+        "typescript": "6.0.3"
+    }
+}

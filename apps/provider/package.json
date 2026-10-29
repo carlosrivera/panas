@@ -1,0 +1,19 @@
+{
+    "name": "@panas/provider",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "doctor": "tsx src/doctor.ts",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@panas/contracts": "workspace:*"
+    },
+    "devDependencies": {
+        "@panas/typescript-config": "workspace:*",
+        "@types/node": "24.19.2",
+        "typescript": "6.0.3",
+        "tsx": "4.23.15"
+    }
+}

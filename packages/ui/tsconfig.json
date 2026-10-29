@@ -1,10 +1,9 @@
 {
-    "extends": "@panas-ai/typescript-config/react-library.json",
+    "extends": "@panas/typescript-config/react-library.json",
     "compilerOptions": {
-        "jsx": "react",
-        "baseUrl": ".",
+        "noEmit": true,
         "paths": {
-            "@panas-ai/ui/*": ["./src/*"]
+            "@panas/ui/*": ["./src/*"]
         }
     },
     "include": ["src"],

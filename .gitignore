@@ -37,3 +37,11 @@ yarn-error.log*
 # Typescript
 *.tsbuildinfo
 next-env.d.ts
+# Local provider state and Volcano secrets
+.panas/
+*.wirelog
+volcano/*.env
+.volcano/*
+!.volcano/source-layout.json
+.env.*
+!.env.example
