@@ -111,6 +111,29 @@ export async function runFailureFixtures(outputDir: string): Promise<string> {
                 "does not replay inference after lost response or facade restart; refreshes retrieval after execution expiry",
             ],
         ],
+        [
+            "startup-binding-boundaries",
+            [
+                "rejects old-startup execution before nonce consumption and preserves original-startup retrieval",
+                "rechecks startup after asynchronous read before admitting execution",
+                "rechecks startup after asynchronous nonce before admitting execution",
+            ],
+        ],
+        [
+            "action-grant-24h-boundary",
+            [
+                "enforces the exact 24-hour action boundary for get_request and accepts only scoped renewal",
+                "enforces the exact 24-hour action boundary for cancel_request and accepts only scoped renewal",
+                "retrieves with renewed action-only authority after the original 24-hour grant expires without replay",
+            ],
+        ],
+        [
+            "durable-buyer-rate-cap",
+            [
+                "retains the six-request buyer window across restart and frees capacity at exactly sixty seconds",
+                "restores legacy buyer windows conservatively and excludes explicitly declined records",
+            ],
+        ],
     ];
     const cases: CaseEvidence[] = groups.map(([id, required]) => {
         const matched = required
@@ -129,6 +152,17 @@ export async function runFailureFixtures(outputDir: string): Promise<string> {
         source: "component_fixture",
         detail: "Cancellation-before-completion fixture is not evidence that both actual distributed race outcomes were observed.",
     });
+    for (const id of [
+        "startup-binding-e2e",
+        "action-grant-24h-e2e",
+        "buyer-rate-cap-e2e",
+    ])
+        cases.push({
+            id,
+            status: "not_run",
+            source: "component_fixture",
+            detail: "Signed host and injected-clock fixtures do not establish a real cloud/native-model observation or a natural 24-hour wait. Follow authorization-boundaries.md after batch finalization.",
+        });
     const report = evidenceSchema.parse({
         version: 1,
         runId: randomUUID(),

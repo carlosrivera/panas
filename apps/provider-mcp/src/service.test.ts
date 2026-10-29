@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { writeFile } from "node:fs/promises";
+import { writeFile, readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { serveLocal } from "@panas/provider";
 import {
@@ -96,7 +96,7 @@ class Accounting implements AccountingPort {
     }
     async descriptor() {}
 }
-async function fixture() {
+async function fixture(clock = () => Date.now()) {
     const path = await mkdtemp(join(tmpdir(), "panas-host-"));
     dirs.push(path);
     const platform = generateKeyPairSync("ed25519"),
@@ -120,13 +120,14 @@ async function fixture() {
     async function restart() {
         service = new ProviderHostService(
             identity,
-            new EncryptedStore(join(path, "nonces")),
+            new EncryptedStore(join(path, "nonces"), clock),
             accounting,
+            clock,
         );
         daemon = new ProviderDaemon(
             config,
             runtime,
-            new EncryptedStore(join(path, "requests")),
+            new EncryptedStore(join(path, "requests"), clock),
             async () => ({
                 platform: "darwin",
                 architecture: "arm64",
@@ -134,7 +135,7 @@ async function fixture() {
                 memoryBytes: 8 * 1024 ** 3,
                 freeDiskBytes: 4 * 1024 ** 3,
             }),
-            () => Date.now(),
+            clock,
             service.hooks,
         );
         service.bind(daemon);
@@ -143,13 +144,13 @@ async function fixture() {
         daemon.verifyPeer({
             startupId: daemon.report!.startupId,
             status: "verified",
-            testedAt: new Date().toISOString(),
+            testedAt: new Date(clock()).toISOString(),
         });
         return { service, daemon };
     }
     const initial = await restart();
     const payload = { prompt: "hello", maxOutputTokens: 8 };
-    const now = Date.now();
+    const now = clock();
     const grant = grantSchema.parse({
         version: 1,
         quoteId: randomUUID(),
@@ -183,8 +184,9 @@ async function fixture() {
         operation: HostOperation = "run_inference",
         g: Grant = grant,
         body: unknown = operation === "run_inference" ? payload : {},
+        signer = buyer.privateKey,
     ) {
-        const issued = Date.now();
+        const issued = clock();
         const proof = operationSchema.parse({
             version: 1,
             grantId: g.grantId,
@@ -196,7 +198,7 @@ async function fixture() {
             expiresAt: new Date(issued + 60000).toISOString(),
         });
         return {
-            proof: signDocument(DOMAIN.operation, proof, buyer.privateKey),
+            proof: signDocument(DOMAIN.operation, proof, signer),
             grant: signDocument(DOMAIN.grant, g, platform.privateKey),
             payload: body,
         };
@@ -360,6 +362,443 @@ describe("provider authentication", () => {
             }),
         );
         expect((result.body as { status: string }).status).toBe("completed");
+    });
+    it("rejects old-startup execution before nonce consumption and preserves original-startup retrieval", async () => {
+        const f = await fixture();
+        const completedGrant = {
+            ...f.grant,
+            requestId: randomUUID(),
+            quoteId: randomUUID(),
+            grantId: randomUUID(),
+            reservationId: randomUUID(),
+        };
+        await f.service.handle({
+            tool: "run_inference",
+            request: f.wire("run_inference", completedGrant),
+        });
+        await waitUntil(
+            async () =>
+                (
+                    await f.daemon.get(
+                        completedGrant.requestId,
+                        completedGrant.buyerKeyId,
+                    )
+                )?.status === "completed",
+        );
+        await f.daemon.cancel(
+            completedGrant.requestId,
+            completedGrant.buyerKeyId,
+        );
+        const bytes = await readFile(
+            join(f.path, "requests", `${completedGrant.requestId}.enc`),
+        );
+        const restarted = await f.restart();
+        const baseline = f.runtime.calls;
+        const stale = f.wire(); // New buyer proof, genuinely signed old-startup grant.
+        await expect(
+            restarted.service.handle({ tool: "run_inference", request: stale }),
+        ).rejects.toThrow("EXECUTION_BINDING_MISMATCH");
+        expect(
+            await restarted.service.nonces.get(stale.proof.payload.nonce),
+        ).toBeUndefined();
+        expect(
+            await restarted.daemon.get(f.grant.requestId, f.grant.buyerKeyId),
+        ).toBeUndefined();
+        const actions = {
+            ...completedGrant,
+            operations: ["get_request", "cancel_request"] as HostOperation[],
+        };
+        const rebound = f.wire("get_request", {
+            ...actions,
+            startupId: restarted.daemon.report!.startupId,
+        });
+        await expect(
+            restarted.service.handle({ tool: "get_request", request: rebound }),
+        ).rejects.toThrow("REQUEST_BINDING_MISMATCH");
+        expect(
+            await restarted.service.nonces.get(rebound.proof.payload.nonce),
+        ).toBeUndefined();
+        for (const tool of ["get_request", "cancel_request"] as const) {
+            const result = providerResultSchema.parse(
+                await restarted.service.handle({
+                    tool,
+                    request: f.wire(tool, actions),
+                }),
+            );
+            expect(result.proof.payload.startupId).toBe(
+                completedGrant.startupId,
+            );
+            expect((result.body as { status: string }).status).toBe(
+                "completed",
+            );
+        }
+        expect(
+            await readFile(
+                join(f.path, "requests", `${completedGrant.requestId}.enc`),
+            ),
+        ).toEqual(bytes);
+        expect(f.runtime.calls).toBe(baseline);
+        expect(f.accounting.authorized).toBe(1);
+    });
+    it.each(["read", "nonce"] as const)(
+        "rechecks startup after asynchronous %s before admitting execution",
+        async (stage) => {
+            const f = await fixture();
+            const target = stage === "read" ? f.daemon.store : f.service.nonces;
+            const retest = async () => {
+                await f.daemon.retest();
+                f.daemon.verifyPeer({
+                    startupId: f.daemon.report!.startupId,
+                    status: "verified",
+                    testedAt: new Date().toISOString(),
+                });
+            };
+            if (stage === "read") {
+                const get = target.get.bind(target);
+                vi.spyOn(target, "get").mockImplementationOnce(async (id) => {
+                    const value = await get(id);
+                    await retest();
+                    return value;
+                });
+            } else {
+                const save = target.save.bind(target);
+                vi.spyOn(target, "save").mockImplementationOnce(
+                    async (record) => {
+                        await save(record);
+                        await retest();
+                    },
+                );
+            }
+            const stale = f.wire();
+            await expect(
+                f.service.handle({ tool: "run_inference", request: stale }),
+            ).rejects.toThrow("EXECUTION_BINDING_MISMATCH");
+            expect(
+                await f.daemon.get(f.grant.requestId, f.grant.buyerKeyId),
+            ).toBeUndefined();
+            expect(
+                Boolean(await f.service.nonces.get(stale.proof.payload.nonce)),
+            ).toBe(stage === "nonce");
+            expect(f.runtime.calls).toBe(4); // Launch/retest smoke calls, no buyer generation.
+            expect(f.accounting.authorized).toBe(0);
+        },
+    );
+    it.each(["get_request", "cancel_request"] as const)(
+        "enforces the exact 24-hour action boundary for %s and accepts only scoped renewal",
+        async (tool) => {
+            let now = Date.now();
+            const f = await fixture(() => now);
+            await f.service.handle({
+                tool: "run_inference",
+                request: f.wire(),
+            });
+            await waitUntil(
+                async () =>
+                    (await f.daemon.get(f.grant.requestId, f.grant.buyerKeyId))
+                        ?.status === "completed",
+            );
+            await f.daemon.cancel(f.grant.requestId, f.grant.buyerKeyId);
+            const baseline = f.runtime.calls;
+            const event = (await f.daemon.get(
+                f.grant.requestId,
+                f.grant.buyerKeyId,
+            ))!.terminalEvent;
+            const expiry = Date.parse(f.grant.expiresAt);
+            now = expiry - 1;
+            await expect(
+                f.service.handle({ tool, request: f.wire(tool) }),
+            ).resolves.toBeDefined();
+            now = expiry;
+            const expired = f.wire(tool); // Proof is fresh; the original platform grant is not.
+            await expect(
+                f.service.handle({ tool, request: expired }),
+            ).rejects.toThrow("Expired or invalid");
+            expect(
+                await f.service.nonces.get(expired.proof.payload.nonce),
+            ).toBeUndefined();
+            const renewed: Grant = {
+                ...f.grant,
+                issuedAt: new Date(now).toISOString(),
+                expiresAt: new Date(now + 120000).toISOString(),
+                operations: ["get_request", "cancel_request"],
+            };
+            const response = providerResultSchema.parse(
+                await f.service.handle({
+                    tool,
+                    request: f.wire(tool, renewed),
+                }),
+            );
+            expect((response.body as { status: string }).status).toBe(
+                "completed",
+            );
+            await expect(
+                f.service.handle({
+                    tool: "run_inference",
+                    request: f.wire("run_inference", renewed),
+                }),
+            ).rejects.toThrow("OPERATION_BINDING_MISMATCH");
+            now += 120000;
+            await expect(
+                f.service.handle({ tool, request: f.wire(tool, renewed) }),
+            ).rejects.toThrow("Expired or invalid");
+            await f.daemon.store.recoverAndCleanup(false);
+            const retained = (await f.daemon.get(
+                f.grant.requestId,
+                f.grant.buyerKeyId,
+            ))!;
+            expect(retained.status).toBe("completed");
+            expect(retained.result).toBeUndefined(); // Result retention is a separate 24-hour window.
+            expect(retained.terminalEvent).toEqual(event);
+            expect(f.runtime.calls).toBe(baseline);
+            expect(f.accounting.authorized).toBe(1);
+        },
+    );
+    it.each(["get_request", "cancel_request"] as const)(
+        "rechecks %s expiry after an asynchronous request read",
+        async (tool) => {
+            let now = Date.now();
+            const f = await fixture(() => now);
+            await f.service.handle({
+                tool: "run_inference",
+                request: f.wire(),
+            });
+            await waitUntil(
+                async () =>
+                    (await f.daemon.get(f.grant.requestId, f.grant.buyerKeyId))
+                        ?.status === "completed",
+            );
+            await f.daemon.cancel(f.grant.requestId, f.grant.buyerKeyId);
+            now = Date.parse(f.grant.expiresAt) - 1;
+            const operation = f.wire(tool);
+            const get = f.daemon.store.get.bind(f.daemon.store);
+            vi.spyOn(f.daemon.store, "get").mockImplementationOnce(
+                async (id) => {
+                    const record = await get(id);
+                    now += 1;
+                    return record;
+                },
+            );
+            await expect(
+                f.service.handle({ tool, request: operation }),
+            ).rejects.toThrow("Expired or invalid");
+            expect(
+                await f.service.nonces.get(operation.proof.payload.nonce),
+            ).toBeUndefined();
+            expect(f.runtime.calls).toBe(3);
+            expect(
+                (await f.daemon.get(f.grant.requestId, f.grant.buyerKeyId))
+                    ?.status,
+            ).toBe("completed");
+        },
+    );
+    it.each(["run_inference", "cancel_request"] as const)(
+        "rechecks %s proof inside the daemon decision after storage waits",
+        async (tool) => {
+            let now = Date.now();
+            const f = await fixture(() => now);
+            if (tool === "cancel_request") {
+                f.runtime.block = true;
+                await f.service.handle({
+                    tool: "run_inference",
+                    request: f.wire(),
+                });
+                await waitUntil(
+                    () =>
+                        f.accounting.authorized === 1 && f.runtime.calls === 3,
+                );
+            }
+            const operation = f.wire(tool);
+            operation.proof = signDocument(
+                DOMAIN.operation,
+                {
+                    ...operation.proof.payload,
+                    expiresAt: new Date(now + 1).toISOString(),
+                },
+                f.buyer.privateKey,
+            );
+            const get = f.daemon.store.get.bind(f.daemon.store);
+            vi.spyOn(f.daemon.store, "get")
+                .mockImplementationOnce(get) // Host validation read completes before expiry.
+                .mockImplementationOnce(async (id) => {
+                    const record = await get(id);
+                    now += 1;
+                    return record;
+                });
+            await expect(
+                f.service.handle({ tool, request: operation }),
+            ).rejects.toThrow("Expired or invalid");
+            expect(
+                await f.service.nonces.get(operation.proof.payload.nonce),
+            ).toBeDefined();
+            if (tool === "cancel_request") {
+                expect(
+                    (await f.daemon.get(f.grant.requestId, f.grant.buyerKeyId))
+                        ?.status,
+                ).toBe("running");
+                f.runtime.release!();
+                await waitUntil(
+                    async () =>
+                        (
+                            await f.daemon.get(
+                                f.grant.requestId,
+                                f.grant.buyerKeyId,
+                            )
+                        )?.status === "completed",
+                );
+            } else {
+                expect(
+                    await f.daemon.get(f.grant.requestId, f.grant.buyerKeyId),
+                ).toBeUndefined();
+                expect(f.runtime.calls).toBe(2);
+            }
+        },
+    );
+    it("rejects execution expiry during nonce persistence without admitting or authorizing work", async () => {
+        const start = Date.now();
+        let now = start;
+        const f = await fixture(() => now);
+        now = start + 30000;
+        f.daemon.heartbeat();
+        now = Date.parse(f.grant.executeBefore) - 1;
+        f.daemon.heartbeat();
+        const wire = f.wire();
+        const save = f.service.nonces.save.bind(f.service.nonces);
+        vi.spyOn(f.service.nonces, "save").mockImplementationOnce(
+            async (record) => {
+                await save(record);
+                now += 1;
+            },
+        );
+        await expect(
+            f.service.handle({ tool: "run_inference", request: wire }),
+        ).rejects.toThrow("EXECUTION_BINDING_MISMATCH");
+        expect(
+            await f.daemon.get(f.grant.requestId, f.grant.buyerKeyId),
+        ).toBeUndefined();
+        expect(f.accounting.authorized).toBe(0);
+        expect(f.runtime.calls).toBe(2);
+    });
+    it("retains the six-request buyer window across restart and frees capacity at exactly sixty seconds", async () => {
+        const start = Date.now();
+        let now = start;
+        const f = await fixture(() => now);
+        const accepted: Grant[] = [];
+        for (let i = 0; i < 6; i++) {
+            const grant = {
+                ...f.grant,
+                requestId: randomUUID(),
+                quoteId: randomUUID(),
+                grantId: randomUUID(),
+                reservationId: randomUUID(),
+            };
+            accepted.push(grant);
+            await f.service.handle({
+                tool: "run_inference",
+                request: f.wire("run_inference", grant),
+            });
+            await waitUntil(
+                async () =>
+                    (await f.daemon.get(grant.requestId, grant.buyerKeyId))
+                        ?.status === "completed",
+            );
+            await f.daemon.cancel(grant.requestId, grant.buyerKeyId);
+        }
+        now += 1;
+        let current = await f.restart();
+        const freshGrant = (): Grant => ({
+            ...f.grant,
+            requestId: randomUUID(),
+            quoteId: randomUUID(),
+            grantId: randomUUID(),
+            reservationId: randomUUID(),
+            startupId: current.daemon.report!.startupId,
+            issuedAt: new Date(now).toISOString(),
+            expiresAt: new Date(now + 86400000).toISOString(),
+            executeBefore: new Date(now + 60000).toISOString(),
+        });
+        const declined = freshGrant();
+        await expect(
+            current.service.handle({
+                tool: "run_inference",
+                request: f.wire("run_inference", declined),
+            }),
+        ).rejects.toThrow("RATE_LIMITED");
+        const rejected = await current.daemon.get(
+            declined.requestId,
+            declined.buyerKeyId,
+        );
+        expect(rejected?.admittedAt).toBeNull();
+        expect(
+            signedTerminalEventSchema.parse(rejected!.terminalEvent).payload
+                .outcome,
+        ).toBe("failed");
+        // A new peer proof for the same request returns its failure without consuming capacity.
+        await current.service.handle({
+            tool: "run_inference",
+            request: f.wire("run_inference", declined),
+        });
+        await current.service.handle({
+            tool: "get_request",
+            request: f.wire("get_request", accepted[0]!),
+        });
+        const other = generateKeyPairSync("ed25519");
+        const independent = {
+            ...freshGrant(),
+            buyerId: randomUUID(),
+            sessionId: randomUUID(),
+            buyerKeyId: keyId(other.publicKey),
+            buyerPublicKeyPem: pem(other),
+        };
+        await current.service.handle({
+            tool: "run_inference",
+            request: f.wire(
+                "run_inference",
+                independent,
+                f.payload,
+                other.privateKey,
+            ),
+        });
+        await waitUntil(
+            async () =>
+                (
+                    await current.daemon.get(
+                        independent.requestId,
+                        independent.buyerKeyId,
+                    )
+                )?.status === "completed",
+        );
+        await current.daemon.cancel(
+            independent.requestId,
+            independent.buyerKeyId,
+        );
+        now = start + 30000;
+        current.daemon.heartbeat();
+        now = start + 59999;
+        current.daemon.heartbeat();
+        await expect(
+            current.service.handle({
+                tool: "run_inference",
+                request: f.wire("run_inference", freshGrant()),
+            }),
+        ).rejects.toThrow("RATE_LIMITED");
+        current = await f.restart(); // Declines must not become accepted admissions on recovery.
+        now = start + 60000;
+        const released = freshGrant();
+        await current.service.handle({
+            tool: "run_inference",
+            request: f.wire("run_inference", released),
+        });
+        await waitUntil(
+            async () =>
+                (
+                    await current.daemon.get(
+                        released.requestId,
+                        released.buyerKeyId,
+                    )
+                )?.status === "completed",
+        );
+        await current.daemon.cancel(released.requestId, released.buyerKeyId);
+        expect(f.accounting.authorized).toBe(8); // Six original, one independent buyer, one new window.
     });
     it("requires a live reserved authorization before executing any model work", async () => {
         const f = await fixture();
