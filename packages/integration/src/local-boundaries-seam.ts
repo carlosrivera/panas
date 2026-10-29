@@ -1,4 +1,5 @@
 import { createPrivateKey, generateKeyPairSync, randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { writeFile, access } from "node:fs/promises";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -154,6 +155,13 @@ export async function runLocalBoundaries(path: string): Promise<string> {
         physicalMachineCount: 1,
         startedAt: new Date().toISOString(),
         issue10Complete: false,
+        sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], {
+            encoding: "utf8",
+        }).trim(),
+        sourceTreeDirty:
+            execFileSync("git", ["status", "--porcelain"], {
+                encoding: "utf8",
+            }).trim().length > 0,
     };
     let provider: OwnedProvider | undefined;
     const peers: Peer[] = [];
@@ -175,6 +183,8 @@ export async function runLocalBoundaries(path: string): Promise<string> {
             descriptor: unknown;
         };
         const descriptor = descriptorSchema.parse(view.descriptor);
+        if (descriptor.ticket === original.descriptor?.ticket)
+            throw new Error("SHARE_TICKET_NOT_ROTATED");
         const stalePeer = await peerFor(descriptor.ticket);
         peers.push(stalePeer);
         const stale = await invoke(

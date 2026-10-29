@@ -2,6 +2,8 @@
 
 The agent cannot access the second Mac. These steps are a handoff for the owner, not an assertion that remote setup has happened. Do not use the local-simulation artifact to satisfy this gate.
 
+Start with the [copy/paste second-Mac quickstart](second-mac-quickstart.md) and its provider environment template. The latest [one-Mac live crash/startup/rate observations](evidence/crash-and-boundaries-2026-10-29.json) are supporting evidence, not a completed two-host protocol.
+
 ## Prepare both physical hosts
 
 1. On each Apple Silicon Mac, check out the same reviewed release commit, install Node.js 24 and pinned pnpm, and run `pnpm install --frozen-lockfile`.

@@ -436,14 +436,31 @@ export async function runCrashSeam(path: string): Promise<string> {
         throw error;
     } finally {
         armed = false;
-        await wrapper.observeNextGeneration(false);
-        await buyer?.close();
-        if (provider && !provider.stopped) await stopProvider(provider);
-        await wrapper.close();
+        let cleaned = true;
+        try {
+            await wrapper.observeNextGeneration(false);
+        } catch {
+            cleaned = false;
+        }
+        try {
+            await buyer?.close();
+        } catch {
+            cleaned = false;
+        }
+        try {
+            if (provider && !provider.stopped) await stopProvider(provider);
+        } catch {
+            cleaned = false;
+        }
+        try {
+            await wrapper.close();
+        } catch {
+            cleaned = false;
+        }
         observer.closeAllConnections();
         await new Promise<void>((resolve) => observer.close(() => resolve()));
         report.cleanup = {
-            ownedProcessesStopped: true,
+            ownedProcessesStopped: cleaned,
             portsClosed: (await portClosed(11602)) && (await portClosed(11612)),
             crashed,
         };
