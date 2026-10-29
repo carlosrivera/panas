@@ -100,3 +100,13 @@ pnpm --filter @panas/integration run reconcile-fixtures --config /private/path/o
 ```
 
 Its mode-0600 configuration contains `runConfigPaths` (the exact owner fixture run files), `outputDirectory`, and a factual `reason`. It restricts review to the matching buyer key with the `integration-test-credits-only` policy, pinned platform key and test URLs; owned runtimes must be stopped. Only never-authorized requests with expired execution permission qualify. It waits for each real ten-minute reconciliation deadline, then invokes the existing audited `operatorResolve` release transaction. It refuses authorized uncertain work and never backdates clocks or mutates financial rows directly. Metadata evidence verifies zero-debit release receipts, retained audit IDs, unchanged buyer balances and settlement counts, zero remaining fixture holds, and global balanced-ledger/held-reservation invariants.
+
+[The explicit operator review](evidence/operator-review-2026-10-29.json) released four never-authorized requests across all three isolated fixture buyers after their actual ten-minute deadlines: held balances 2→0, 3→0 and 2→0. Each release retained its audit ID and zero-debit receipt; buyer balances and settlement counts stayed unchanged. Global ledger imbalance and held-reservation mismatch counts were zero. This includes the pre-dispatch failed attempts and the observed execution-expiry case; those failures are not relabeled successful test runs.
+
+A true concurrent cancellation seam is also available:
+
+```sh
+pnpm --filter @panas/integration run cancel-race-seam --config /private/path/new-run/run.json
+```
+
+After actual native generation completes behind the response-delay wrapper, the owner prefetches a fresh action-only cloud cancellation grant and initializes a real MCPWire peer. Releasing the completed response and sending signed cancellation start concurrently. The test accepts the actual observed completion/cancellation winner, then requires matching authenticated retrieval, one immutable coherent receipt and the correct single charge or zero-charge cancellation. It does not claim the native model was still computing.

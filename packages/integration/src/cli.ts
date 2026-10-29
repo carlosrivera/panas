@@ -18,6 +18,8 @@ try {
         artifact = await run(values.config);
     else if (mode === "reconcile-fixtures" && values.config)
         artifact = await reconcileFixtures(values.config);
+    else if (mode === "cancel-race-seam" && values.config)
+        artifact = await runDeadlineSeam(values.config, true);
     else if (mode === "deadline-seam" && values.config)
         artifact = await runDeadlineSeam(values.config);
     else if (mode === "fault-seams" && values.config)
