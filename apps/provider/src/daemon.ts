@@ -13,6 +13,7 @@ import {
     type CapabilityConfig,
     type HostInfo,
 } from "./capabilities.js";
+import type { RequestHooks } from "./hooks.js";
 import type { InferenceRuntime } from "./runtime.js";
 import { EncryptedStore, type StoredRequest } from "./store.js";
 
@@ -38,12 +39,14 @@ export class ProviderDaemon {
     private testing: Promise<CapabilityReport> | undefined;
     private lastHeartbeatAt = 0;
     private buyerAdmissions = new Map<string, number[]>();
+    private uncertainRequests = new Set<string>();
     constructor(
         readonly config: CapabilityConfig,
         readonly runtime: InferenceRuntime,
         readonly store: EncryptedStore,
         readonly host: () => Promise<HostInfo>,
         readonly now = () => Date.now(),
+        readonly hooks: RequestHooks = {},
     ) {}
     private exclusive<T>(action: () => Promise<T>): Promise<T> {
         const result = this.tail.then(action);
@@ -204,10 +207,24 @@ export class ProviderDaemon {
         const r = await this.store.get(requestId);
         if (r && r.buyerKeyId !== buyerKeyId)
             throw new ProviderError("FORBIDDEN");
+        if (r && this.uncertainRequests.has(requestId)) {
+            const { result: _result, terminalEvent: _event, ...pending } = r;
+            void _result;
+            void _event;
+            return {
+                ...pending,
+                status: "unknown",
+                error: "PERSISTENCE_UNCERTAIN",
+            };
+        }
         return r;
     }
     // Called only by trusted local IPC/host adapter. Paid entitlement verification belongs to host issue #6.
-    async submit(input: unknown, buyerKeyId: string): Promise<StoredRequest> {
+    async submit(
+        input: unknown,
+        buyerKeyId: string,
+        authorization?: unknown,
+    ): Promise<StoredRequest> {
         const request = inferenceRequestSchema.parse(input);
         if (!buyerKeyId || buyerKeyId.length > 512)
             throw new ProviderError("INVALID_BUYER");
@@ -256,6 +273,7 @@ export class ProviderDaemon {
                 fingerprint,
                 status: "running",
                 updatedAt: this.now(),
+                ...(authorization === undefined ? {} : { authorization }),
             };
             await this.store.save(record);
             const task: Task = {
@@ -283,9 +301,18 @@ export class ProviderDaemon {
         this.active = task;
         let timeout: ReturnType<typeof setTimeout> | undefined;
         try {
+            const executionTimeout =
+                this.hooks.timeoutMs?.(task.record) ??
+                prototypeLimits.timeoutMs;
+            if (
+                !Number.isInteger(executionTimeout) ||
+                executionTimeout < 1 ||
+                executionTimeout > prototypeLimits.timeoutMs
+            )
+                throw new ProviderError("INVALID_EXECUTION_LIMIT");
             timeout = setTimeout(
                 () => task.abort.abort(new Error("DEADLINE_EXCEEDED")),
-                prototypeLimits.timeoutMs,
+                executionTimeout,
             );
             const info = await this.runtime.info(task.abort.signal);
             if (
@@ -293,6 +320,13 @@ export class ProviderDaemon {
                 info.version !== this.config.expectedRuntimeVersion
             )
                 throw new ProviderError("RUNTIME_CHANGED");
+            await this.hooks.beforeExecute?.(
+                task.record,
+                task.request,
+                task.abort.signal,
+            );
+            if (task.abort.signal.aborted)
+                throw new ProviderError("DEADLINE_EXCEEDED");
             const result = await this.runtime.generate(
                 task.request.prompt,
                 task.request.maxOutputTokens,
@@ -306,11 +340,17 @@ export class ProviderDaemon {
                     result,
                     updatedAt: this.now(),
                 };
-                await this.store.save(task.record);
+                await this.persistTerminal(task.record);
             });
         } catch {
             await this.exclusive(async () => {
-                if (task.cancelled) return;
+                if (
+                    task.cancelled ||
+                    this.uncertainRequests.has(task.record.requestId)
+                ) {
+                    this.invalidate();
+                    return;
+                }
                 task.record = {
                     ...task.record,
                     status: "failed",
@@ -320,7 +360,7 @@ export class ProviderDaemon {
                         : "RUNTIME_FAILED",
                 };
                 this.invalidate();
-                await this.store.save(task.record);
+                await this.persistTerminal(task.record);
             });
         } finally {
             if (timeout) clearTimeout(timeout);
@@ -337,10 +377,58 @@ export class ProviderDaemon {
                         error: "PROVIDER_UNAVAILABLE",
                         updatedAt: this.now(),
                     };
-                    await this.store.save(queued.record);
+                    await this.persistTerminal(queued.record);
                 }
             } else this.kick();
         }
+    }
+    private async persistTerminal(record: StoredRequest): Promise<void> {
+        if (
+            record.authorization &&
+            record.status !== "running" &&
+            !record.terminalEvent
+        ) {
+            record.terminalEvent = this.hooks.terminalEvent?.(record);
+            if (!record.terminalEvent)
+                throw new ProviderError("TERMINAL_EVENT_REQUIRED");
+            record.terminalDelivered = false;
+        }
+        try {
+            await this.store.save(record);
+        } catch {
+            this.uncertainRequests.add(record.requestId);
+            this.invalidate();
+            throw new ProviderError("PERSISTENCE_UNCERTAIN");
+        }
+    }
+    async pendingTerminals(): Promise<StoredRequest[]> {
+        return this.exclusive(async () =>
+            (await this.store.list()).filter(
+                (record) =>
+                    record.terminalEvent &&
+                    !record.terminalDelivered &&
+                    !this.uncertainRequests.has(record.requestId),
+            ),
+        );
+    }
+    async recoverTerminalEvents(): Promise<void> {
+        for (const record of await this.store.list()) {
+            if (
+                record.authorization &&
+                record.status !== "running" &&
+                !record.terminalEvent
+            )
+                await this.persistTerminal(record);
+        }
+    }
+    async acknowledgeTerminal(requestId: string): Promise<void> {
+        await this.exclusive(async () => {
+            const record = await this.store.get(requestId);
+            if (record?.terminalEvent) {
+                record.terminalDelivered = true;
+                await this.store.save(record);
+            }
+        });
     }
     async cancel(
         requestId: string,
@@ -363,7 +451,7 @@ export class ProviderDaemon {
                 status: "cancelled",
                 updatedAt: this.now(),
             };
-            await this.store.save(task.record);
+            await this.persistTerminal(task.record);
             return task.record;
         });
     }

@@ -306,7 +306,7 @@ describe("storage failure isolation", () => {
         runtime.complete.shift()?.();
         await waitUntil(() => runtime.stopped > 0);
         expect(daemon.heartbeat()).toBeNull();
-        expect((await daemon.get(r.requestId, "a"))?.status).toBe("running");
+        expect((await daemon.get(r.requestId, "a"))?.status).toBe("unknown");
     });
     it("rejects malformed probe timestamps even when startup identity matches", async () => {
         const { daemon } = await fixture();

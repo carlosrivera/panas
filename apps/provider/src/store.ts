@@ -23,6 +23,9 @@ export interface StoredRequest {
         durationMs: number;
     };
     error?: string;
+    authorization?: unknown;
+    terminalEvent?: unknown;
+    terminalDelivered?: boolean;
 }
 export class EncryptedStore {
     private key?: Buffer;
@@ -101,6 +104,15 @@ export class EncryptedStore {
                 decipher.final(),
             ]).toString(),
         ) as StoredRequest;
+    }
+    async list(): Promise<StoredRequest[]> {
+        const records: StoredRequest[] = [];
+        for (const file of await readdir(this.path)) {
+            if (!file.endsWith(".enc")) continue;
+            const record = await this.get(file.slice(0, -4));
+            if (record) records.push(record);
+        }
+        return records;
     }
     async recoverAndCleanup(recover = true): Promise<void> {
         for (const file of await readdir(this.path)) {
