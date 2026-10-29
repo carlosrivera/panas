@@ -1,0 +1,12 @@
+{
+    "Foundations: pnpm workspace, shared contracts, CLI boundaries, and CI": "https://github.com/carlosrivera/panas/issues/1",
+    "Provider: implement macOS capability tests and persistent inference daemon": "https://github.com/carlosrivera/panas/issues/2",
+    "Transport: supervise external MCPWire share/join lifecycle": "https://github.com/carlosrivera/panas/issues/3",
+    "Registry: live provider discovery API and MCP tools on Volcano": "https://github.com/carlosrivera/panas/issues/4",
+    "Accounting: fixed quotes, atomic test-credit reservations, and receipts": "https://github.com/carlosrivera/panas/issues/5",
+    "Host MCP: buyer-bound authorization and daemon-backed inference tools": "https://github.com/carlosrivera/panas/issues/6",
+    "Buyer MCP: automatic discovery-to-inference provider handoff": "https://github.com/carlosrivera/panas/issues/7",
+    "Website: informational provider listing backed by safe registry data": "https://github.com/carlosrivera/panas/issues/8",
+    "Volcano: deploy control plane, discovery interface, and frontend": "https://github.com/carlosrivera/panas/issues/9",
+    "Integration: two-Mac agent demo and transaction failure matrix": "https://github.com/carlosrivera/panas/issues/10"
+}

@@ -1,0 +1,39 @@
+name: Implementation work
+description: A bounded Panas AI implementation task with dependencies and acceptance checks.
+title: "[Area] "
+body:
+    - type: textarea
+      id: outcome
+      attributes:
+          label: Outcome
+          description: Describe the user-visible or integration result.
+      validations:
+          required: true
+    - type: textarea
+      id: scope
+      attributes:
+          label: Scope and boundaries
+          description: Name owned components and shared contracts. State what belongs to another lane.
+      validations:
+          required: true
+    - type: textarea
+      id: dependencies
+      attributes:
+          label: Dependencies
+          description: Link prerequisites and follow-up consumers. Use real issue links.
+      validations:
+          required: true
+    - type: textarea
+      id: acceptance
+      attributes:
+          label: Acceptance criteria
+          description: Use checkboxes with observable behavior, including relevant failure paths.
+      validations:
+          required: true
+    - type: textarea
+      id: validation
+      attributes:
+          label: Validation
+          description: Describe meaningful tests or manual checks and any required hardware or cloud access.
+      validations:
+          required: true

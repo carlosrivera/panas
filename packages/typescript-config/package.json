@@ -1,9 +1,5 @@
 {
-  "name": "@panas-ai/typescript-config",
-  "version": "0.0.0",
-  "private": true,
-  "license": "MIT",
-  "publishConfig": {
-    "access": "public"
-  }
+    "name": "@panas/typescript-config",
+    "version": "0.1.0",
+    "private": true
 }

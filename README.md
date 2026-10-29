@@ -1,128 +1,50 @@
-# Turborepo starter with shadcn/ui
+# Panas AI
 
-![Static Badge](https://img.shields.io/badge/shadcn%2Fui-0.8.0-blue?link=https%3A%2F%2Fgithub.com%2Fshadcn%2Fui)
+Agent-discovered inference on shared Macs, powered by MCPWire. Repository: `carlosrivera/panas`.
 
-This is Turborepo starter with shadcn/ui pre-configured.
+This is the foundation for the prototype, not a working compute marketplace. The informational site and health endpoints run; shared validation schemas and MCPWire command adapters are implemented. Discovery, paid entitlements, durable accounting, real inference serving, and peer lifecycle integration are tracked in GitHub issues.
 
-> [!NOTE]
-> This example uses `pnpm` as package manager.
+## Requirements and setup
 
-[npm version](https://github.com/dan5py/turborepo-shadcn-ui/tree/npm)
-[bun version](https://github.com/dan5py/turborepo-shadcn-ui/tree/bun)
-
-## Using this example
-
-Clone the repository:
+- Node.js 24 (`nvm use` reads `.nvmrc`).
+- pnpm 12.16.1, as pinned in `packageManager`. Older Corepack releases may not support pnpm 12’s native launcher; install current pnpm using its official installation method or update Corepack.
+- Ollama and Apple Silicon macOS are needed only for provider development, not the website or deterministic CI tests.
 
 ```sh
-git clone https://github.com/dan5py/turborepo-shadcn-ui.git
-```
-
-Install dependencies:
-
-```sh
-cd turborepo-shadcn-ui
-pnpm install
-```
-
-### Add ui components
-
-Use the pre-made script:
-
-```sh
-pnpm ui add <component-name>
-```
-
-> This works just like the `shadcn/ui` CLI.
-
-### Add a new app
-
-Turborepo offer a simple command to add a new app:
-
-```sh
-pnpm turbo gen workspace --name <app-name>
-```
-
-This will create a new empty app in the `apps` directory.
-
-If you want, you can copy an existing app with:
-
-```sh
-pnpm turbo gen workspace --name <app-name> --copy
-```
-
-> [!NOTE]
-> Remember to run `pnpm install` after copying an app.
-
-## What's inside?
-
-This Turborepo includes the following packages/apps:
-
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `@panas-ai/ui`: a stub React component library (🚀 powered by **shadcn/ui**)
-- `@panas-ai/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@panas-ai/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-```sh
-cd turborepo-shadcn-ui
-pnpm build
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-```sh
-cd turborepo-shadcn-ui
+pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-### Remote Caching
-
-Turborepo can use a technique known as [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup), then enter the following commands:
-
-```
-cd turborepo-shadcn-ui
-npx turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+The informational site runs at http://localhost:3333. It intentionally displays no simulated live provider inventory.
 
 ```sh
-npx turbo link
+pnpm format:check
+pnpm check
+pnpm provider:doctor
 ```
 
-## Useful Links
+`provider:doctor` checks the local platform and installed Ollama model without downloading anything or exposing a provider. It intentionally exits nonzero until the full capability suite is implemented: passing local prerequisites alone must not make a provider discoverable. Install the proposed model explicitly with `ollama pull qwen2.5:0.5b` when working on the provider issue.
 
-Learn more about the power of Turborepo:
+## Workspace
 
-- [Tasks](https://turbo.build/repo/docs/core-concepts/monorepos/running-tasks)
-- [Caching](https://turbo.build/repo/docs/core-concepts/caching)
-- [Remote Caching](https://turbo.build/repo/docs/core-concepts/remote-caching)
-- [Filtering](https://turbo.build/repo/docs/core-concepts/monorepos/filtering)
-- [Configuration Options](https://turbo.build/repo/docs/reference/configuration)
-- [CLI Usage](https://turbo.build/repo/docs/reference/command-line-reference)
+| Path                                                   | Responsibility                                                                  |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `apps/web`                                             | Next.js informational frontend and `/api/health`                                |
+| `apps/provider`                                        | Local provider startup diagnostic; persistent daemon follows                    |
+| `packages/contracts`                                   | Zod schemas for states, bounded limits, local reports, fixed test-credit quotes |
+| `packages/mcpwire`                                     | Pinned external CLI invocation, ticket validation, approved tool allowlist      |
+| `packages/ui`                                          | Shared UI primitives and Tailwind CSS                                           |
+| `packages/eslint-config`, `packages/typescript-config` | Shared development rules                                                        |
+| `volcano/functions/health`                             | Private Volcano health-function scaffold                                        |
 
-Learn more about shadcn/ui:
+The provider daemon, per-peer host MCP adapter, stable buyer MCP facade, and Volcano control plane are separate responsibilities. MCPWire remains an external CLI dependency. No public SDK import or fork is required.
 
-- [Documentation](https://ui.shadcn.com/docs)
+## Team work
+
+Read [AGENTS.md](AGENTS.md), [the PRD](docs/PRD.md), [architecture](docs/architecture.md), and [the issue/dependency plan](docs/team-plan.md). Shared schema changes need consumer coordination. Providers, transport, and registry can start independently once foundations merge.
+
+## Deployment
+
+See [Volcano setup](docs/deployment.md). Local tests and a successful build do not establish that remote resources are deployed. Cloud project IDs are identifiers; credentials and tickets must never enter the repository.
+
+Real payments remain disabled. Fixed test credits are the first accounting adapter; blockchain is optional follow-up work.
