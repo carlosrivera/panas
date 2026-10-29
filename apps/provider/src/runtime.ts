@@ -32,6 +32,8 @@ export interface RuntimeConfig {
 export class OllamaRuntime implements InferenceRuntime {
     private child: ChildProcess | undefined;
     private starting: Promise<void> | undefined;
+    private generation = 0;
+    private shuttingDown = false;
     readonly url: URL;
     constructor(readonly config: RuntimeConfig) {
         this.url = new URL(config.endpoint);
@@ -75,17 +77,26 @@ export class OllamaRuntime implements InferenceRuntime {
         });
     }
     async start(): Promise<void> {
+        if (this.shuttingDown)
+            throw new Error("Dedicated Ollama runtime is shutting down");
         if (this.starting) return this.starting;
-        if (this.child?.exitCode === null && this.child.pid) return;
-        this.starting = this.launch();
+        if (
+            this.child?.exitCode === null &&
+            this.child.signalCode === null &&
+            this.child.pid
+        )
+            return;
+        this.starting = this.launch(this.generation);
         try {
             await this.starting;
         } finally {
             this.starting = undefined;
         }
     }
-    private async launch(): Promise<void> {
+    private async launch(generation: number): Promise<void> {
         await this.vacant();
+        if (this.shuttingDown || generation !== this.generation)
+            throw new Error("Dedicated Ollama startup cancelled");
         let launchError: Error | undefined;
         const child = spawn(this.config.binary, ["serve"], {
             detached: true,
@@ -107,12 +118,20 @@ export class OllamaRuntime implements InferenceRuntime {
             launchError = error;
         });
         for (let attempt = 0; attempt < 100; attempt++) {
-            if (launchError || child.exitCode !== null) {
+            if (this.shuttingDown || generation !== this.generation)
+                throw new Error("Dedicated Ollama startup cancelled");
+            if (
+                launchError ||
+                child.exitCode !== null ||
+                child.signalCode !== null
+            ) {
                 await this.stop();
                 throw new Error("Dedicated Ollama failed to start");
             }
             try {
                 await this.json("/api/version");
+                if (this.shuttingDown || generation !== this.generation)
+                    throw new Error("Dedicated Ollama startup cancelled");
                 return;
             } catch {
                 await delay(100);
@@ -121,7 +140,13 @@ export class OllamaRuntime implements InferenceRuntime {
         await this.stop();
         throw new Error("Dedicated Ollama startup timed out");
     }
+    /** Seal the host lifecycle before awaiting transport or capability-test cleanup. */
+    beginShutdown(): void {
+        this.shuttingDown = true;
+        this.generation++;
+    }
     async stop(): Promise<void> {
+        this.generation++;
         const child = this.child;
         this.child = undefined;
         if (!child?.pid) return;
