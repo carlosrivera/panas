@@ -6,9 +6,10 @@ It contains the hero with three ASCII handshake windows (a WebGL shader over a s
 
 ## Run
 
-The clip is not committed. Provide your own MP4 either as `prototypes/landing/video.mp4` (ignored by Git) or via `VIDEO`:
+`video.mp4` is the handshake meme clip the ASCII windows render (supplied by the author). Point `VIDEO` at another MP4 to swap it:
 
 ```sh
+PORT=6767 node prototypes/landing/server.mjs
 VIDEO=/absolute/path/to/clip.mp4 PORT=6767 node prototypes/landing/server.mjs
 ```
 
