@@ -7,9 +7,18 @@ import { createHash } from "node:crypto";
 import { pathToFileURL } from "node:url";
 import { PLATFORM } from "./config.js";
 import {
+    probeFrontend,
+    assertOperationalHealth,
+    VerificationError,
+    verificationError,
+    type VerificationStage,
+    type FrontendDeployment,
+} from "./release-probe.js";
+import {
     assertClean,
     assertProjectBinding,
     management,
+    ManagementRequestError,
     invokeOperations,
     revision,
     root,
@@ -23,14 +32,6 @@ interface CloudFunction {
     name: string;
     status: string;
     invoke_url: string;
-    current_deployment_id: string | null;
-}
-interface CloudFrontend {
-    id: string;
-    project_id: string;
-    name: string;
-    status: string;
-    site_url: string;
     current_deployment_id: string | null;
 }
 export interface ReleaseCheck {
@@ -52,14 +53,16 @@ async function request(url: string, init: RequestInit = {}) {
         throw new Error("Release endpoint request failed");
     }
 }
-export async function verifyRelease(
-    frontend = true,
-    migration: Record<string, unknown> = { mode: "tracked" },
+async function probeRelease(
+    frontend: boolean,
+    migration: Record<string, unknown>,
+    checking: (stage: VerificationStage) => void,
+    failures: unknown[],
 ) {
     await assertProjectBinding();
     assertClean();
     const checks: ReleaseCheck[] = [];
-    console.log("Checking anonymous_public_api");
+    checking("anonymous_public_api");
     const publicUrl = `${PLATFORM.registryUrl}/public/providers?limit=1`;
     const publicResponse = await request(publicUrl, {
         headers: { Origin: "https://panas.example" },
@@ -80,7 +83,7 @@ export async function verifyRelease(
         endpoint: publicUrl,
         status: 200,
     });
-    console.log("Checking anonymous_api_authorization");
+    checking("anonymous_api_authorization");
     const denied = await request(`${PLATFORM.registryUrl}/providers`);
     ensure(
         denied.status === 401,
@@ -91,7 +94,7 @@ export async function verifyRelease(
         passed: true,
         status: 401,
     });
-    console.log("Checking accounting_authorization");
+    checking("accounting_authorization");
     const accounting = await request(`${PLATFORM.accountingUrl}/quotes`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -106,7 +109,7 @@ export async function verifyRelease(
         passed: true,
         status: 401,
     });
-    console.log("Checking authenticated_mcp");
+    checking("authenticated_mcp");
     const secret = process.env.PANAS_DISCOVERY_TOKEN?.trim();
     ensure(
         secret,
@@ -156,7 +159,7 @@ export async function verifyRelease(
         passed: true,
         endpoint: `${PLATFORM.registryUrl}/mcp`,
     });
-    console.log("Checking private_operational_health");
+    checking("private_operational_health");
     const functions = (
         await management<{ data: CloudFunction[] }>(
             `/projects/${PLATFORM.projectId}/functions`,
@@ -183,67 +186,60 @@ export async function verifyRelease(
             throw new Error("Operational health returned invalid JSON");
         }
     }
-    const operational = health as {
-        ok?: boolean;
-        releaseSha?: string;
-        ledgerImbalanceCount?: number;
-        heldMismatchCount?: number;
-    };
-    ensure(
-        operational.ok === true &&
-            operational.releaseSha === revision() &&
-            operational.ledgerImbalanceCount === 0 &&
-            operational.heldMismatchCount === 0,
-        "Private operational health/release identity failed",
-    );
+    assertOperationalHealth(health, revision());
     checks.push({ name: "private_operational_health", passed: true });
-    let frontendRecord: CloudFrontend | undefined;
+    let frontendRecord: FrontendDeployment | undefined;
+    let frontendProbe: { assetCount: number; attempts: number } | undefined;
     if (frontend) {
-        console.log("Checking frontend");
-        const page = await request(PLATFORM.frontendUrl);
-        ensure(page.status === 200, "Frontend page failed");
-        const html = await page.text();
-        ensure(
-            html.toLowerCase().includes("panas"),
-            "Frontend content missing",
-        );
-        checks.push({
-            name: "frontend",
-            passed: true,
-            endpoint: PLATFORM.frontendUrl,
-            status: 200,
+        checking("frontend");
+        const result = await probeFrontend({
+            url: PLATFORM.frontendUrl,
+            projectId: PLATFORM.projectId,
+            onStage: checking,
+            deployment: async (signal) => {
+                let records: { data: FrontendDeployment[] };
+                try {
+                    records = await management<{
+                        data: FrontendDeployment[];
+                    }>(`/projects/${PLATFORM.projectId}/frontends`, {
+                        signal,
+                    });
+                } catch (error) {
+                    if (error instanceof ManagementRequestError)
+                        throw new VerificationError(
+                            "frontend_deployment",
+                            error.status ? "HTTP_STATUS" : "REQUEST_FAILED",
+                            undefined,
+                            error.status,
+                        );
+                    throw error;
+                }
+                return records.data.find((f) => f.name === "panas");
+            },
+            onRetry: (failure, attempt) => {
+                const diagnostic = { ...failure.diagnostic, attempt };
+                failures.push(diagnostic);
+                console.warn(
+                    JSON.stringify({
+                        event: "release_readiness_retry",
+                        ...diagnostic,
+                    }),
+                );
+            },
         });
-        console.log("Checking frontend_assets");
-        const assets = [
-            ...new Set(
-                [
-                    ...html.matchAll(
-                        /(?:src|href)="([^" ]*\/_next\/static\/[^" ]+)"/g,
-                    ),
-                ].map((match) => match[1]!),
-            ),
-        ].slice(0, 4);
-        ensure(assets.length > 0, "No built frontend assets found");
-        for (const path of assets) {
-            const url = new URL(path, PLATFORM.frontendUrl);
-            ensure(
-                url.origin === new URL(PLATFORM.frontendUrl).origin,
-                "External asset in release probe",
-            );
-            const asset = await request(url.href);
-            ensure(asset.status === 200, "Built frontend asset failed");
-        }
-        checks.push({ name: "frontend_assets", passed: true, status: 200 });
-        frontendRecord = (
-            await management<{ data: CloudFrontend[] }>(
-                `/projects/${PLATFORM.projectId}/frontends`,
-            )
-        ).data.find((f) => f.name === "panas");
-        ensure(
-            frontendRecord?.project_id === PLATFORM.projectId &&
-                frontendRecord.status === "active" &&
-                frontendRecord.current_deployment_id,
-            "No active frontend deployment",
+        frontendRecord = result.record;
+        frontendProbe = {
+            assetCount: result.assetCount,
+            attempts: result.attempts,
+        };
+        checks.push(
+            {
+                name: "frontend",
+                passed: true,
+                endpoint: PLATFORM.frontendUrl,
+                status: 200,
+            },
+            { name: "frontend_assets", passed: true, status: 200 },
         );
     }
     const release = {
@@ -292,6 +288,7 @@ export async function verifyRelease(
               }
             : {}),
         checks,
+        ...(frontendProbe ? { frontendProbe } : {}),
         migration,
     };
     await mkdir(resolve(root, "artifacts"), { recursive: true });
@@ -312,6 +309,46 @@ export async function verifyRelease(
         }),
     );
     return release;
+}
+export async function verifyRelease(
+    frontend = true,
+    migration: Record<string, unknown> = { mode: "tracked" },
+) {
+    let stage: VerificationStage = "release_setup";
+    const failures: unknown[] = [];
+    function checking(next: VerificationStage) {
+        stage = next;
+        console.log(`Checking ${next}`);
+    }
+    async function diagnostics(status: "verified" | "failed") {
+        await mkdir(resolve(root, "artifacts"), { recursive: true });
+        await writeFile(
+            resolve(root, "artifacts/verification.json"),
+            JSON.stringify({ schemaVersion: 1, status, failures }, null, 2) +
+                "\n",
+        );
+    }
+    try {
+        const release = await probeRelease(
+            frontend,
+            migration,
+            checking,
+            failures,
+        );
+        await diagnostics("verified");
+        return release;
+    } catch (error) {
+        const failure = verificationError(error, stage);
+        failures.push(failure.diagnostic);
+        await diagnostics("failed");
+        console.error(
+            JSON.stringify({
+                event: "release_verification_failed",
+                ...failure.diagnostic,
+            }),
+        );
+        throw failure;
+    }
 }
 if (
     process.argv[1] &&
