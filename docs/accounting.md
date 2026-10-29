@@ -88,3 +88,9 @@ node --env-file=/private/accounting.env --import tsx packages/accounting/scripts
 ```
 
 Cloud smoke enrolls a temporary buyer without minting credits, verifies missing-proof rejection, signed buyer authentication and provider availability guards, proves no buyer funding route exists, then removes its nonfinancial fixture rows. Full provider execution, durable outbox delivery and buyer private transport integration are validated with issues#6/#7; accounting tests alone do not prove that hardware ran inference or delivered a result.
+
+## Prototype verification
+
+Nine real PostgreSQL integration tests passed against the isolated accounting test branch, including independently constrained balance/request/session/day limits, competing purchases, immutable execution-grant retries, terminal CAS races, unknown-outcome holds, compensating refunds, post-lock proof expiry, and owner revocation. A focused rerun also verified that previously authorized provider completion settles after buyer revocation, receipt splits reconcile exactly, and SQL rejects unbalanced/malformed ledger groups.
+
+The deployed accounting HTTP service passed missing-proof rejection and signed buyer availability/authentication smoke without minting credits. An official buyer MCP client then completed actual inference through the Mac provider and MCPWire against the deployed service: a fixed three-atomic-unit TEST_CREDIT receipt reconciled, duplicate run was rejected, and retrieval over a fresh peer preserved the same charge. This is prototype test-credit evidence, not a real-money or independent hardware-attestation claim.
