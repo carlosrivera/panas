@@ -16,6 +16,7 @@ import {
     digest,
     HEARTBEAT_TTL_MS,
     REPORT_TTL_MS,
+    requireLiveLease,
     type StoredProvider,
 } from "./model.js";
 
@@ -168,6 +169,7 @@ export class PostgresRegistryRepository implements RegistryRepository {
                             reportDigest === existing.reportDigest
                         )
                             return existing;
+                        requireLiveLease(existing, now);
                         if (
                             data.report.sequence <= existing.sequence ||
                             Date.parse(data.report.testedAt) <
@@ -269,6 +271,7 @@ export class PostgresRegistryRepository implements RegistryRepository {
                         "Heartbeat does not match the current report/startup sequence",
                     );
                 if (data.sequence === record.sequence) return record; // A retry cannot extend liveness.
+                requireLiveLease(record, now);
                 if (
                     data.state === "ready" &&
                     (!record.eligible ||

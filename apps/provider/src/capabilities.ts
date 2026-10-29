@@ -50,6 +50,7 @@ export async function testCapabilities(
     runtime: InferenceRuntime,
     host: HostInfo,
     startupId = randomUUID(),
+    now = () => Date.now(),
 ): Promise<CapabilityReport> {
     const checks: CapabilityReport["checks"] = [];
     const check = (name: string, passed: boolean, detail: string) =>
@@ -59,7 +60,7 @@ export async function testCapabilities(
         providerId: config.providerId,
         startupId,
         sequence: 0,
-        testedAt: new Date().toISOString(),
+        testedAt: new Date(now()).toISOString(),
         platform: host.platform,
         architecture: host.architecture,
         memoryBytes: host.memoryBytes,
@@ -159,6 +160,6 @@ export async function testCapabilities(
         await runtime.stop();
     }
     // Set after tests so a connectivity proof must be newer than this report.
-    report.testedAt = new Date().toISOString();
+    report.testedAt = new Date(now()).toISOString();
     return capabilityReportSchema.parse(report);
 }

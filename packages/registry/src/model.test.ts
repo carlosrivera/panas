@@ -1,7 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { publicProvider, readiness, validateReportEvidence } from "./model";
+import {
+    publicProvider,
+    readiness,
+    validateReportEvidence,
+    requireLiveLease,
+} from "./model";
 import { fixtureRecord, fixtureReport } from "./fixtures";
 const now = new Date("2026-10-29T01:00:00Z");
+it("requires fresh startup evidence once the heartbeat lease expires", () => {
+    const record = fixtureRecord(now);
+    expect(() =>
+        requireLiveLease(record, new Date(now.getTime() + 44999)),
+    ).not.toThrow();
+    expect(() =>
+        requireLiveLease(record, new Date(now.getTime() + 45000)),
+    ).toThrow("Expired heartbeat");
+});
 describe("readiness from fresh evidence rather than cleanup jobs", () => {
     it("expires exactly at 45 seconds even when no cleanup ran", () => {
         const r = fixtureRecord(now);

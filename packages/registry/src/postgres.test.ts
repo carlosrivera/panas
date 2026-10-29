@@ -144,6 +144,39 @@ describe.skipIf(!databaseUrl)(
                 ),
             ).rejects.toMatchObject({ code: "OUT_OF_ORDER" });
         });
+        it("cannot revive an expired lease with a delayed heartbeat or the same startup", async () => {
+            const id = await enroll();
+            const { data, result } = await register(id);
+            const previous = (await repo.get(id))!.receivedAt;
+            now = new Date(now.getTime() + 45000);
+            const heartbeat = JSON.stringify({
+                providerId: id,
+                startupId: data.report.startupId,
+                sequence: 1,
+                reportDigest: result.reportDigest,
+                state: "ready",
+            });
+            await expect(
+                service.heartbeat(
+                    heartbeat,
+                    proof(id, "/providers/heartbeat", heartbeat),
+                ),
+            ).rejects.toMatchObject({ code: "STALE_REPORT" });
+            const same = JSON.stringify({
+                ...data,
+                report: { ...data.report, sequence: 1 },
+            });
+            await expect(
+                service.register(same, proof(id, "/providers/register", same)),
+            ).rejects.toMatchObject({ code: "STALE_REPORT" });
+            expect((await repo.get(id))!.receivedAt).toEqual(previous);
+            expect((await service.getProvider(id)).readiness.reason).toBe(
+                "heartbeat_expired",
+            );
+            const fresh = await register(id);
+            expect(fresh.data.report.startupId).not.toBe(data.report.startupId);
+            expect((await service.getProvider(id)).readiness.ready).toBe(true);
+        });
         it("filters fixed-price/context/latency and expires providers at read time", async () => {
             const id = await enroll();
             await register(id);
