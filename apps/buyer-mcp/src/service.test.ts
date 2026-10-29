@@ -229,6 +229,7 @@ function setup() {
                         inputTokens: 4,
                         outputTokens: 1,
                         durationMs: 10,
+                        finishReason: "length",
                     },
                     updatedAt: now.toISOString(),
                 };
@@ -361,6 +362,11 @@ it("official MCP client uses one facade for discovery, purchase and execution wi
             arguments: { requestId: quote.requestId },
         });
         expect(result.isError).not.toBe(true);
+        expect(
+            z
+                .object({ finishReason: z.string() })
+                .parse(result.structuredContent).finishReason,
+        ).toBe("length");
         for (const output of [quoted, purchased, result]) {
             const text = JSON.stringify(output);
             expect(text).not.toContain("wire://");

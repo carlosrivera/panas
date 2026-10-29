@@ -114,7 +114,11 @@ async function main() {
                 throw new Error("Real inference did not complete successfully");
             await new Promise((resolve) => setTimeout(resolve, 1000));
         }
-        if (!final || final.chargeAtomic !== quote.totalAtomic)
+        if (
+            !final ||
+            final.chargeAtomic !== quote.totalAtomic ||
+            !["stop", "length"].includes(String(final.finishReason))
+        )
             throw new Error(
                 "Real request did not produce matching fixed-price receipt",
             );
@@ -133,6 +137,7 @@ async function main() {
                 requestId,
                 providerId: provider.providerId,
                 chargeAtomic: final.chargeAtomic,
+                finishReason: final.finishReason,
                 evidence:
                     "actual cloud test credits and one Mac provider via separate MCPWire peer processes",
             }),

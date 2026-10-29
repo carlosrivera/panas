@@ -93,6 +93,7 @@ const providerBodySchema = z.object({
             inputTokens: z.number().int().nonnegative(),
             outputTokens: z.number().int().nonnegative(),
             durationMs: z.number().nonnegative(),
+            finishReason: z.enum(["stop", "length", "unknown"]).optional(),
         })
         .strict()
         .optional(),
@@ -554,7 +555,9 @@ export class BuyerService {
                 chargeAtomic: null,
                 receipt: null,
                 accounting: "pending_reconciliation",
-                finishReason: body.status,
+                finishReason: body.result
+                    ? (body.result.finishReason ?? "unknown")
+                    : null,
             };
         } catch (error) {
             await this.update((state) => {
@@ -632,6 +635,7 @@ export class BuyerService {
         const cloud = await this.refresh(record);
         let result: unknown = null;
         let providerStatus: string | null = null;
+        let finishReason: string | null = null;
         if (cloud.signedGrant && cloud.descriptor) {
             const descriptor = validateDescriptor(
                 cloud.descriptor,
@@ -656,6 +660,9 @@ export class BuyerService {
                     );
                 result = body.result ?? null;
                 providerStatus = body.status;
+                finishReason = body.result
+                    ? (body.result.finishReason ?? "unknown")
+                    : null;
                 if (body.status === "completed")
                     await this.update((state) => {
                         this.record(state, record.requestId).runState =
@@ -690,7 +697,7 @@ export class BuyerService {
             fixedTotalAtomic: record.quote.totalAtomic,
             currency: "TEST_CREDIT",
             cancelRequested: cloud.cancelRequested ?? false,
-            finishReason: providerStatus ?? cloud.status,
+            finishReason,
         };
     }
 }
