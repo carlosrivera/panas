@@ -185,3 +185,15 @@ it("aborts startup and does not run an application request on a replacement sess
     await session.closed;
     expect(events.filter((event) => event.kind === "failed")).toHaveLength(1);
 });
+
+it("preserves the external CLI exit code across its owner guard", async () => {
+    const session = superviseShare({
+        command: "ignored",
+        launch: { command: process.execPath, args: ["-e", "process.exit(17)"] },
+        startupTimeoutMs: 1000,
+        shutdownGraceMs: 10,
+    });
+    sessions.push(session);
+    expect((await session.ready).kind).toBe("failed");
+    expect(await session.closed).toMatchObject({ code: 17, signal: null });
+});

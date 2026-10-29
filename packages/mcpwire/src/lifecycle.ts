@@ -1,5 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
+import { signalOwnedGroup } from "../../../scripts/owned-signal.js";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
@@ -57,11 +59,29 @@ export function launchCli(
     override?: LaunchCommand,
 ): ChildProcessWithoutNullStreams {
     const command = override ?? cliCommand(args);
-    return spawn(command.command, command.args, {
-        shell: false,
-        detached: process.platform !== "win32",
-        stdio: ["pipe", "pipe", "pipe"],
-    });
+    if (process.platform === "win32")
+        return spawn(command.command, command.args, {
+            shell: false,
+            detached: false,
+            stdio: ["pipe", "pipe", "pipe"],
+        });
+    // Keep the external CLI's stdio protocol intact while a separate IPC channel
+    // makes owner death observable even if its detached group receives no signal.
+    return spawn(
+        process.execPath,
+        [
+            fileURLToPath(
+                new URL("../../../scripts/owned-process.mjs", import.meta.url),
+            ),
+            command.command,
+            ...command.args,
+        ],
+        {
+            shell: false,
+            detached: true,
+            stdio: ["pipe", "pipe", "pipe", "ipc"],
+        },
+    ) as ChildProcessWithoutNullStreams;
 }
 function duration(value: number | undefined, fallback: number): number {
     const result = value ?? fallback;
@@ -75,6 +95,8 @@ function manage(args: string[], options: SessionOptions) {
     const generationId = randomUUID();
     const child = launchCli(args, options.launch);
     let ended = false;
+    let nativeExit:
+        { code: number | null; signal: NodeJS.Signals | null } | undefined;
     let failureReported = false;
     let settled = false;
     let stopping: Promise<void> | undefined;
@@ -100,21 +122,14 @@ function manage(args: string[], options: SessionOptions) {
         settle(outcome);
         emit(outcome);
     };
-    const signalGroup = (signal: NodeJS.Signals) => {
-        if (!child.pid) return;
-        try {
-            if (process.platform === "win32") child.kill(signal);
-            else process.kill(-child.pid, signal);
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
-        }
-    };
+    const signalGroup = (signal: NodeJS.Signals) =>
+        signalOwnedGroup(child, signal);
     const stop = (): Promise<void> => {
         stopping ??= (async () => {
-            signalGroup("SIGTERM");
+            await signalGroup("SIGTERM");
             // Wait through grace even if leader exits: its per-peer descendants may remain.
             await new Promise<void>((done) => setTimeout(done, graceMs));
-            signalGroup("SIGKILL");
+            await signalGroup("SIGKILL");
             child.stdin.destroy();
             child.stdout.destroy();
             child.stderr.destroy();
@@ -141,6 +156,25 @@ function manage(args: string[], options: SessionOptions) {
     if (options.signal?.aborted) queueMicrotask(onAbort);
     else options.signal?.addEventListener("abort", onAbort, { once: true });
     child.on("error", () => fail("spawn_failed"));
+    child.on("message", (message: unknown) => {
+        if (!message || typeof message !== "object" || !("kind" in message))
+            return;
+        if (message.kind === "spawn_failed") fail("spawn_failed");
+        if (
+            message.kind === "child_exit" &&
+            "code" in message &&
+            "signal" in message &&
+            (message.code === null || Number.isInteger(message.code)) &&
+            (message.signal === null ||
+                (typeof message.signal === "string" &&
+                    /^SIG[A-Z0-9]+$/.test(message.signal)))
+        ) {
+            nativeExit = {
+                code: message.code as number | null,
+                signal: message.signal as NodeJS.Signals | null,
+            };
+        }
+    });
     child.stdin.on("error", () => {
         if (!ended) fail("protocol_failed");
     });
@@ -149,7 +183,12 @@ function manage(args: string[], options: SessionOptions) {
         options.signal?.removeEventListener("abort", onAbort);
         if (!settled)
             complete({ kind: "failed", generationId, code: "startup_failed" });
-        const event = { kind: "closed" as const, generationId, code, signal };
+        const event = {
+            kind: "closed" as const,
+            generationId,
+            code: nativeExit?.code ?? code,
+            signal: nativeExit ? nativeExit.signal : signal,
+        };
         closedResolve(event);
         emit(event);
         void stop();

@@ -1,4 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { signalOwnedGroup } from "../../../scripts/owned-signal.js";
 import { createConnection } from "node:net";
 import { parseEnv } from "node:util";
 import { join } from "node:path";
@@ -96,11 +97,7 @@ export async function stopProvider(provider: OwnedProvider): Promise<void> {
     provider.stopped = true;
     const child = provider.child;
     if (!child.pid) return;
-    try {
-        process.kill(-child.pid, "SIGTERM");
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
-    }
+    await signalOwnedGroup(child, "SIGTERM");
     await new Promise<void>((resolve) => {
         if (child.exitCode !== null || child.signalCode !== null) {
             resolve();
@@ -113,10 +110,6 @@ export async function stopProvider(provider: OwnedProvider): Promise<void> {
         });
     });
     if (child.exitCode === null && child.signalCode === null) {
-        try {
-            process.kill(-child.pid, "SIGKILL");
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
-        }
+        await signalOwnedGroup(child, "SIGKILL");
     }
 }
