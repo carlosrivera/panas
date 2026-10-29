@@ -8,10 +8,10 @@ Routing placeholders now point to real directory/buyer/provider routes and MCPWi
 
 ## Like-for-like fidelity verification
 
-Original HTML served unmodified by the root review server at127.0.0.1:6768. Port atlocalhost3334. Both rendered in the same agent-browser0.15.2 engine/session isolation at1511x838,360x838,390x838,768x838. Captured nav, main, h1, wire, dock, CTA and all three clip rectangles plus font/gap/padding/letter-spacing/display. All measured element objects are exactly equal at each width. All four port document widths equal viewport width. This establishes layout fidelity in that engine, not video playback or every-browser pixel equivalence.
+Original HTML served unmodified by the root review server at127.0.0.1:6768. Port atlocalhost3334. Both rendered in the same agent-browser0.15.2 engine/session isolation at1511x838,360x838,390x838,768x838. Captured26 elements: nav, main, h1, wire, dock, CTA, all three clips, both section containers/inners/headings/tables, all8 table rows and footer, plus font/gap/padding/letter-spacing/display. All measured element objects are exactly equal at each width. All four port document widths equal viewport width. This establishes layout fidelity in that engine, not video playback or every-browser pixel equivalence.
 
 Evidence: /Users/carlos/code/panas/.panas/website-qa/fidelity/comparison.json and paired original-{width}.png / port-{width}.png. The pair at1511 was visually inspected side by side; only required prototype annotation differs in the first viewport. Different engines can have different font metrics; comparisons do not mix native IAB and headless geometry.
 
-## Outstanding gate
+## Video explicitly deferred
 
-At this checkpoint the fetched PR contains only four original prototype files and no media file. The original video src /video.mp4 and original renderer are preserved while the owner/root locates the uploaded asset. No invented fallback is presented. Media playback, final accessibility checks and deployed-site smoke must be completed against the supplied clip and final deployment before #15 is accepted. No screen-reader session or physical two-device inference claim is made.
+The user explicitly deferred the video until later. The original /video.mp4 URL is kept as data-src while deferred, avoiding a missing-asset request; restoring src with the supplied clip will activate the retained original renderer. Original windows remain unchanged and no invented substitute art is presented. Media playback is not claimed and does not block this batch. Final accessibility/deployed evidence is recorded separately for #15. No screen-reader session or physical two-device inference claim is made.
