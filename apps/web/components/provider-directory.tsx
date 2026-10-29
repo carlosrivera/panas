@@ -324,6 +324,17 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
         new URLSearchParams(query).has("maxPriceAtomic");
     return (
         <div className="directory-content">
+            <p className="sr-only" role="status" aria-atomic="true">
+                {!loading && !error && page
+                    ? providerId && page.providers[0]
+                        ? displayedReadiness(
+                              page.providers[0],
+                              observation,
+                              now,
+                          ).label
+                        : `${page.providers.filter((provider) => displayedReadiness(provider, observation, now).ready).length} ready as observed out of ${page.providers.length} displayed reports.${observation.trusted ? "" : " Availability is unknown."}`
+                    : ""}
+            </p>
             {!providerId && (
                 <form
                     className="directory-filters"
@@ -446,7 +457,7 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                 </div>
             )}
             {!loading && !error && page?.providers.length === 0 && (
-                <div className="directory-message">
+                <div className="directory-message" role="status">
                     <span className="tiny-label">The public registry</span>
                     <h2>
                         {hasFilters

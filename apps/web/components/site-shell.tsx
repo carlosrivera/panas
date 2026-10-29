@@ -2,11 +2,11 @@ import Link from "next/link";
 
 export function SiteHeader() {
     return (
-        <>
+        <header>
             <div className="prototype-strip">
                 A test-credit prototype. <span>Real Macs, no real money.</span>
             </div>
-            <header className="site-header shell">
+            <div className="site-header shell">
                 <Link href="/" className="wordmark" aria-label="Panas home">
                     panas<span aria-hidden="true">✳</span>
                 </Link>
@@ -21,8 +21,8 @@ export function SiteHeader() {
                 >
                     Built on MCPWire <span aria-hidden="true">↗</span>
                 </a>
-            </header>
-        </>
+            </div>
+        </header>
     );
 }
 export function SiteFooter() {
