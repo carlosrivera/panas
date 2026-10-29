@@ -524,3 +524,41 @@ it("rejects prompts outside the accepted conservative context profile before any
         ),
     ).toBe(true);
 });
+
+it("does not reopen stricter local owner authority after a remote refund, even if completion was never observed", async () => {
+    const s = setup();
+    const { service, requestId } = await buy(s);
+    s.settled = true;
+    const original = s.cloud.get.getMockImplementation()!;
+    s.cloud.get.mockImplementationOnce(async (id) => {
+        const response = await original(id);
+        return {
+            ...response,
+            status: "refunded",
+            receipt: {
+                ...response.receipt!,
+                status: "refunded",
+                buyerDebitAtomic: "0",
+                providerEarningsAtomic: "0",
+                feeAtomic: "0",
+                refundOf: randomUUID(),
+            },
+        };
+    });
+    const refunded = await service.get({ requestId });
+    expect(refunded.chargeAtomic).toBe("0");
+    expect(s.state.requests[requestId]!.reservedAtomic).toBe("0");
+    expect(s.state.requests[requestId]!.spentAtomic).toBe("60");
+    const second = await service.quote({
+        providerId: s.providerId,
+        prompt: "next request",
+        maxOutputTokens: 8,
+    });
+    await expect(
+        service.purchase({
+            quoteId: second.quoteId as string,
+            idempotencyKey: randomUUID(),
+        }),
+    ).rejects.toMatchObject({ code: "SPENDING_LIMIT" });
+    expect(s.cloud.purchase).toHaveBeenCalledTimes(1);
+});

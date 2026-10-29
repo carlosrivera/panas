@@ -6,7 +6,8 @@ import {
     verifyDocument,
     signedCloudRequestSchema,
 } from "@panas/protocol";
-import { createCloudClient } from "./clients";
+import { createCloudClient, safeProvider } from "./clients";
+import { prototypeLimits } from "@panas/contracts";
 it("binds HTTP proof to exact actor, method, path, and parsed body without forwarding private prompts", async () => {
     const pair = generateKeyPairSync("ed25519");
     const buyerId = randomUUID();
@@ -76,4 +77,35 @@ it("does not disclose remote diagnostics or infrastructure failures", async () =
     await expect(failureClient.get(randomUUID())).rejects.not.toThrow(
         "private-token",
     );
+});
+
+it("returns useful bounded provider information while excluding private connection fields", () => {
+    const date = new Date().toISOString();
+    const value = {
+        providerId: randomUUID(),
+        startupId: randomUUID(),
+        model: {
+            name: "qwen2.5:0.5b",
+            digest: "a".repeat(64),
+            runtimeVersion: "0.40.12",
+        },
+        profile: prototypeLimits,
+        price: { version: "1", totalAtomic: "3", currency: "TEST_CREDIT" },
+        benchmark: { warmLatencyMs: 10, tokensPerSecond: 20 },
+        evidence: { source: "provider-reported", peerProbe: "verified" },
+        state: "ready",
+        readiness: { ready: true, reason: "ready" },
+        testedAt: date,
+        lastSeenAt: date,
+        expiresAt: date,
+        ticket: "private connection material",
+        signedGrant: "private authorization",
+    };
+    const projected = safeProvider(value);
+    expect(projected.benchmark).toEqual(value.benchmark);
+    expect(projected.price).toEqual(value.price);
+    expect(JSON.stringify(projected)).not.toContain(
+        "private connection material",
+    );
+    expect(JSON.stringify(projected)).not.toContain("private authorization");
 });

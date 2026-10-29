@@ -599,7 +599,11 @@ export class BuyerService {
             await this.update((state) => {
                 const request = this.record(state, record.requestId);
                 request.reservedAtomic = "0";
-                request.spentAtomic = receipt.buyerDebitAtomic;
+                // Owner caps count gross completed charges, including later refunds.
+                request.spentAtomic =
+                    receipt.status === "refunded"
+                        ? record.quote!.totalAtomic
+                        : receipt.buyerDebitAtomic;
             });
         }
         return cloud;

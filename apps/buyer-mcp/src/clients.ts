@@ -248,6 +248,63 @@ export function createPeerClient(): PeerClient & { close(): Promise<void> } {
                     },
                     { timeoutMs },
                 );
+                const rejection = z
+                    .object({
+                        isError: z.literal(true),
+                        content: z
+                            .array(
+                                z.object({
+                                    type: z.literal("text"),
+                                    text: z.string().max(512),
+                                }),
+                            )
+                            .min(1),
+                    })
+                    .safeParse(result);
+                if (rejection.success) {
+                    let code: unknown;
+                    try {
+                        code = (
+                            JSON.parse(rejection.data.content[0]!.text) as {
+                                code?: unknown;
+                            }
+                        ).code;
+                    } catch {
+                        code = undefined;
+                    }
+                    if (
+                        [
+                            "QUEUE_FULL",
+                            "RATE_LIMITED",
+                            "PROVIDER_UNAVAILABLE",
+                        ].includes(String(code))
+                    )
+                        throw new BuyerError(
+                            "PROVIDER_UNAVAILABLE",
+                            "Provider declined admission; retrieve this request's terminal accounting before another purchase",
+                        );
+                    if (
+                        [
+                            "INVALID_PLATFORM_GRANT",
+                            "IDENTITY_MISMATCH",
+                            "OPERATION_BINDING_MISMATCH",
+                            "REQUEST_BINDING_MISMATCH",
+                        ].includes(String(code))
+                    )
+                        throw new BuyerError(
+                            "UNAUTHORIZED",
+                            "Provider rejected the operation's identity binding",
+                        );
+                    if (
+                        ["CONTEXT_TOO_LARGE", "GRANT_LIMIT_EXCEEDED"].includes(
+                            String(code),
+                        )
+                    )
+                        throw new BuyerError(
+                            "INVALID_INPUT",
+                            "Provider rejected request limits; retrieve the existing request before another purchase",
+                        );
+                }
                 const parsed = z
                     .object({
                         isError: z.boolean().optional(),
@@ -292,6 +349,19 @@ export function safeProvider(value: unknown): Record<string, unknown> {
                 .strict(),
             profile: requestLimitsSchema,
             price: registryPriceSchema,
+            benchmark: z
+                .object({
+                    warmLatencyMs: z.number().nonnegative(),
+                    tokensPerSecond: z.number().nonnegative(),
+                })
+                .strict()
+                .nullable(),
+            evidence: z
+                .object({
+                    source: z.literal("provider-reported"),
+                    peerProbe: z.enum(["verified", "unverified", "failed"]),
+                })
+                .strict(),
             state: z.string(),
             readiness: z
                 .object({ ready: z.boolean(), reason: z.string().max(100) })
@@ -307,6 +377,8 @@ export function safeProvider(value: unknown): Record<string, unknown> {
         model: provider.model,
         profile: provider.profile,
         price: provider.price,
+        benchmark: provider.benchmark,
+        evidence: provider.evidence,
         state: provider.state,
         readiness: provider.readiness,
         testedAt: provider.testedAt,

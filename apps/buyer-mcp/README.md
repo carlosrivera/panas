@@ -26,7 +26,7 @@ Create an owner configuration outside the repository with mode `0600`. Reference
 }
 ```
 
-Amounts use integer atomic `TEST_CREDIT` units. This prototype accepts no real money. Daily local authority uses UTC calendar days; session authority uses the explicit owner-selected session ID and persists across process restarts. Cloud policy is authoritative and may impose stricter limits. MCP tools cannot configure identities, credentials, session IDs, or spending limits.
+Amounts use integer atomic `TEST_CREDIT` units. This prototype accepts no real money. Daily local authority uses UTC calendar days; session authority uses the explicit owner-selected session ID and persists across process restarts. Both count gross completed charges, including later refunds; a refund does not reopen spending authority. Cloud policy is authoritative and may impose stricter limits. MCP tools cannot configure identities, credentials, session IDs, or spending limits.
 
 Configure the buyer agent's MCP client once:
 
@@ -74,3 +74,19 @@ pnpm exec vitest run apps/buyer-mcp/src
 Deterministic tests use the official MCP client and injected cloud/peer boundaries for owner authority, signed HTTP requests, no prompt leakage to cloud, private output suppression, uncertain purchase/execution recovery, provider identity/nonce rejection, action-only retrieval, and restart behavior. Encryption/file permission tests use real temporary local files.
 
 Injected boundary tests do not establish real paid inference. The actual accounting/host integration and single-Mac cloud-credit smoke are recorded separately when their dependent implementations are available. Two physical Mac providers remain the later end-to-end milestone.
+
+## Verified single-Mac cloud flow
+
+On October 28, 2026, the opt-in live smoke used the deployed Volcano registry/accounting services and an actual Apple Silicon Mac running the approved small Ollama model. The official MCP client discovered provider `ffceede0-32eb-465f-8f80-e86a476f1ce7`, obtained a quote and purchased request `35e32cdf-e96a-4351-89d5-affcd5a4a858`, connected through MCPWire, retrieved completed model output with a matching fixed receipt of `3` atomic test credits, rejected a duplicate inference submission, and retrieved the same charge through a fresh peer connection.
+
+This verifies the real single-Mac transaction. It does not establish two physical Macs, adversarial hardware attestation, production availability, or real-money payments. No private tickets, grants, credentials, or prompts were recorded in the smoke output.
+
+To repeat with an operator-enrolled buyer and an actual ready provider:
+
+```sh
+PANAS_BUYER_CONFIG=/absolute/private/buyer-config.json \
+PANAS_SMOKE_PROVIDER_ID=PROVIDER_UUID \
+pnpm exec tsx apps/buyer-mcp/scripts/live-smoke.ts
+```
+
+Each run makes a new explicitly authorized test-credit purchase. After any uncertain run, retrieve its original request rather than rerunning this smoke as recovery.
