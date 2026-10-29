@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { writeFile } from "node:fs/promises";
@@ -215,7 +215,7 @@ async function fixture() {
         path,
     };
 }
-async function waitUntil(check: () => Promise<boolean>) {
+async function waitUntil(check: () => Promise<boolean> | boolean) {
     for (let i = 0; i < 100; i++) {
         if (await check()) return;
         await delay(2);
@@ -377,6 +377,134 @@ describe("provider authentication", () => {
                 ?.terminalEvent,
         ).toBeTruthy();
     });
+    it("finishes already-authorized generation while cloud admission and terminal delivery are unavailable", async () => {
+        const f = await fixture();
+        f.runtime.block = true;
+        const startup = f.daemon.report!.startupId;
+        await f.service.handle({ tool: "run_inference", request: f.wire() });
+        await waitUntil(
+            () => f.accounting.authorized === 1 && f.runtime.calls === 3,
+        );
+        f.accounting.unavailable = true;
+        await f.daemon.suspendControlPlane();
+        expect(f.daemon.status?.state).toBe("draining");
+        f.runtime.release!();
+        await waitUntil(
+            async () =>
+                (await f.daemon.get(f.grant.requestId, f.grant.buyerKeyId))
+                    ?.status === "completed",
+        );
+        await expect(f.service.flushTerminals()).rejects.toThrow(
+            "TERMINAL_DELIVERY_UNAVAILABLE",
+        );
+        expect(f.daemon.report!.startupId).toBe(startup);
+        expect(f.runtime.calls).toBe(3);
+        expect(
+            signedTerminalEventSchema.parse(
+                (await f.daemon.pendingTerminals())[0]!.terminalEvent,
+            ).payload.outcome,
+        ).toBe("completed");
+        f.accounting.unavailable = false;
+        await f.service.flushTerminals();
+        expect(f.accounting.events).toHaveLength(1);
+    });
+    it("coalesces outbox delivery and retries the same signed event after a lost committed acknowledgement", async () => {
+        const f = await fixture();
+        await f.service.handle({ tool: "run_inference", request: f.wire() });
+        await waitUntil(
+            async () =>
+                (await f.daemon.get(f.grant.requestId, f.grant.buyerKeyId))
+                    ?.status === "completed",
+        );
+        const accepted = new Map<string, SignedDocument<TerminalEvent>>();
+        let release!: () => void;
+        const response = new Promise<void>((done) => {
+            release = done;
+        });
+        let lost = true;
+        const terminal = vi
+            .spyOn(f.accounting, "terminal")
+            .mockImplementation(async (event) => {
+                expect(
+                    verifyDocument(
+                        DOMAIN.terminal,
+                        event,
+                        f.provider.publicKey,
+                    ),
+                ).toBe(true);
+                accepted.set(event.payload.eventId, event); // Component acknowledgement fixture, not a ledger.
+                if (lost) {
+                    lost = false;
+                    throw new Error(
+                        "Response lost after fixture accepted event",
+                    );
+                }
+                await response;
+            });
+        await expect(f.service.flushTerminals()).rejects.toThrow(
+            "TERMINAL_DELIVERY_UNAVAILABLE",
+        );
+        expect(await f.daemon.pendingTerminals()).toHaveLength(1);
+        const deliveries = [
+            f.service.flushTerminals(),
+            f.service.flushTerminals(),
+            f.service.flushTerminals(),
+        ];
+        await waitUntil(() => terminal.mock.calls.length === 2);
+        release();
+        await Promise.all(deliveries);
+        expect(accepted.size).toBe(1);
+        expect(terminal.mock.calls[0]![0]).toEqual(terminal.mock.calls[1]![0]);
+        expect(await f.daemon.pendingTerminals()).toHaveLength(0);
+        expect(f.runtime.calls).toBe(3);
+    });
+    it("rotates bounded outbox batches so rejected events cannot starve later records", async () => {
+        const f = await fixture();
+        const ids = Array.from(
+            { length: 17 },
+            (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+        );
+        for (const requestId of ids) {
+            const record = {
+                requestId,
+                buyerKeyId: f.grant.buyerKeyId,
+                fingerprint: "component-fixture",
+                status: "failed" as const,
+                updatedAt: Date.now(),
+                authorization: signDocument(
+                    DOMAIN.grant,
+                    { ...f.grant, requestId },
+                    f.platform.privateKey,
+                ),
+                terminalDelivered: false,
+                terminalEvent: undefined as unknown,
+            };
+            record.terminalEvent = f.service.hooks.terminalEvent!(record);
+            await f.daemon.store.save(record);
+        }
+        let recovered = false;
+        const terminal = vi
+            .spyOn(f.accounting, "terminal")
+            .mockImplementation(async (event) => {
+                if (!recovered && event.payload.requestId !== ids[16])
+                    throw new Error("Rejected fixture acknowledgement");
+            });
+        await expect(f.service.flushTerminals()).rejects.toThrow(
+            "TERMINAL_DELIVERY_UNAVAILABLE",
+        );
+        expect(terminal).toHaveBeenCalledTimes(16);
+        await expect(f.service.flushTerminals()).rejects.toThrow(
+            "TERMINAL_DELIVERY_UNAVAILABLE",
+        );
+        expect(
+            (await f.daemon.get(ids[16]!, f.grant.buyerKeyId))
+                ?.terminalDelivered,
+        ).toBe(true);
+        expect(await f.daemon.pendingTerminals()).toHaveLength(16);
+        recovered = true;
+        await f.service.flushTerminals();
+        expect(await f.daemon.pendingTerminals()).toHaveLength(0);
+    });
     it("retains a signed terminal outbox across adapter/service loss and retries idempotently", async () => {
         const f = await fixture();
         f.accounting.unavailable = true;
@@ -390,7 +518,9 @@ describe("provider authentication", () => {
             (await f.daemon.get(f.grant.requestId, f.grant.buyerKeyId))
                 ?.terminalEvent,
         );
-        await expect(f.service.flushTerminals()).rejects.toThrow("offline");
+        await expect(f.service.flushTerminals()).rejects.toThrow(
+            "TERMINAL_DELIVERY_UNAVAILABLE",
+        );
         const restarted = await f.restart();
         f.accounting.unavailable = false;
         await restarted.service.flushTerminals();

@@ -1,7 +1,54 @@
 import { expect, it, vi } from "vitest";
 import { generateKeyPairSync, randomUUID } from "node:crypto";
-import { DOMAIN, signDocument, type TerminalEvent } from "@panas/protocol";
+import { createServer } from "node:http";
+import {
+    DOMAIN,
+    signDocument,
+    type TerminalEvent,
+    type Grant,
+} from "@panas/protocol";
 import { AccountingHttpClient } from "./accounting-client.js";
+
+it(
+    "bounds a stalled authorization independently of the live execution signal and never retries it",
+    { timeout: 15000 },
+    async () => {
+        let calls = 0;
+        const server = createServer((request) => {
+            calls++;
+            request.resume();
+        });
+        await new Promise<void>((resolve) =>
+            server.listen(0, "127.0.0.1", resolve),
+        );
+        const address = server.address() as { port: number };
+        const key = generateKeyPairSync("ed25519");
+        const client = new AccountingHttpClient(
+            `http://127.0.0.1:${address.port}`,
+            randomUUID(),
+            key.privateKey,
+        );
+        const execution = new AbortController();
+        try {
+            await expect(
+                client.authorize(
+                    {
+                        requestId: randomUUID(),
+                        reservationId: randomUUID(),
+                        grantId: randomUUID(),
+                        payloadDigest: "a".repeat(64),
+                    } as Grant,
+                    execution.signal,
+                ),
+            ).rejects.toThrow();
+            expect(execution.signal.aborted).toBe(false);
+            expect(calls).toBe(1);
+        } finally {
+            server.closeAllConnections();
+            await new Promise<void>((resolve) => server.close(() => resolve()));
+        }
+    },
+);
 
 it("withholds terminal acknowledgement on malformed HTTP200 and accepts coherent idempotent outcomes", async () => {
     const key = generateKeyPairSync("ed25519"),
