@@ -79,6 +79,8 @@ Injected boundary tests do not establish real paid inference. The actual account
 
 On October 28, 2026, the opt-in live smoke used the deployed Volcano registry/accounting services and an actual Apple Silicon Mac running the approved small Ollama model. The official MCP client discovered provider `ffceede0-32eb-465f-8f80-e86a476f1ce7`, obtained a quote and purchased request `35e32cdf-e96a-4351-89d5-affcd5a4a858`, connected through MCPWire, retrieved completed model output with a matching fixed receipt of `3` atomic test credits, rejected a duplicate inference submission, and retrieved the same charge through a fresh peer connection.
 
+After restarting the actual host with generation metadata preservation, a second deliberately new request, `b469eba2-e76e-4963-b076-fa4af363a83a`, passed the same flow with a fixed charge of `3` and the actual generation finish reason `length`. The original request was retained; the second flow was not a retry of uncertain work.
+
 This verifies the real single-Mac transaction. It does not establish two physical Macs, adversarial hardware attestation, production availability, or real-money payments. No private tickets, grants, credentials, or prompts were recorded in the smoke output.
 
 To repeat with an operator-enrolled buyer and an actual ready provider:
