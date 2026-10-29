@@ -103,7 +103,7 @@ try {
             if (attempt === 3)
                 throw new Error("Remote release checks did not become ready");
             console.log(
-                `Release checks not ready; retrying in10seconds (attempt${attempt}/3)`,
+                `Release checks not ready; retrying in 10 seconds (attempt ${attempt}/3)`,
             );
             await delay(10000);
         }
