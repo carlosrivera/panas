@@ -1,0 +1,29 @@
+name: Panas test maintenance
+on:
+    schedule:
+        - cron: "0 * * * *"
+    workflow_dispatch:
+permissions:
+    contents: read
+concurrency:
+    group: panas-test-maintenance
+    cancel-in-progress: false
+jobs:
+    reconcile:
+        if: github.repository == 'carlosrivera/panas'
+        environment: panas-test
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        env:
+            VOLCANO_TOKEN: ${{ secrets.VOLCANO_TOKEN }}
+        steps:
+            - uses: actions/checkout@v7.0.1
+            - uses: actions/setup-node@v7.1.0
+              with:
+                  node-version: 24
+            - run: node scripts/platform/maintain.mjs
+            - uses: actions/upload-artifact@v7.0.0
+              with:
+                  name: panas-maintenance-${{ github.run_id }}
+                  path: artifacts/maintenance.json
+                  if-no-files-found: error
