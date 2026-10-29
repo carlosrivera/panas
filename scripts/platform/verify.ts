@@ -10,6 +10,7 @@ import {
     assertClean,
     assertProjectBinding,
     management,
+    invokeOperations,
     revision,
     root,
     run,
@@ -166,13 +167,9 @@ export async function verifyRelease(
         );
     }
     const operation = functions.find((fn) => fn.name === "operations")!;
-    const invocation = await management<{
-        payload?: unknown;
-        result?: unknown;
-    }>(`/projects/${PLATFORM.projectId}/functions/${operation.id}/invoke`, {
-        method: "POST",
-        body: JSON.stringify({ payload: { job: "health" } }),
-    });
+    const invocation = (await invokeOperations(operation, {
+        job: "health",
+    })) as { payload?: unknown; result?: unknown };
     let health: unknown = invocation.payload ?? invocation.result ?? invocation;
     if (typeof health === "string") {
         try {

@@ -10,3 +10,5 @@ volcano/functions/accounting/index.js
 volcano/functions/accounting/package.json
 volcano/functions/accounting/pnpm-lock.yaml
 volcano/functions/operations/
+volcano/functions/health/package.json
+volcano/functions/health/pnpm-lock.yaml

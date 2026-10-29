@@ -49,4 +49,3 @@ volcano/*.env
 # Committed test-project binding; generated release evidence is not source.
 !.volcano/project.json
 artifacts/
-volcano/functions/operations/

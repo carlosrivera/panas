@@ -9,18 +9,20 @@ export interface OperationalSummary {
     ledgerImbalanceCount: number;
     heldMismatchCount: number;
     requiresOperatorReview: boolean;
+    lastReconciliationObservedAt: string | null;
 }
 export async function operationalSummary(
     client: pg.PoolClient,
     releaseSha: string,
 ): Promise<OperationalSummary> {
     const counts = await client.query(
-        "SELECT (SELECT count(*)::int FROM panas_accounting_requests WHERE status IN ('reserved','authorized','pending') AND reconcile_after<=clock_timestamp()) AS overdue,(SELECT count(*)::int FROM panas_accounting_ledger WHERE panas_accounting_balanced(entries) IS DISTINCT FROM true) AS imbalance,(SELECT count(*)::int FROM panas_accounting_buyers b WHERE b.held<>COALESCE((SELECT sum((r.signed_grant->'payload'->>'totalAtomic')::numeric) FROM panas_accounting_requests r WHERE r.buyer_id=b.buyer_id AND r.status IN ('reserved','authorized','pending')),0)) AS mismatch",
+        "SELECT (SELECT count(*)::int FROM panas_accounting_requests WHERE status IN ('reserved','authorized','pending') AND reconcile_after<=clock_timestamp()) AS overdue,(SELECT count(*)::int FROM panas_accounting_ledger WHERE panas_accounting_balanced(entries) IS DISTINCT FROM true) AS imbalance,(SELECT count(*)::int FROM panas_accounting_buyers b WHERE b.held<>COALESCE((SELECT sum((r.signed_grant->'payload'->>'totalAtomic')::numeric) FROM panas_accounting_requests r WHERE r.buyer_id=b.buyer_id AND r.status IN ('reserved','authorized','pending')),0)) AS mismatch,(SELECT summary->>'observedAt' FROM panas_platform_operations WHERE job='reconciliation') AS last_observed",
     );
     const row = counts.rows[0] as {
         overdue: number;
         imbalance: number;
         mismatch: number;
+        last_observed: string | null;
     };
     return {
         ok: row.imbalance === 0 && row.mismatch === 0,
@@ -30,6 +32,7 @@ export async function operationalSummary(
         ledgerImbalanceCount: row.imbalance,
         heldMismatchCount: row.mismatch,
         requiresOperatorReview: row.overdue > 0,
+        lastReconciliationObservedAt: row.last_observed,
     };
 }
 export async function reconcileMetadata(pool: pg.Pool, releaseSha: string) {
