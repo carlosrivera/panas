@@ -76,7 +76,7 @@ export function CodeSample({
     return (
         <div className="code-sample">
             <p className="code-label">{label}</p>
-            <pre tabIndex={0} aria-label={label}>
+            <pre tabIndex={0} role="region" aria-label={label}>
                 <code>{children}</code>
             </pre>
         </div>
