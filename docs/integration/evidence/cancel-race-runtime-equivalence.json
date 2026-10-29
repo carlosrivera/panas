@@ -1,0 +1,16 @@
+{
+    "schemaVersion": 1,
+    "sourceCommit": "463c37ac0ea4b50ea71e69d6d50fb7a9722a6e2a",
+    "typescriptVersion": "6.0.3",
+    "compilerOptions": {
+        "module": "ESNext",
+        "target": "ES2022"
+    },
+    "patch": "cancel-race-source-type-only.patch",
+    "sameEmittedJavaScript": true,
+    "emittedJavaScriptSha256": "31dcdad23ce9e711269a0c2e0781a78683495d1b4cb3afc809770345b3a88205",
+    "committedSourceSha256": "45a0d2e8bacdec439d5102d5f7ce92dff08e96a9cc6922f1590ece9b809c8283",
+    "typeCorrectedSourceSha256": "3d97e5513b60465c93a7005cc0746d7688f530dfbedea6749bf5bab54691698d",
+    "sourceTreeDirtyAtRunStart": false,
+    "typeOnlyCorrectionAppliedDuringRun": true
+}

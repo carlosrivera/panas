@@ -1,0 +1,58 @@
+{
+    "schemaVersion": 1,
+    "scope": "explicit-audited-test-fixture-operator-review",
+    "gitCommit": "463c37ac0ea4b50ea71e69d6d50fb7a9722a6e2a",
+    "sourceTreeDirty": true,
+    "observedAt": "2026-10-29T15:26:32.109Z",
+    "reason": "Owned integration fault fixtures never authorized these requests: actual copied-ticket/invalid-proof/initialization rejection or natural execution expiry was observed, providers are stopped and execution permission expired. Explicit zero-debit operator release only after the real reconciliation deadline; preserve audit and ledger.",
+    "results": [
+        {
+            "buyerId": "a33b2eb9-2b99-4d81-ada4-f010bdf9cb9c",
+            "before": {
+                "balance": "1000",
+                "held": "0",
+                "settlements": 0
+            },
+            "after": {
+                "balance": "1000",
+                "held": "0",
+                "settlements": 0
+            },
+            "released": [],
+            "ledgerImbalanceCount": 0,
+            "heldMismatchCount": 0
+        },
+        {
+            "buyerId": "3ddc4c84-56b2-4589-a510-fec69b10044f",
+            "before": {
+                "balance": "1000",
+                "held": "0",
+                "settlements": 0
+            },
+            "after": {
+                "balance": "1000",
+                "held": "0",
+                "settlements": 0
+            },
+            "released": [],
+            "ledgerImbalanceCount": 0,
+            "heldMismatchCount": 0
+        },
+        {
+            "buyerId": "72960929-a93f-4a81-8e23-b99a2a226295",
+            "before": {
+                "balance": "999",
+                "held": "0",
+                "settlements": 1
+            },
+            "after": {
+                "balance": "999",
+                "held": "0",
+                "settlements": 1
+            },
+            "released": [],
+            "ledgerImbalanceCount": 0,
+            "heldMismatchCount": 0
+        }
+    ]
+}

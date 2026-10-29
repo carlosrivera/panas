@@ -35,8 +35,8 @@ export async function callDaemon(
                 return;
             }
             if (result.ok !== true) {
-                // Only bounded code tokens cross this private boundary. The MCP adapter
-                // applies its narrower public allowlist before returning a tool error.
+                // Only the shared public-safe code allowlist crosses this private boundary.
+                // The MCP adapter applies the same set before returning a tool error.
                 reject(
                     new Error(
                         typeof result.error === "string" &&
