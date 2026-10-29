@@ -1,0 +1,1212 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>panas_</title>
+        <style>
+            :root {
+                --bg: #0b0b0a;
+                --fg: #edede6;
+                --muted: #8a8a82;
+                --dim: #7c7c74;
+                --rule: #55554f;
+                --edge: #2a2a27;
+                --lime: #c5f74f;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            html,
+            body {
+                margin: 0;
+                min-height: 100%;
+                background: var(--bg);
+                color: var(--fg);
+            }
+            body {
+                font-family:
+                    "Paper Mono", ui-monospace, "SF Mono", Menlo, monospace;
+                -webkit-font-smoothing: antialiased;
+            }
+            a {
+                color: inherit;
+                text-decoration: none;
+            }
+            a:focus-visible {
+                outline: 2px solid var(--lime);
+                outline-offset: 4px;
+                border-radius: 4px;
+            }
+            video {
+                display: none;
+            }
+
+            .page {
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+            nav {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 28px 48px;
+            }
+            .logo {
+                font-size: 16px;
+                font-weight: 600;
+            }
+            .logo span {
+                color: var(--lime);
+            }
+            nav ul {
+                display: flex;
+                gap: 32px;
+                list-style: none;
+                margin: 0;
+                padding: 0;
+                font-size: 14px;
+                color: var(--muted);
+            }
+            nav a:hover {
+                color: var(--fg);
+            }
+
+            /* hero fills exactly the first screen: viewport minus nav and the sticky dock */
+            :root {
+                --nav-h: 76px;
+                --dock-h: 150px;
+                --hero-h: max(
+                    560px,
+                    calc(100svh - var(--nav-h) - var(--dock-h))
+                );
+            }
+            nav {
+                height: var(--nav-h);
+                box-sizing: border-box;
+            }
+            main {
+                flex: none;
+                height: var(--hero-h);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 28px;
+                padding: 0 24px;
+                text-align: center;
+            }
+            .kicker {
+                font-size: 13px;
+                color: var(--muted);
+                margin: 0;
+            }
+            h1 {
+                font-size: clamp(34px, 5.2vw, 64px);
+                font-weight: 500;
+                line-height: 1.12;
+                letter-spacing: -0.04em;
+                margin: 0;
+            }
+            .sub {
+                font-size: 17px;
+                line-height: 28px;
+                color: var(--muted);
+                max-width: 620px;
+                margin: 0;
+            }
+
+            .handshake {
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 14px;
+                padding: 36px 0 8px;
+            }
+            .wire {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                font-size: 15px;
+                white-space: nowrap;
+            }
+            .node {
+                width: 10px;
+                height: 10px;
+                border-radius: 999px;
+                border: 1.5px solid var(--fg);
+                flex-shrink: 0;
+            }
+            .node.on {
+                background: var(--lime);
+                border-color: var(--lime);
+            }
+            .line {
+                width: clamp(24px, 10vw, 150px);
+                height: 1px;
+                background: var(--rule);
+            }
+            .pill {
+                background: var(--lime);
+                color: var(--bg);
+                font-weight: 600;
+                padding: 6px 12px;
+                border-radius: 999px;
+            }
+            .receipt {
+                font-size: 13px;
+                color: var(--muted);
+                margin: 0;
+            }
+            .receipt span {
+                color: var(--dim);
+            }
+
+            /* handshake windows, always on, positioned from the center of the hero (Paper: 1440×756 frame) */
+            main {
+                position: relative;
+            }
+            main > :not(.clip) {
+                position: relative;
+                z-index: 1;
+            }
+            .clip {
+                position: absolute;
+                width: 320px;
+                z-index: 0;
+                pointer-events: none;
+                display: flex;
+                flex-direction: column;
+                background: var(--bg);
+                border: 1px solid var(--edge);
+                border-radius: 8px;
+                overflow: hidden;
+                text-align: left;
+            }
+            /* vertical offsets are fractions of the Paper frame height (756px), so the scatter scales with the hero */
+            .clip.a {
+                left: calc(50% - 693px);
+                top: max(8px, calc(50% - var(--hero-h) * 0.257));
+            }
+            .clip.b {
+                left: calc(50% + 293px);
+                top: calc(50% + var(--hero-h) * 0.045);
+            }
+            .clip.c {
+                left: calc(50% + 120px);
+                top: max(8px, calc(50% - var(--hero-h) * 0.464));
+            }
+            .clip header {
+                padding: 8px 12px;
+                border-bottom: 1px solid var(--edge);
+                font-size: 11px;
+                line-height: 14px;
+                color: var(--dim);
+            }
+            .clip canvas {
+                display: block;
+                width: 320px;
+                height: 180px;
+            }
+
+            .actions {
+                display: flex;
+                gap: 24px;
+                align-items: center;
+                padding-top: 20px;
+                font-size: 15px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .btn {
+                background: var(--fg);
+                color: var(--bg);
+                font: inherit;
+                font-weight: 600;
+                padding: 14px 22px;
+                border: 0;
+                border-radius: 6px;
+                cursor: pointer;
+            }
+            .btn:focus-visible {
+                outline: 2px solid var(--lime);
+                outline-offset: 4px;
+            }
+
+            #pick {
+                width: min(680px, calc(100vw - 32px));
+                padding: 0;
+                color: var(--fg);
+                background: var(--bg);
+                border: 1px solid var(--edge);
+                border-radius: 10px;
+            }
+            #pick::backdrop {
+                background: rgba(11, 11, 10, 0.72);
+                backdrop-filter: blur(4px);
+            }
+            #pick[open] {
+                opacity: 1;
+                transform: translateY(0);
+                transition:
+                    opacity 140ms ease-out,
+                    transform 140ms ease-out;
+            }
+            @starting-style {
+                #pick[open] {
+                    opacity: 0;
+                    transform: translateY(6px);
+                }
+            }
+            .pick-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 14px 24px;
+                border-bottom: 1px solid var(--edge);
+            }
+            .pick-label {
+                color: var(--dim);
+                font-size: 12px;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+            }
+            .pick-close {
+                padding: 0;
+                color: var(--dim);
+                background: none;
+                border: 0;
+                font: inherit;
+                font-size: 12px;
+                cursor: pointer;
+            }
+            .pick-close:hover {
+                color: var(--fg);
+            }
+            #pick-title {
+                padding: 32px 32px 28px;
+                margin: 0;
+                font-size: 32px;
+                font-weight: 500;
+                letter-spacing: -0.03em;
+                line-height: 1.15;
+            }
+            .pick-options {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                border-top: 1px solid var(--edge);
+            }
+            .pick-option {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                min-width: 0;
+                padding: 28px 32px 32px;
+                color: inherit;
+            }
+            .pick-option + .pick-option {
+                border-left: 1px solid var(--edge);
+            }
+            .pick-option:hover,
+            .pick-option:focus-visible {
+                background: #141412;
+            }
+            .pick-option:focus-visible {
+                outline-offset: -2px;
+            }
+            .pick-verb {
+                font-size: 28px;
+                font-weight: 600;
+                letter-spacing: -0.03em;
+            }
+            .pick-verb::before {
+                content: "";
+                display: inline-block;
+                width: 6px;
+                height: 6px;
+                margin-right: 10px;
+                vertical-align: middle;
+                border-radius: 50%;
+                background: var(--lime);
+            }
+            .pick-line {
+                color: var(--muted);
+                font-size: 16px;
+                line-height: 24px;
+            }
+            .pick-detail {
+                color: var(--dim);
+                font-size: 13px;
+                line-height: 20px;
+            }
+            .pick-link {
+                padding-top: 14px;
+                margin-top: auto;
+                color: var(--fg);
+                font-size: 14px;
+            }
+            .pick-footer {
+                padding: 14px 32px;
+                border-top: 1px solid var(--edge);
+                color: var(--dim);
+                font-size: 12px;
+            }
+            @media (prefers-reduced-motion: reduce) {
+                #pick[open] {
+                    transition: none;
+                }
+            }
+            @media (max-width: 759px) {
+                .pick-header {
+                    padding: 14px 24px;
+                }
+                #pick-title {
+                    padding: 24px;
+                    font-size: 26px;
+                }
+                .pick-options {
+                    grid-template-columns: 1fr;
+                }
+                .pick-option {
+                    padding: 24px;
+                }
+                .pick-option + .pick-option {
+                    border-top: 1px solid var(--edge);
+                    border-left: 0;
+                }
+                .pick-footer {
+                    padding: 14px 24px;
+                }
+            }
+
+            footer {
+                display: flex;
+                justify-content: space-between;
+                gap: 16px;
+                padding: 24px 48px 28px;
+                font-size: 12px;
+                color: var(--dim);
+                flex-wrap: wrap;
+            }
+
+            /* sticky dock: an oversized ellipse whose top edge forms the arch */
+            .page {
+                padding-bottom: 150px;
+            }
+            .dock {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 20;
+                height: 150px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 12px;
+                padding-bottom: 22px;
+                pointer-events: none;
+                overflow: hidden;
+            }
+            .dock::before {
+                content: "";
+                position: absolute;
+                z-index: -1;
+                /* a floor on the width keeps the arch a gentle horizon on phones instead of a steep dome */
+                left: 50%;
+                width: max(150%, 1400px);
+                transform: translateX(-50%);
+                top: 0;
+                height: 600px;
+                border-radius: 50%;
+                background: var(--bg);
+                border-top: 1px solid var(--edge);
+                box-shadow: 0 -24px 48px rgba(11, 11, 10, 0.85);
+            }
+            .dock-cta {
+                pointer-events: auto;
+                width: min(560px, calc(100vw - 32px));
+                padding: 18px 28px;
+                background: var(--fg);
+                color: var(--bg);
+                font: inherit;
+                font-size: 17px;
+                font-weight: 600;
+                border: 0;
+                border-radius: 999px;
+                cursor: pointer;
+                transition: background 150ms;
+            }
+            .dock-cta:hover,
+            .dock-cta:focus-visible {
+                background: var(--lime);
+            }
+            .dock-cta:focus-visible {
+                outline: 2px solid var(--lime);
+                outline-offset: 4px;
+            }
+            .dock-note {
+                pointer-events: auto;
+                margin: 0;
+                font-size: 12px;
+                color: var(--dim);
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .dock-cta {
+                    transition: none;
+                }
+            }
+
+            .use-cases {
+                width: 100%;
+                max-width: 1296px;
+                padding: 160px 48px 120px;
+                margin: 0 auto;
+                text-align: left;
+            }
+            .use-cases-inner {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding-top: 32px;
+            }
+            .use-cases h2 {
+                font-size: 56px;
+                font-weight: 500;
+                letter-spacing: -0.04em;
+                line-height: 1.1;
+                margin: 16px 0 20px;
+            }
+            .use-cases h2 span {
+                color: var(--lime);
+            }
+            .use-cases .sub {
+                max-width: 700px;
+            }
+            .use-cases table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+                margin-top: 64px;
+                text-align: left;
+            }
+            .use-cases thead {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+                border: 0;
+            }
+            .use-cases tbody tr {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                column-gap: 32px;
+                align-items: start;
+                padding: 40px 0;
+                border-bottom: 1px solid var(--edge);
+            }
+            .use-cases tbody tr:first-child {
+                border-top: 1px solid var(--edge);
+            }
+            .use-cases td {
+                min-width: 0;
+                padding: 0;
+                vertical-align: top;
+                overflow-wrap: anywhere;
+            }
+            .use-cases td:nth-child(1) {
+                color: var(--muted);
+                font-size: 24px;
+                line-height: 34px;
+                font-weight: 400;
+                letter-spacing: -0.02em;
+            }
+            .use-cases td:nth-child(2) {
+                color: var(--fg);
+                font-size: 24px;
+                line-height: 34px;
+                font-weight: 500;
+                letter-spacing: -0.02em;
+            }
+            @media (max-width: 760px) {
+                .use-cases {
+                    padding: 120px 16px 80px;
+                }
+                .use-cases-inner {
+                    padding-top: 24px;
+                }
+                .use-cases h2 {
+                    font-size: 34px;
+                }
+                .use-cases tbody tr {
+                    grid-template-columns: 1fr;
+                    column-gap: 8px;
+                    row-gap: 8px;
+                    padding: 24px 0;
+                }
+                .use-cases td:nth-child(1) {
+                    grid-column: 1;
+                    grid-row: 1;
+                    font-size: 20px;
+                    line-height: 28px;
+                }
+                .use-cases td:nth-child(2) {
+                    grid-column: 1;
+                    grid-row: 2;
+                    font-size: 20px;
+                    line-height: 28px;
+                }
+            }
+
+            .paid {
+                width: 100%;
+                max-width: 1296px;
+                padding: 160px 48px 120px;
+                margin: 0 auto;
+                text-align: left;
+            }
+            .paid-inner {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding-top: 32px;
+            }
+            .paid h2 {
+                font-size: 56px;
+                font-weight: 500;
+                letter-spacing: -0.04em;
+                line-height: 1.1;
+                margin: 16px 0 20px;
+            }
+            .paid h2 .lime {
+                color: var(--lime);
+            }
+            .paid .sub {
+                max-width: 700px;
+            }
+            .paid table {
+                width: 100%;
+                border-collapse: collapse;
+                table-layout: fixed;
+                margin-top: 64px;
+                text-align: left;
+            }
+            .paid thead {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                margin: -1px;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+                border: 0;
+            }
+            .paid tbody tr {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+                column-gap: 32px;
+                align-items: start;
+                padding: 40px 0;
+                border-bottom: 1px solid var(--edge);
+            }
+            .paid tbody tr:first-child {
+                border-top: 1px solid var(--edge);
+            }
+            .paid td {
+                min-width: 0;
+                padding: 0;
+                vertical-align: top;
+                overflow-wrap: anywhere;
+            }
+            .paid td:nth-child(1) {
+                color: var(--muted);
+                font-size: 24px;
+                line-height: 34px;
+                font-weight: 400;
+                letter-spacing: -0.02em;
+            }
+            .paid td:nth-child(2) {
+                color: var(--fg);
+                font-size: 24px;
+                line-height: 34px;
+                font-weight: 500;
+                letter-spacing: -0.02em;
+            }
+            @media (max-width: 760px) {
+                .paid {
+                    padding: 120px 16px 80px;
+                }
+                .paid-inner {
+                    padding-top: 24px;
+                }
+                .paid h2 {
+                    font-size: 34px;
+                }
+                .paid tbody tr {
+                    grid-template-columns: 1fr;
+                    column-gap: 8px;
+                    row-gap: 8px;
+                    padding: 24px 0;
+                }
+                .paid td:nth-child(1) {
+                    grid-column: 1;
+                    grid-row: 1;
+                    font-size: 20px;
+                    line-height: 28px;
+                }
+                .paid td:nth-child(2) {
+                    grid-column: 1;
+                    grid-row: 2;
+                    font-size: 20px;
+                    line-height: 28px;
+                }
+            }
+
+            @media (max-width: 760px) {
+                nav,
+                footer {
+                    padding-left: 16px;
+                    padding-right: 16px;
+                }
+                nav ul {
+                    gap: 16px;
+                }
+                .wire {
+                    gap: 6px;
+                    font-size: 12px;
+                }
+                .line {
+                    width: 12px;
+                }
+                .pill {
+                    padding: 5px 10px;
+                }
+            }
+            /* the scatter needs the full desktop width; below that the windows would cover the copy */
+            @media (max-width: 1100px) {
+                .clip {
+                    display: none;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <video id="v" src="/video.mp4" muted playsinline preload="auto"></video>
+
+        <div class="page">
+            <nav aria-label="Main">
+                <a class="logo" href="/">🤝 panas<span>_</span></a>
+                <ul>
+                    <li><a href="#">docs</a></li>
+                    <li><a href="#">find a pana</a></li>
+                    <li><a href="#">github</a></li>
+                </ul>
+            </nav>
+
+            <main>
+                <div class="clip a" aria-hidden="true">
+                    <header>epichandshake.vid</header>
+                    <canvas></canvas>
+                </div>
+                <div class="clip b" aria-hidden="true">
+                    <header>epichandshake.vid</header>
+                    <canvas></canvas>
+                </div>
+                <div class="clip c" aria-hidden="true">
+                    <header>epichandshake.vid</header>
+                    <canvas></canvas>
+                </div>
+
+                <p class="kicker">
+                    panas (n.) — spanish for friends. also: this.
+                </p>
+                <h1>free compute,<br />between panas.</h1>
+
+                <div class="handshake">
+                    <div
+                        class="wire"
+                        aria-label="your agent, handshake, a pana's mac"
+                    >
+                        <span>your agent</span><i class="node"></i
+                        ><i class="line"></i>
+                        <span class="pill">panas_ai</span>
+                        <i class="line"></i><i class="node on"></i
+                        ><span>a pana's mac</span>
+                    </div>
+                </div>
+            </main>
+
+            <dialog id="pick" aria-labelledby="pick-title">
+                <div class="pick-header">
+                    <span class="pick-label">pick a side</span>
+                    <button type="button" class="pick-close" aria-label="close">
+                        esc ✕
+                    </button>
+                </div>
+                <h2 id="pick-title">what kind of pana are you?</h2>
+                <div class="pick-options">
+                    <a class="pick-option" href="#seek">
+                        <span class="pick-verb">seek</span>
+                        <span class="pick-line">my agent needs compute.</span>
+                        <span class="pick-detail"
+                            >one local mcp server · free by default · caps you
+                            set</span
+                        >
+                        <span class="pick-link">connect your agent →</span>
+                    </a>
+                    <a class="pick-option" href="#expose">
+                        <span class="pick-verb">expose</span>
+                        <span class="pick-line">my mac is bored.</span>
+                        <span class="pick-detail"
+                            >apple silicon · native ollama · tests itself every
+                            launch</span
+                        >
+                        <span class="pick-link">share your mac →</span>
+                    </a>
+                </div>
+                <div class="pick-footer">you can be both. most panas are.</div>
+            </dialog>
+
+            <section class="use-cases" aria-labelledby="use-cases-title">
+                <div class="use-cases-inner">
+                    <h2 id="use-cases-title">
+                        a friend in need<br />is a friend in <span>deed.</span>
+                    </h2>
+                    <p class="sub">
+                        one small model is a toy. a network of free friends is a
+                        tool.
+                    </p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">the need</th>
+                                <th scope="col">the deed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>your agent hit its rate limit at 3am.</td>
+                                <td>
+                                    a pana is awake. one bounded request, free.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>500 tiny jobs. zero budget.</td>
+                                <td>
+                                    split them across every pana online.
+                                    map-reduce among friends.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>"is this pana lying to me?"</td>
+                                <td>
+                                    ask a second pana. same pinned model,
+                                    temperature 0, compare answers.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="paid" aria-labelledby="paid-title">
+                <div class="paid-inner">
+                    <h2 id="paid-title">
+                        panas don't let panas<br />spend gpu without
+                        <span class="lime">pay.</span>
+                    </h2>
+                    <p class="sub">
+                        free is for friends. paid is for friends with an m4 max.
+                    </p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th scope="col">the situation</th>
+                                <th scope="col">the move</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    bought a mac mini to run open claw for one
+                                    week. it's been a paperweight since.
+                                </td>
+                                <td>
+                                    list it. set a price. it pays itself off one
+                                    request at a time.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    your 128gb m4 max spends the night rendering
+                                    a screensaver.
+                                </td>
+                                <td>
+                                    paid panas run bigger models. your ram
+                                    finally has a job.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    your agent needs 10,000 jobs done by
+                                    morning.
+                                </td>
+                                <td>
+                                    fan out to every paid pana. pay per request,
+                                    not per hour.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>"what if the pana flakes halfway?"</td>
+                                <td>
+                                    reserved up front. charged once, only on
+                                    success. refunded otherwise.
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>"my agent will spend my rent."</td>
+                                <td>
+                                    owner-set caps per request, session and day.
+                                    the agent can't raise them.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- sticky call to action: a dark arch that rises over the page -->
+            <div class="dock">
+                <button
+                    type="button"
+                    id="cta"
+                    class="dock-cta"
+                    aria-haspopup="dialog"
+                    aria-controls="pick"
+                >
+                    🤝 become a pana
+                </button>
+                <p class="dock-note">free by default · apple silicon macs</p>
+            </div>
+
+            <footer>
+                <span
+                    >hackathon build. may contain bugs. will contain
+                    vibes.</span
+                >
+                <span
+                    >no gpus were rented by the hour in the making of
+                    this.</span
+                >
+            </footer>
+        </div>
+
+        <script>
+            const RAMP =
+                " .'`^\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
+            const CELL = 5; // css px per glyph column inside the window
+            const CONTRAST = 1.35;
+            const INK = [0.42, 0.42, 0.4]; // muted grey glyphs
+            const FPS = 30;
+            const FRAME_W = 320; // captured luma resolution (height follows aspect)
+
+            // one offscreen GL canvas renders each frame; it is then copied into every window
+            const canvas = document.createElement("canvas");
+            const outputs = [...document.querySelectorAll(".clip canvas")].map(
+                (c) => c.getContext("2d"),
+            );
+            const video = document.getElementById("v");
+            const cta = document.getElementById("cta");
+            const pick = document.getElementById("pick");
+            const gl = canvas.getContext("webgl2", {
+                antialias: false,
+                preserveDrawingBuffer: true,
+            });
+            const reduced = matchMedia(
+                "(prefers-reduced-motion: reduce)",
+            ).matches;
+
+            cta.addEventListener("click", () => {
+                pick.showModal();
+                pick.querySelector(".pick-option").focus();
+            });
+            pick.querySelector(".pick-close").addEventListener("click", () =>
+                pick.close(),
+            );
+            pick.addEventListener("click", (event) => {
+                if (event.target === pick) pick.close();
+            });
+            pick.addEventListener("close", () => cta.focus());
+
+            if (gl) start();
+
+            function start() {
+                const vert = `#version 300 es
+    in vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }`;
+
+                const frag = `#version 300 es
+    precision highp float;
+    uniform sampler2D uFrame;   // single-channel luma
+    uniform sampler2D uAtlas;
+    uniform vec2 uRes;
+    uniform vec2 uFrameSize;
+    uniform float uCell;
+    uniform float uGlyphs;
+    uniform float uContrast;
+    uniform vec3 uInk;
+    out vec4 outColor;
+
+    vec2 coverUV(vec2 uv) {
+        float sr = uRes.x / uRes.y, vr = uFrameSize.x / uFrameSize.y;
+        vec2 s = sr > vr ? vec2(1.0, vr / sr) : vec2(sr / vr, 1.0);
+        return (uv - 0.5) * s + 0.5;
+    }
+
+    void main() {
+        vec2 px = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
+        vec2 cellSize = vec2(uCell, uCell * 1.8);
+        vec2 cell = floor(px / cellSize);
+        float lum = texture(uFrame, coverUV((cell + 0.5) * cellSize / uRes)).r;
+        lum = clamp((lum - 0.5) * uContrast + 0.5, 0.0, 1.0);
+
+        float idx = floor(lum * (uGlyphs - 1.0) + 0.5);
+        vec2 local = fract(px / cellSize);
+        float mask = texture(uAtlas, vec2((idx + local.x) / uGlyphs, local.y)).r;
+
+        vec3 bg = vec3(0.043, 0.043, 0.039);
+        outColor = vec4(mix(bg, uInk, mask), 1.0);
+    }`;
+
+                const compile = (type, src) => {
+                    const s = gl.createShader(type);
+                    gl.shaderSource(s, src);
+                    gl.compileShader(s);
+                    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+                        throw new Error(gl.getShaderInfoLog(s));
+                    return s;
+                };
+                const prog = gl.createProgram();
+                gl.attachShader(prog, compile(gl.VERTEX_SHADER, vert));
+                gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, frag));
+                gl.linkProgram(prog);
+                gl.useProgram(prog);
+
+                gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+                gl.bufferData(
+                    gl.ARRAY_BUFFER,
+                    new Float32Array([-1, -1, 3, -1, -1, 3]),
+                    gl.STATIC_DRAW,
+                );
+                const loc = gl.getAttribLocation(prog, "p");
+                gl.enableVertexAttribArray(loc);
+                gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+                const u = (n) => gl.getUniformLocation(prog, n);
+                const texture = (unit) => {
+                    const t = gl.createTexture();
+                    gl.activeTexture(gl.TEXTURE0 + unit);
+                    gl.bindTexture(gl.TEXTURE_2D, t);
+                    gl.texParameteri(
+                        gl.TEXTURE_2D,
+                        gl.TEXTURE_MIN_FILTER,
+                        gl.LINEAR,
+                    );
+                    gl.texParameteri(
+                        gl.TEXTURE_2D,
+                        gl.TEXTURE_MAG_FILTER,
+                        gl.LINEAR,
+                    );
+                    gl.texParameteri(
+                        gl.TEXTURE_2D,
+                        gl.TEXTURE_WRAP_S,
+                        gl.CLAMP_TO_EDGE,
+                    );
+                    gl.texParameteri(
+                        gl.TEXTURE_2D,
+                        gl.TEXTURE_WRAP_T,
+                        gl.CLAMP_TO_EDGE,
+                    );
+                    return t;
+                };
+                const frameTex = texture(0);
+                const atlasTex = texture(1);
+                gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+
+                let frames = [];
+                let frameW = FRAME_W,
+                    frameH = 180;
+                let shown = -1;
+                const dpr = Math.min(devicePixelRatio || 1, 3);
+                canvas.width = 320 * dpr;
+                canvas.height = 180 * dpr;
+                for (const o of outputs) {
+                    o.canvas.width = canvas.width;
+                    o.canvas.height = canvas.height;
+                }
+                gl.viewport(0, 0, canvas.width, canvas.height);
+
+                const buildAtlas = async () => {
+                    await document.fonts
+                        .load('64px "Paper Mono"')
+                        .catch(() => {});
+                    const gw = 48,
+                        gh = 86;
+                    const c = document.createElement("canvas");
+                    c.width = gw * RAMP.length;
+                    c.height = gh;
+                    const x = c.getContext("2d");
+                    x.fillStyle = "#000";
+                    x.fillRect(0, 0, c.width, c.height);
+                    x.fillStyle = "#fff";
+                    x.textAlign = "center";
+                    x.textBaseline = "middle";
+                    x.font =
+                        '500 64px "Paper Mono", ui-monospace, Menlo, monospace';
+                    [...RAMP].forEach((ch, i) =>
+                        x.fillText(ch, i * gw + gw / 2, gh / 2 + 2),
+                    );
+                    gl.activeTexture(gl.TEXTURE1);
+                    gl.bindTexture(gl.TEXTURE_2D, atlasTex);
+                    gl.texImage2D(
+                        gl.TEXTURE_2D,
+                        0,
+                        gl.RGBA,
+                        gl.RGBA,
+                        gl.UNSIGNED_BYTE,
+                        c,
+                    );
+                };
+
+                // Decode the clip once by seeking so hover playback never waits on the decoder.
+                const captureFrames = async () => {
+                    if (video.readyState < 1)
+                        await new Promise((r) =>
+                            video.addEventListener("loadedmetadata", r, {
+                                once: true,
+                            }),
+                        );
+                    frameH = Math.round(
+                        (FRAME_W * video.videoHeight) / video.videoWidth,
+                    );
+                    const c = document.createElement("canvas");
+                    c.width = frameW;
+                    c.height = frameH;
+                    const x = c.getContext("2d", { willReadFrequently: true });
+                    const count = Math.max(1, Math.floor(video.duration * FPS));
+                    const out = [];
+                    for (let i = 0; i < count; i++) {
+                        video.currentTime = Math.min(
+                            i / FPS,
+                            video.duration - 0.001,
+                        );
+                        await new Promise((r) =>
+                            video.addEventListener("seeked", r, { once: true }),
+                        );
+                        x.drawImage(video, 0, 0, frameW, frameH);
+                        const rgba = x.getImageData(0, 0, frameW, frameH).data;
+                        const luma = new Uint8Array(frameW * frameH);
+                        for (let p = 0, q = 0; p < luma.length; p++, q += 4) {
+                            luma[p] =
+                                (rgba[q] * 54 +
+                                    rgba[q + 1] * 183 +
+                                    rgba[q + 2] * 19) >>
+                                8;
+                        }
+                        out.push(luma);
+                    }
+                    return out;
+                };
+
+                function render() {
+                    if (!frames.length) return;
+                    const idx = Math.round(head);
+                    if (idx !== shown) {
+                        gl.activeTexture(gl.TEXTURE0);
+                        gl.bindTexture(gl.TEXTURE_2D, frameTex);
+                        gl.texImage2D(
+                            gl.TEXTURE_2D,
+                            0,
+                            gl.R8,
+                            frameW,
+                            frameH,
+                            0,
+                            gl.RED,
+                            gl.UNSIGNED_BYTE,
+                            frames[idx],
+                        );
+                        shown = idx;
+                    }
+                    gl.uniform1i(u("uFrame"), 0);
+                    gl.uniform1i(u("uAtlas"), 1);
+                    gl.uniform2f(u("uRes"), canvas.width, canvas.height);
+                    gl.uniform2f(u("uFrameSize"), frameW, frameH);
+                    gl.uniform1f(u("uCell"), CELL * dpr);
+                    gl.uniform1f(u("uGlyphs"), RAMP.length);
+                    gl.uniform1f(u("uContrast"), CONTRAST);
+                    gl.uniform3fv(u("uInk"), INK);
+                    gl.drawArrays(gl.TRIANGLES, 0, 3);
+                    for (const o of outputs) o.drawImage(canvas, 0, 0);
+                }
+
+                // Windows always show a frame. Hover plays once and holds the last frame; leaving resets to the first.
+                let head = 0,
+                    hovering = false,
+                    last = 0,
+                    running = false;
+                const tick = (now) => {
+                    if (!hovering) {
+                        running = false;
+                        last = 0;
+                        return;
+                    }
+                    const dt = last ? (now - last) / 1000 : 0;
+                    last = now;
+                    const end = frames.length - 1;
+                    head = Math.min(end, head + dt * FPS);
+                    render();
+                    if (head < end) requestAnimationFrame(tick);
+                    else {
+                        running = false;
+                        last = 0;
+                    }
+                };
+                const enter = () => {
+                    hovering = true;
+                    if (!frames.length) return;
+                    if (reduced) {
+                        head = frames.length - 1;
+                        render();
+                        return;
+                    }
+                    render();
+                    if (!running) {
+                        running = true;
+                        requestAnimationFrame(tick);
+                    }
+                };
+                const leave = () => {
+                    hovering = false;
+                    head = 0;
+                    render();
+                };
+                cta.addEventListener("pointerenter", enter);
+                cta.addEventListener("pointerleave", leave);
+                cta.addEventListener("focus", enter);
+                cta.addEventListener("blur", leave);
+
+                Promise.all([buildAtlas(), captureFrames()]).then(([, f]) => {
+                    frames = f;
+                    shown = -1;
+                    if (hovering) enter();
+                    else render();
+                });
+            }
+        </script>
+    </body>
+</html>
