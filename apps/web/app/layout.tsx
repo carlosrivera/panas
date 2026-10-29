@@ -1,17 +1,26 @@
 import "@panas/ui/globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-
+import { SiteHeader, SiteFooter } from "../components/site-shell";
 export const metadata: Metadata = {
-    title: "Panas — Spare compute, shared with your agent",
+    title: {
+        default: "Panas — Spare compute, useful connections",
+        template: "%s · Panas",
+    },
     description:
-        "Discover peers, agree on a fixed price, and run bounded inference on a provider’s Mac through MCPWire. Panas is in development.",
+        "Discover Mac inference providers, agree on a fixed quote, and connect through MCPWire. An agent-led, test-credit prototype.",
 };
-
 export default function RootLayout({ children }: { children: ReactNode }) {
     return (
         <html lang="en">
-            <body>{children}</body>
+            <body>
+                <a href="#main" className="skip-link">
+                    Skip to content
+                </a>
+                <SiteHeader />
+                {children}
+                <SiteFooter />
+            </body>
         </html>
     );
 }
