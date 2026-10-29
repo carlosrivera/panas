@@ -4,6 +4,14 @@ functions:
       visibility: private
       variable_scope: scoped
       variables: []
+    - name: registry
+      visibility: public
+      invocation_mode: http
+      http_auth_mode: none
+      variable_scope: scoped
+      variables:
+          - PANAS_REGISTRY_DATABASE_URL
+          - PANAS_DISCOVERY_TOKEN_SHA256
 frontends:
     - name: panas
       variable_scope: scoped

@@ -4,7 +4,9 @@
     "private": true,
     "type": "module",
     "exports": {
-        ".": "./src/index.ts"
+        ".": "./src/index.ts",
+        "./provider": "./src/provider.ts",
+        "./registry": "./src/registry.ts"
     },
     "scripts": {
         "typecheck": "tsc --noEmit"

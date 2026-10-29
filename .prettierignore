@@ -3,3 +3,6 @@ pnpm-lock.yaml
 node_modules
 dist
 .turbo
+volcano/functions/registry/index.js
+volcano/functions/registry/package.json
+volcano/functions/registry/pnpm-lock.yaml

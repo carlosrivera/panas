@@ -1,0 +1,1 @@
+ALTER TABLE panas_provider_keys ENABLE ROW LEVEL SECURITY;

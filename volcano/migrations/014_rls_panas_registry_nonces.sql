@@ -1,0 +1,1 @@
+ALTER TABLE panas_registry_nonces ENABLE ROW LEVEL SECURITY;

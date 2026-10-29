@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS panas_registry_reports (provider_id uuid NOT NULL REFERENCES panas_provider_keys(provider_id), startup_id uuid NOT NULL, sequence bigint NOT NULL CHECK(sequence>=0), report_digest text NOT NULL, report jsonb NOT NULL, price jsonb NOT NULL, received_at timestamptz NOT NULL, PRIMARY KEY(provider_id,startup_id,sequence));

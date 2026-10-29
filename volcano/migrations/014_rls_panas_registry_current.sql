@@ -1,0 +1,1 @@
+ALTER TABLE panas_registry_current ENABLE ROW LEVEL SECURITY;

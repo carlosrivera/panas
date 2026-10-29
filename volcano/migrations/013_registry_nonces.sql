@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS panas_registry_nonces (provider_id uuid NOT NULL REFERENCES panas_provider_keys(provider_id), nonce uuid NOT NULL, expires_at timestamptz NOT NULL, PRIMARY KEY(provider_id,nonce));
