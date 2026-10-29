@@ -16,7 +16,7 @@ Dev/start default to3333. Use a separate checkout when serving production and re
 
 Set only nonsecret server-side `PUBLIC_REGISTRY_URL` to the public registry base URL. The same-origin API appends `/public/providers`; no discovery/operator/database/buyer credentials belong in this app or browser. Missing config fails safely to unavailable. Public reads are no-store, with8s upstream/10s browser timeouts,15s refresh and conservative heartbeat/report expiry. `/api/health` reports the web process only.
 
-Shared styles/primitives live in `@panas/ui`. The original landing CSS is scoped in app/pr27.css. The user deferred the missing clip: data-src retains `/video.mp4` without requesting it; supply the actual public asset and restore src when resuming that work. Original shader/hover/focus/reduced-motion code remains; no substitute artwork or external font service is used.
+Shared styles/primitives live in `@panas/ui`. The original landing CSS is scoped in app/pr27.css. The user deferred the clip: data-src retains `/video.mp4` without requesting it; supply the actual public asset and restore src when resuming that work. Original shader/hover/focus/reduced-motion code remains; no substitute artwork or external font service is used.
 
 Evidence and handoff:
 
