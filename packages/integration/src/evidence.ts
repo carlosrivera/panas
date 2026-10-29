@@ -37,6 +37,7 @@ export const evidenceSchema = z
             "release-smoke",
             "manual-two-machine",
             "failure-fixtures",
+            "fault-seams",
         ]),
         startedAt: z.iso.datetime(),
         finishedAt: z.iso.datetime(),
@@ -77,7 +78,9 @@ export const evidenceSchema = z
     .strict()
     .superRefine((report, ctx) => {
         if (
-            ["local-simulation", "release-smoke"].includes(report.mode) &&
+            ["local-simulation", "release-smoke", "fault-seams"].includes(
+                report.mode,
+            ) &&
             (report.physicalMachineCount !== 1 ||
                 report.gates.twoPhysicalMacs !== "pending")
         )
