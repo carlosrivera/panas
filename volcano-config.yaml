@@ -21,7 +21,13 @@ functions:
           - PANAS_REGISTRY_DATABASE_URL
           - PANAS_PLATFORM_PRIVATE_KEY_BASE64
           - PANAS_DESCRIPTOR_KEY_BASE64
+    - name: operations
+      visibility: private
+      variable_scope: scoped
+      variables:
+          - PANAS_REGISTRY_DATABASE_URL
 frontends:
     - name: panas
       variable_scope: scoped
-      variables: []
+      variables:
+          - PUBLIC_REGISTRY_URL

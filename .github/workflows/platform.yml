@@ -1,0 +1,34 @@
+name: Deploy Panas test
+on:
+    push:
+        branches: [main, codex/issue-9-platform]
+    workflow_dispatch:
+permissions:
+    contents: read
+concurrency:
+    group: panas-test-deployment
+    cancel-in-progress: false
+jobs:
+    deploy:
+        if: github.repository == 'carlosrivera/panas'
+        environment: panas-test
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        env:
+            VOLCANO_TOKEN: ${{ secrets.VOLCANO_TOKEN }}
+            PANAS_DISCOVERY_TOKEN: ${{ secrets.PANAS_DISCOVERY_TOKEN }}
+        steps:
+            - uses: actions/checkout@v7.0.1
+            - uses: pnpm/action-setup@v6.1.0
+            - uses: actions/setup-node@v7.1.0
+              with:
+                  node-version: 24
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm platform:deploy ${{ github.ref != 'refs/heads/main' && '--functions-only' || '' }}
+            - run: node scripts/platform/maintain.mjs
+            - uses: actions/upload-artifact@v7.0.0
+              with:
+                  name: panas-test-release-${{ github.sha }}
+                  path: artifacts/*.json
+                  if-no-files-found: error

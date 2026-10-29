@@ -45,3 +45,7 @@ volcano/*.env
 !.volcano/source-layout.json
 .env.*
 !.env.example
+
+# Committed test-project binding; generated release evidence is not source.
+!.volcano/project.json
+artifacts/
