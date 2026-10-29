@@ -1,6 +1,8 @@
 # Remaining authorization boundaries (#10)
 
-Implementation and component evidence only. Full CI, deployment, Postgres transactions, live paid/native-model observations, the natural 24-hour wait and two-physical-Mac validation remain deferred for batch finalization. These changes do not close #10.
+The implementation has passed full merged validation and one-Mac live startup/rate observations. The natural24-hour wait and two-physical-Mac validation remain pending. Historical component checks below remain separate from the live follow-up; these changes do not close #10.
+
+**October29 follow-up:** full merged validation is recorded in #10. [Actual one-Mac observations](evidence/crash-and-boundaries-2026-10-29.json) now cover old-startup rejection before nonce consumption, original-startup unknown retrieval, six accepted real requests across two persistent peers, seventh-request zero-charge refusal, continued capping after restart at43.8 seconds, and acceptance after81.5 real elapsed seconds. The rate fixture has seven completed receipts, two failed zero-debit receipts and no holds. Natural24-hour expiry and two-physical-Mac observations remain pending; the initial deferred/component descriptions below are historical implementation-batch scope.
 
 ## Startup binding
 

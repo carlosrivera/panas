@@ -1,6 +1,23 @@
 # Provider crash recovery
 
-The recovery implementation is ready for focused review. Full paid/native-model crash validation is deliberately deferred until the remaining #10 work and merges are finished. A subprocess fixture is not proof of a crash during accepted real inference or on two physical Macs.
+The implementation and one-physical-Mac live drill have passed; two-physical-Mac observation remains pending. [October29 evidence](evidence/crash-and-boundaries-2026-10-29.json) records actual cloud authorization, pinned native inference, owner SIGKILL, preserved state and recovery. Component fixtures remain separate from this live evidence.
+
+## Observed live run
+
+The local observer changed only Ollama response framing to its supported [streaming API](https://docs.ollama.com/api/generate) for one armed request. The prompt/profile/output bound remained unchanged. A non-final native chunk at23:19:00.451Z triggered SIGKILL of the verified owned host at23:19:00.482Z. No completed response was held. All six captured descendants stopped and both owned runtime ports closed.
+
+Restart with the original key/data passed fresh capability/peer checks and produced a new startup. Request/nonce encryption keys and the completed control record's encrypted bytes were preserved. The interrupted authorized request recovered as unknown/pending with no receipt or settlement; buyer replay was rejected. Original completed work remained retrievable with its same receipt and a fresh paid bounded request completed. A subsequent real startup-binding check rejected the old grant before nonce consumption, while refreshed original-request action authority retrieved unknown state.
+
+The interrupted request initially held2 TEST_CREDIT pending separate operator review. After the real deadline and explicit human approval, the existing audited operator transaction released that reservation with a zero-debit failed receipt. Balance stayed994, held credits fell2→0 and settlement count stayed0. Audit `95b45418-eab5-42d2-982f-68875752e107` identifies that separate decision; it did not pretend the provider knew the interrupted outcome. Both fixtures now have zero holds, no overdue pending requests or financial invariant failures. The evidence records the earlier preflight ownership refusal and source/instrumentation attribution; this is not a claim of hardware attestation or two hosts.
+
+Reproduce with a fresh private setup and verified release reference:
+
+```sh
+pnpm --filter @panas/integration run crash-seam --config /private/path/run.json
+pnpm --filter @panas/integration run local-boundaries-seam --config /private/path/run.json
+```
+
+The commands use actual TEST_CREDIT purchases. Preserve private artifacts and review unknown reservations under the existing audited operator policy. They do not stop shared Volcano services or sleep the Mac.
 
 ## Implemented behavior
 
@@ -24,7 +41,7 @@ Recovery uses the original provider key, request encryption key, nonce key and d
 
 Existing runtime, host shutdown, signed-host service and MCPWire lifecycle fixtures cover the adjoining boundaries. These are component fixtures, not live cloud, real-model, or physical-host evidence. No new `provider-crash-e2e` passing artifact is asserted here.
 
-## Deferred live drill
+## Repeat on the second physical Mac
 
 1. Use fresh isolated TEST_CREDIT fixtures and record the reviewed source and deployed release. Launch the real pinned model and external MCPWire provider; observe passing launch tests and buyer discovery.
 2. Purchase once through the buyer facade. Establish that native generation is actually active before the crash. A stored `running` flag or a held **completed** HTTP response does not establish mid-generation activity; report the observation accurately if the small model finishes too quickly.
