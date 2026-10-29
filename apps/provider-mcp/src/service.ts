@@ -173,10 +173,23 @@ export class ProviderHostService {
         )
             throw new ProviderError("OPERATION_BINDING_MISMATCH");
         const operation = tool as HostOperation;
+        const assertAuthorized = () => {
+            assertFresh(grant, this.now(), 86400000);
+            assertFresh(proof, this.now());
+            if (
+                operation === "run_inference" &&
+                (grant.startupId !== this.worker.report?.startupId ||
+                    grant.modelDigest !== this.worker.report?.model.digest ||
+                    Date.parse(grant.executeBefore) <= this.now())
+            )
+                throw new ProviderError("EXECUTION_BINDING_MISMATCH");
+        };
         const existing = await this.worker.get(
             grant.requestId,
             grant.buyerKeyId,
         );
+        // Storage can await past either signed window. Recheck before consuming authority.
+        assertAuthorized();
         if (operation !== "run_inference") {
             emptyPayloadSchema.parse(wire.payload);
             if (!existing?.authorization)
@@ -206,6 +219,7 @@ export class ProviderHostService {
                 grant.buyerKeyId,
                 digest(wire),
             );
+            assertAuthorized();
             const request = {
                 requestId: grant.requestId,
                 quoteId: grant.quoteId,
@@ -224,6 +238,7 @@ export class ProviderHostService {
                     request,
                     grant.buyerKeyId,
                     wire.grant,
+                    assertAuthorized,
                 );
             } catch (error) {
                 if (
@@ -251,11 +266,13 @@ export class ProviderHostService {
                 grant.buyerKeyId,
                 digest(wire),
             );
+            assertAuthorized();
             record =
                 operation === "cancel_request"
                     ? await this.worker.cancel(
                           grant.requestId,
                           grant.buyerKeyId,
+                          assertAuthorized,
                       )
                     : existing;
         }

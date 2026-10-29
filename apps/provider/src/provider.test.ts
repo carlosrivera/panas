@@ -430,6 +430,44 @@ describe("deadlines and rate authority", () => {
             }
         },
     );
+    it("restores legacy buyer windows conservatively and excludes explicitly declined records", async () => {
+        const f = await fixture();
+        for (let i = 0; i < 6; i++) {
+            const base = {
+                requestId: randomUUID(),
+                buyerKeyId: "legacy",
+                fingerprint: "component-fixture",
+                status: "failed" as const,
+                updatedAt: Date.now(),
+            };
+            await f.store.save(base);
+            await f.store.save({
+                ...base,
+                requestId: randomUUID(),
+                buyerKeyId: "declined",
+                admittedAt: null,
+            });
+        }
+        const restarted = new ProviderDaemon(
+            f.daemon.config,
+            f.runtime,
+            f.store,
+            f.daemon.host,
+        );
+        await restarted.launch();
+        ready(restarted);
+        await expect(restarted.submit(request(), "legacy")).rejects.toThrow(
+            "RATE_LIMITED",
+        );
+        const accepted = request();
+        await restarted.submit(accepted, "declined");
+        await waitUntil(
+            async () =>
+                (await restarted.get(accepted.requestId, "declined"))
+                    ?.status === "completed",
+        );
+        await restarted.cancel(accepted.requestId, "declined");
+    });
     it("limits accepted buyer requests and retests after a wake gap", async () => {
         const { daemon } = await fixture();
         ready(daemon);
