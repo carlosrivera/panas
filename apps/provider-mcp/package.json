@@ -1,0 +1,26 @@
+{
+    "name": "@panas/provider-mcp",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "typecheck": "tsc --noEmit",
+        "start": "tsx src/main.ts",
+        "host": "tsx src/host.ts"
+    },
+    "dependencies": {
+        "@panas/provider": "workspace:*",
+        "@panas/protocol": "workspace:*",
+        "@panas/contracts": "workspace:*",
+        "@panas/mcpwire": "workspace:*",
+        "@panas/registry": "workspace:*",
+        "@modelcontextprotocol/sdk": "1.32.2",
+        "zod": "4.6.7"
+    },
+    "devDependencies": {
+        "@panas/typescript-config": "workspace:*",
+        "@types/node": "24.19.2",
+        "typescript": "6.0.3",
+        "tsx": "4.23.15"
+    }
+}

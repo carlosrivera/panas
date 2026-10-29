@@ -11,6 +11,7 @@ export interface Generation {
     inputTokens: number;
     outputTokens: number;
     durationMs: number;
+    finishReason?: "stop" | "length" | "unknown";
 }
 export interface InferenceRuntime {
     start(): Promise<void>;
@@ -216,6 +217,10 @@ export class OllamaRuntime implements InferenceRuntime {
             inputTokens: Number(body.prompt_eval_count),
             outputTokens: Number(body.eval_count),
             durationMs: performance.now() - start,
+            finishReason:
+                body.done_reason === "stop" || body.done_reason === "length"
+                    ? body.done_reason
+                    : "unknown",
         };
     }
     async cancellationCheck(): Promise<boolean> {

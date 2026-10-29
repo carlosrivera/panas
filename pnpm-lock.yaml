@@ -213,6 +213,43 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
+  apps/provider-mcp:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: 1.32.2
+        version: 1.32.2(zod@4.6.7)
+      '@panas/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@panas/mcpwire':
+        specifier: workspace:*
+        version: link:../../packages/mcpwire
+      '@panas/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
+      '@panas/provider':
+        specifier: workspace:*
+        version: link:../provider
+      '@panas/registry':
+        specifier: workspace:*
+        version: link:../../packages/registry
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@panas/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/typescript-config
+      '@types/node':
+        specifier: 24.19.2
+        version: 24.19.2
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
   apps/web:
     dependencies:
       '@panas/ui':

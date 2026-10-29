@@ -16,5 +16,8 @@
         "@types/node": "24.19.2",
         "typescript": "6.0.3",
         "tsx": "4.23.15"
+    },
+    "exports": {
+        ".": "./src/index.ts"
     }
 }

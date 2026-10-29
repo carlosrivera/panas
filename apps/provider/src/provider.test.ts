@@ -306,7 +306,7 @@ describe("storage failure isolation", () => {
         runtime.complete.shift()?.();
         await waitUntil(() => runtime.stopped > 0);
         expect(daemon.heartbeat()).toBeNull();
-        expect((await daemon.get(r.requestId, "a"))?.status).toBe("running");
+        expect((await daemon.get(r.requestId, "a"))?.status).toBe("unknown");
     });
     it("rejects malformed probe timestamps even when startup identity matches", async () => {
         const { daemon } = await fixture();
@@ -391,6 +391,45 @@ describe("deadlines and rate authority", () => {
             globalThis.fetch = original;
         }
     });
+    it.each([
+        ["stop", "stop"],
+        ["length", "length"],
+        ["unsupported", "unknown"],
+        [undefined, "unknown"],
+    ])(
+        "preserves actual generation finish reason %s as %s",
+        async (reason, expected) => {
+            const original = globalThis.fetch;
+            globalThis.fetch = async () =>
+                new Response(
+                    JSON.stringify({
+                        done: true,
+                        response: "text",
+                        prompt_eval_count: 1,
+                        eval_count: 1,
+                        done_reason: reason,
+                    }),
+                );
+            try {
+                const runtime = new OllamaRuntime({
+                    binary: "/tmp/unused",
+                    modelsPath: "/tmp/models",
+                    endpoint: "http://127.0.0.1:11536",
+                });
+                expect(
+                    (
+                        await runtime.generate(
+                            "hello",
+                            8,
+                            new AbortController().signal,
+                        )
+                    ).finishReason,
+                ).toBe(expected);
+            } finally {
+                globalThis.fetch = original;
+            }
+        },
+    );
     it("limits accepted buyer requests and retests after a wake gap", async () => {
         const { daemon } = await fixture();
         ready(daemon);
