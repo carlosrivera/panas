@@ -116,6 +116,10 @@ export default function Home() {
                     className="use-cases"
                     aria-labelledby="use-cases-title"
                 >
+                    <p className="prototype-annotation">
+                        concept / planned use cases · current prototype: one
+                        bounded model request with fixed test credits
+                    </p>
                     <div className="use-cases-inner">
                         <h2 id="use-cases-title">
                             a friend in need
@@ -123,8 +127,8 @@ export default function Home() {
                             is a friend in <span>deed.</span>
                         </h2>
                         <p className="sub">
-                            Concept / planned: one small model is a toy. a
-                            network of free friends is a tool.
+                            one small model is a toy. a network of free friends
+                            is a tool.
                         </p>
                         <table>
                             <thead>
@@ -163,18 +167,20 @@ export default function Home() {
                 </section>
 
                 <section className="paid" aria-labelledby="paid-title">
+                    <p className="prototype-annotation">
+                        concept / planned · prototype: qwen2.5:0.5b only; no
+                        real-money payments, bigger models, or multi-provider
+                        fan-out
+                    </p>
                     <div className="paid-inner">
                         <h2 id="paid-title">
                             panas don't let panas
                             <br />
-                            spend gpu without
-                            <span className="lime">pay.</span>
+                            spend gpu without <span className="lime">pay.</span>
                         </h2>
                         <p className="sub">
-                            Concept / planned: free is for friends. paid is for
-                            friends with an m4 max. The current prototype serves
-                            qwen2.5:0.5b with fixed test credits; real-money
-                            payments and bigger models are not available.
+                            free is for friends. paid is for friends with an m4
+                            max.
                         </p>
                         <table>
                             <thead>
@@ -218,10 +224,7 @@ export default function Home() {
                                     <td>"what if the pana flakes halfway?"</td>
                                     <td>
                                         reserved up front. charged once, only on
-                                        success. refunded otherwise. In the
-                                        current prototype, uncertain work stays
-                                        held for reconciliation; definitive
-                                        failed work settles zero.
+                                        success. refunded otherwise.
                                     </td>
                                 </tr>
                                 <tr>
@@ -234,6 +237,10 @@ export default function Home() {
                             </tbody>
                         </table>
                     </div>
+                    <p className="prototype-annotation prototype-policy">
+                        prototype settlement: uncertain work stays held for
+                        reconciliation; definitive failed work settles zero.
+                    </p>
                 </section>
 
                 {/*  sticky call to action: a dark arch that rises over the page  */}

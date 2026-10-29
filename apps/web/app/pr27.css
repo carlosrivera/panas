@@ -697,3 +697,32 @@
 body:has(.pr27-page) {
     padding-bottom: 0;
 }
+/* Prototype availability annotations occupy original section whitespace. */
+.pr27-page .use-cases,
+.pr27-page .paid {
+    position: relative;
+}
+.pr27-page .prototype-annotation {
+    position: absolute;
+    top: 96px;
+    left: 48px;
+    right: 48px;
+    font-size: 11px;
+    line-height: 18px;
+    color: var(--muted);
+}
+.pr27-page .prototype-policy {
+    top: auto;
+    bottom: 32px;
+}
+@media (max-width: 760px) {
+    .pr27-page .prototype-annotation {
+        top: 56px;
+        left: 16px;
+        right: 16px;
+    }
+    .pr27-page .prototype-policy {
+        top: auto;
+        bottom: 16px;
+    }
+}
