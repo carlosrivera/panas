@@ -332,8 +332,23 @@ describe.skipIf(!databaseUrl)(
             const bought = await purchase(await quote());
             await authorize(bought.signedGrant.payload);
             const signed = event(bought.signedGrant.payload, "completed");
+            await pool.query(
+                "UPDATE panas_accounting_buyers SET enabled=false WHERE buyer_id=$1",
+                [buyerId],
+            );
             const first = await terminal(signed),
                 again = await terminal(signed);
+            await pool.query(
+                "UPDATE panas_accounting_buyers SET enabled=true WHERE buyer_id=$1",
+                [buyerId],
+            );
+            expect(first).toMatchObject({
+                receipt: {
+                    buyerDebitAtomic: "10",
+                    providerEarningsAtomic: "8",
+                    feeAtomic: "2",
+                },
+            });
             expect(again).toEqual(first);
             const view = await status(bought.quote.requestId);
             expect(view.status).toBe("completed");
@@ -357,6 +372,28 @@ describe.skipIf(!databaseUrl)(
                     [ledger[0].ledger_id],
                 ),
             ).rejects.toThrow("append-only");
+            for (const entries of [
+                [
+                    { account: "x", amountAtomic: "1" },
+                    { account: "y", amountAtomic: "0" },
+                ],
+                [
+                    { account: "x", amountAtomic: "1" },
+                    { account: "y", amountAtomic: "-1" },
+                    { account: "z" },
+                ],
+            ])
+                await expect(
+                    pool.query(
+                        "INSERT INTO panas_accounting_ledger(ledger_id,idempotency_key,kind,entries,created_at) VALUES($1,$2,'fund',$3,$4)",
+                        [
+                            randomUUID(),
+                            `invalid:${randomUUID()}`,
+                            JSON.stringify(entries),
+                            now,
+                        ],
+                    ),
+                ).rejects.toMatchObject({ code: "23514" });
         });
         it("requires admitted execution for success, and buyer cancellation cannot release uncertain spend", async () => {
             const bought = await purchase(await quote());
