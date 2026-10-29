@@ -91,6 +91,18 @@ export class ProviderDaemon {
     async launch(): Promise<CapabilityReport> {
         await this.store.init();
         await this.store.recoverAndCleanup();
+        // Restore the device-wide buyer window before accepting a new startup's grants.
+        this.buyerAdmissions.clear();
+        for (const record of await this.store.list()) {
+            if (record.admittedAt === null) continue;
+            // Older records lack admission metadata; their last update is a conservative bound.
+            const at = record.admittedAt ?? record.updatedAt;
+            if (this.now() - at < 60000) {
+                const recent =
+                    this.buyerAdmissions.get(record.buyerKeyId) ?? [];
+                this.buyerAdmissions.set(record.buyerKeyId, [...recent, at]);
+            }
+        }
         return this.retest();
     }
     async retest(): Promise<CapabilityReport> {
@@ -293,6 +305,7 @@ export class ProviderDaemon {
         input: unknown,
         buyerKeyId: string,
         authorization?: unknown,
+        assertAuthorized?: () => void,
     ): Promise<StoredRequest> {
         const request = inferenceRequestSchema.parse(input);
         if (!buyerKeyId || buyerKeyId.length > 512)
@@ -309,6 +322,7 @@ export class ProviderDaemon {
             .digest("hex");
         return this.exclusive(async () => {
             const existing = await this.get(request.requestId, buyerKeyId);
+            assertAuthorized?.();
             if (existing) {
                 if (existing.fingerprint !== fingerprint)
                     throw new ProviderError("IDEMPOTENCY_CONFLICT");
@@ -336,12 +350,14 @@ export class ProviderDaemon {
                 (at) => this.now() - at < 60000,
             );
             if (recent.length >= 6) throw new ProviderError("RATE_LIMITED");
+            const admittedAt = this.now();
             const record: StoredRequest = {
                 requestId: request.requestId,
                 buyerKeyId,
                 fingerprint,
                 status: "running",
-                updatedAt: this.now(),
+                updatedAt: admittedAt,
+                admittedAt,
                 ...(authorization === undefined ? {} : { authorization }),
             };
             await this.store.save(record);
@@ -353,7 +369,7 @@ export class ProviderDaemon {
                 cancelled: false,
             };
             this.queue.push(task);
-            this.buyerAdmissions.set(buyerKeyId, [...recent, this.now()]);
+            this.buyerAdmissions.set(buyerKeyId, [...recent, admittedAt]);
             this.kick();
             return record;
         });
@@ -376,6 +392,7 @@ export class ProviderDaemon {
                     .digest("hex"),
                 status: "failed",
                 updatedAt: this.now(),
+                admittedAt: null,
                 error: code,
                 authorization,
             };
@@ -555,9 +572,11 @@ export class ProviderDaemon {
     async cancel(
         requestId: string,
         buyerKeyId: string,
+        assertAuthorized?: () => void,
     ): Promise<StoredRequest | undefined> {
         return this.exclusive(async () => {
             const record = await this.get(requestId, buyerKeyId);
+            assertAuthorized?.();
             if (!record || record.status !== "running") return record;
             const task =
                 this.active?.request.requestId === requestId

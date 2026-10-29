@@ -463,6 +463,31 @@ it("rejects provider identity and operation nonce substitution", async () => {
         });
     }
 });
+it("retrieves with renewed action-only authority after the original 24-hour grant expires without replay", async () => {
+    const s = setup();
+    const { service, requestId } = await buy(s);
+    s.disconnect = true;
+    await expect(service.run({ requestId })).rejects.toMatchObject({
+        code: "UNCERTAIN",
+    });
+    s.disconnect = false;
+    s.settled = true;
+    s.advance(86400000);
+    const restarted = s.service();
+    const view = await restarted.get({ requestId });
+    expect(view.status).toBe("completed");
+    expect(s.executed).toBe(1);
+    const renewal = s.peer.call.mock.calls.at(-1)![1];
+    expect(renewal.grant.payload.operations).toEqual([
+        "get_request",
+        "cancel_request",
+    ]);
+    await expect(restarted.run({ requestId })).rejects.toMatchObject({
+        code: "UNCERTAIN",
+    });
+    expect(s.cloud.purchase).toHaveBeenCalledTimes(1);
+    expect(s.executed).toBe(1);
+});
 it("preserves uncertain purchase hold and original idempotency; reconciles the same purchase after executeBefore", async () => {
     const s = setup();
     const service = s.service();

@@ -328,6 +328,70 @@ describe.skipIf(!databaseUrl)(
                 first.signedGrant.payload.executeBefore,
             );
         });
+        it("rejects authorization when the registered startup changes after purchase without changing the hold", async () => {
+            const bought = await purchase(await quote());
+            const next = randomUUID();
+            await pool.query(
+                "UPDATE panas_registry_current SET startup_id=$2,report=jsonb_set(report,'{startupId}',to_jsonb($2::text)) WHERE provider_id=$1",
+                [providerId, next],
+            );
+            await expect(
+                authorize(bought.signedGrant.payload),
+            ).rejects.toMatchObject({ code: "PROVIDER_UNAVAILABLE" });
+            const row = (
+                await pool.query(
+                    "SELECT status,authorized_at FROM panas_accounting_requests WHERE request_id=$1",
+                    [bought.signedGrant.payload.requestId],
+                )
+            ).rows[0];
+            expect(row).toMatchObject({
+                status: "reserved",
+                authorized_at: null,
+            });
+            expect(
+                (
+                    await pool.query(
+                        "SELECT balance::text,held::text FROM panas_accounting_buyers WHERE buyer_id=$1",
+                        [buyerId],
+                    )
+                ).rows[0],
+            ).toMatchObject({ balance: "30", held: "10" });
+        });
+        it("renews action-only authority after 24 hours while preserving the original grant and receipt", async () => {
+            const bought = await purchase(await quote());
+            const original = bought.signedGrant;
+            await authorize(original.payload);
+            await terminal(event(original.payload, "completed"));
+            const completed = await status(original.payload.requestId);
+            now = new Date(now.getTime() + 86400000);
+            const renewed = await status(original.payload.requestId);
+            expect(renewed.signedGrant.payload.operations).toEqual([
+                "get_request",
+                "cancel_request",
+            ]);
+            expect(renewed.signedGrant.payload.startupId).toBe(
+                original.payload.startupId,
+            );
+            expect(renewed.signedGrant.payload.reservationId).toBe(
+                original.payload.reservationId,
+            );
+            expect(renewed.signedGrant.payload.executeBefore).toBe(
+                original.payload.executeBefore,
+            );
+            expect(
+                Date.parse(renewed.signedGrant.payload.expiresAt) -
+                    now.getTime(),
+            ).toBe(120000);
+            expect(renewed.receipt).toEqual(completed.receipt);
+            expect(
+                (
+                    await pool.query(
+                        "SELECT signed_grant FROM panas_accounting_requests WHERE request_id=$1",
+                        [original.payload.requestId],
+                    )
+                ).rows[0].signed_grant,
+            ).toEqual(original);
+        });
         it("settles exactly once from provider-confirmed completion and posts a balanced immutable ledger", async () => {
             const bought = await purchase(await quote());
             await authorize(bought.signedGrant.payload);

@@ -16,6 +16,8 @@ export interface StoredRequest {
     fingerprint: string;
     status: "running" | "completed" | "cancelled" | "failed" | "unknown";
     updatedAt: number;
+    /** Admission decision time; null means declined before acceptance. */
+    admittedAt?: number | null;
     result?: {
         text: string;
         inputTokens: number;

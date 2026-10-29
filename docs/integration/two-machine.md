@@ -51,6 +51,7 @@ The buyer discovers both and executes a separate request on each, verifying resu
 ## Manual fault and evidence checklist
 
 - Record the reviewed source commit and #9 release proof, host aliases, provider IDs/startups, model/runtime revisions, and run timestamps. Exclude serial numbers, private IPs, credentials, raw tickets, grants, prompts, and model output from the shared report.
+- Complete the [startup-binding, natural 24-hour action expiry and rate-cap protocol](authorization-boundaries.md) after batch finalization. Exact clock-boundary fixtures support implementation; they do not certify those live observations.
 - Follow the [Volcano outage/recovery protocol](volcano-outage.md) for actual deployed registry/accounting interruptions, active work, terminal retry and ledger checks. These service drills remain deferred; client-only transport faults do not complete them.
 - Observe active remote generation before testing an adapter disconnect or owned-provider crash. Record the actual winner if cancellation races completion; do not force the report to say cancelled.
 - Sleep Mac B longer than the heartbeat TTL. Confirm ready-only discovery excludes it. Wake it, confirm a fresh capability suite/startup/probe, and execute another request without manually adding an MCP server. Follow the [sleep/wake recovery drill](provider-sleep-wake.md), including accepted work, old startup grants, paused/queued work and outbox/receipt checks; these physical observations remain deferred.
