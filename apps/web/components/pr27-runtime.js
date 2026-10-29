@@ -40,10 +40,13 @@ export function initLanding() {
     });
     listen(pick, "close", () => cta.focus());
 
+    const dragCleanups = [];
+    initDragWindows();
     if (gl) start();
     return () => {
         disposed = true;
         abort.abort();
+        for (const end of dragCleanups) end();
         cancelAnimationFrame(frameHandle);
         video.pause();
         gl?.getExtension("WEBGL_lose_context")?.loseContext();
@@ -297,5 +300,56 @@ export function initLanding() {
             if (hovering) enter();
             else render();
         });
+    }
+    function initDragWindows() {
+        // Drag the handshake windows around. Offsets live in a transform so the
+        // responsive base position from CSS stays intact.
+        const KEEP_VISIBLE = 48; // px of a window that must stay on screen
+        for (const win of document.querySelectorAll(".clip")) {
+            let x = 0,
+                y = 0,
+                drag = null;
+            listen(win, "pointerdown", (e) => {
+                if (e.button !== 0) return;
+                // the latest grabbed window stacks above its siblings (still under the copy)
+                win.parentElement.appendChild(win);
+                const r = win.getBoundingClientRect();
+                drag = {
+                    px: e.clientX,
+                    py: e.clientY,
+                    x,
+                    y,
+                    left: r.left - x,
+                    top: r.top - y,
+                    w: r.width,
+                    h: r.height,
+                };
+                win.setPointerCapture(e.pointerId);
+                win.classList.add("dragging");
+            });
+            listen(win, "pointermove", (e) => {
+                if (!drag) return;
+                const minX = KEEP_VISIBLE - drag.w - drag.left,
+                    maxX = innerWidth - KEEP_VISIBLE - drag.left;
+                const minY = -drag.top,
+                    maxY = innerHeight - KEEP_VISIBLE - drag.top;
+                x = Math.min(
+                    maxX,
+                    Math.max(minX, drag.x + e.clientX - drag.px),
+                );
+                y = Math.min(
+                    maxY,
+                    Math.max(minY, drag.y + e.clientY - drag.py),
+                );
+                win.style.transform = `translate(${x}px, ${y}px)`;
+            });
+            const end = () => {
+                drag = null;
+                win.classList.remove("dragging");
+            };
+            listen(win, "pointerup", end);
+            listen(win, "pointercancel", end);
+            dragCleanups.push(end);
+        }
     }
 }
