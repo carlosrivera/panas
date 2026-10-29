@@ -1,0 +1,1 @@
+ALTER TABLE panas_accounting_quotes ENABLE ROW LEVEL SECURITY;

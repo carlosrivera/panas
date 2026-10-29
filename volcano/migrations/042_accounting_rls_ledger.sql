@@ -1,0 +1,1 @@
+ALTER TABLE panas_accounting_ledger ENABLE ROW LEVEL SECURITY;

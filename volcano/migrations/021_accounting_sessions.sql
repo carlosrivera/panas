@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS panas_accounting_sessions (session_id uuid PRIMARY KEY, buyer_id uuid NOT NULL REFERENCES panas_accounting_buyers(buyer_id), cap numeric(30,0) NOT NULL CHECK(cap>=0), held numeric(30,0) NOT NULL DEFAULT 0 CHECK(held>=0), spent numeric(30,0) NOT NULL DEFAULT 0 CHECK(spent>=0), enabled boolean NOT NULL DEFAULT true, expires_at timestamptz NOT NULL);

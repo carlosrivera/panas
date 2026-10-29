@@ -1,0 +1,1 @@
+ALTER TABLE panas_accounting_buyers ENABLE ROW LEVEL SECURITY;

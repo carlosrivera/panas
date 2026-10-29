@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS panas_accounting_events (event_id uuid PRIMARY KEY, request_id uuid NOT NULL REFERENCES panas_accounting_requests(request_id), event_digest text NOT NULL, signed_event jsonb NOT NULL, received_at timestamptz NOT NULL);

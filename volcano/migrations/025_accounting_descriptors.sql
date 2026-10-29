@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS panas_accounting_descriptors (provider_id uuid PRIMARY KEY REFERENCES panas_provider_keys(provider_id), startup_id uuid NOT NULL, provider_key_id text NOT NULL, encrypted_descriptor text NOT NULL, expires_at timestamptz NOT NULL, uploaded_at timestamptz NOT NULL);
