@@ -6,3 +6,6 @@ dist
 volcano/functions/registry/index.js
 volcano/functions/registry/package.json
 volcano/functions/registry/pnpm-lock.yaml
+volcano/functions/accounting/index.js
+volcano/functions/accounting/package.json
+volcano/functions/accounting/pnpm-lock.yaml

@@ -1,0 +1,1 @@
+ALTER TABLE panas_accounting_events ENABLE ROW LEVEL SECURITY;

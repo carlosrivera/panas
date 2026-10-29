@@ -4,6 +4,12 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { serveLocal } from "@panas/provider";
+import {
+    superviseShare,
+    superviseJoin,
+    probePeer,
+    type TransportEvent,
+} from "@panas/mcpwire";
 import { generateKeyPairSync, randomUUID } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -642,3 +648,79 @@ describe("disposable stdio adapter", () => {
         }
     });
 });
+
+it.skipIf(process.env.PANAS_RUN_P2P_TESTS !== "1")(
+    "suppresses real MCPWire argument previews through a separate peer hop",
+    async () => {
+        const f = await fixture(),
+            token = "real-transport-local-token";
+        await writeFile(join(f.path, "ipc-token"), token, { mode: 0o600 });
+        const socket = await serveLocal(
+            f.daemon,
+            join(f.path, "daemon.sock"),
+            token,
+            (operation) => f.service.handle(operation),
+        );
+        const old = process.env.PANAS_DATA_PATH;
+        process.env.PANAS_DATA_PATH = f.path;
+        const events: TransportEvent[] = [];
+        const share = superviseShare({
+            command: process.execPath,
+            args: [
+                "--import",
+                "tsx",
+                fileURLToPath(new URL("./main.ts", import.meta.url)),
+            ],
+            onEvent: (event) => events.push(event),
+        });
+        let peer: ReturnType<typeof superviseJoin> | undefined;
+        try {
+            const ready = await share.ready;
+            expect(ready.kind).toBe("ready");
+            if (ready.kind !== "ready") throw new Error("share failed");
+            const probe = await probePeer({
+                ticket: ready.ticket,
+                startupId: f.daemon.report!.startupId,
+            });
+            expect(probe.status).toBe("verified");
+            peer = superviseJoin({
+                ticket: ready.ticket,
+                onEvent: (event) => events.push(event),
+            });
+            expect((await peer.ready).kind).toBe("ready");
+            const malicious = {
+                proof: "PRIVATE_ARGUMENT_PREVIEW_SENTINEL",
+                grant: {},
+                payload: { prompt: "PRIVATE_PROMPT_SENTINEL" },
+            };
+            const rejected = (await peer.request("tools/call", {
+                name: "run_inference",
+                arguments: malicious,
+            })) as { isError?: boolean };
+            expect(rejected.isError).toBe(true);
+            const signed = (await peer.request("tools/call", {
+                name: "run_inference",
+                arguments: f.wire(),
+            })) as { structuredContent?: unknown };
+            const result = providerResultSchema.parse(signed.structuredContent);
+            expect(
+                verifyDocument(
+                    DOMAIN.response,
+                    result.proof,
+                    f.provider.publicKey,
+                ),
+            ).toBe(true);
+            const visible = JSON.stringify(events);
+            expect(visible).not.toContain("PRIVATE_ARGUMENT_PREVIEW_SENTINEL");
+            expect(visible).not.toContain("PRIVATE_PROMPT_SENTINEL");
+            expect(visible).not.toContain(ready.ticket);
+        } finally {
+            await peer?.stop();
+            await share.stop();
+            if (old === undefined) delete process.env.PANAS_DATA_PATH;
+            else process.env.PANAS_DATA_PATH = old;
+            await new Promise<void>((resolve) => socket.close(() => resolve()));
+        }
+    },
+    120000,
+);

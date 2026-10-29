@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS panas_accounting_nonces (actor text NOT NULL CHECK(actor IN ('buyer','provider')), actor_id uuid NOT NULL, nonce uuid NOT NULL, expires_at timestamptz NOT NULL, PRIMARY KEY(actor,actor_id,nonce));
