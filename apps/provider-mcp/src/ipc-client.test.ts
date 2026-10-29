@@ -25,6 +25,7 @@ it("preserves real daemon rejection codes over Unix IPC and sanitizes malformed/
         }
         for (const value of [
             "bad-json",
+            JSON.stringify({ ok: false, error: "PRIVATE_TICKET" }),
             "null",
             JSON.stringify({
                 ok: false,

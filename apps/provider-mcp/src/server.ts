@@ -1,3 +1,4 @@
+import { hostErrorCodes } from "./errors.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
@@ -64,21 +65,6 @@ export function createProviderServer(adapter: HostAdapter) {
                         ],
                     };
                 } catch (error) {
-                    const codes = new Set([
-                        "QUEUE_FULL",
-                        "RATE_LIMITED",
-                        "PROVIDER_UNAVAILABLE",
-                        "CONTEXT_TOO_LARGE",
-                        "GRANT_LIMIT_EXCEEDED",
-                        "INVALID_PLATFORM_GRANT",
-                        "IDENTITY_MISMATCH",
-                        "OPERATION_BINDING_MISMATCH",
-                        "EXECUTION_BINDING_MISMATCH",
-                        "REQUEST_NOT_FOUND",
-                        "REQUEST_BINDING_MISMATCH",
-                        "REPLAYED_OPERATION",
-                        "PERSISTENCE_UNCERTAIN",
-                    ]);
                     return {
                         isError: true,
                         content: [
@@ -87,7 +73,7 @@ export function createProviderServer(adapter: HostAdapter) {
                                 text: JSON.stringify({
                                     code:
                                         error instanceof Error &&
-                                        codes.has(error.message)
+                                        hostErrorCodes.has(error.message)
                                             ? error.message
                                             : "OPERATION_REJECTED",
                                 }),
