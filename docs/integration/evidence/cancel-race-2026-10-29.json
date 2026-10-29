@@ -1,0 +1,42 @@
+{
+    "version": 1,
+    "runId": "8f063b0c-a596-4221-8c14-29e75a064805",
+    "mode": "cancel-race-seam",
+    "startedAt": "2026-10-29T15:22:47.798Z",
+    "finishedAt": "2026-10-29T15:24:23.330Z",
+    "gitCommit": "463c37ac0ea4b50ea71e69d6d50fb7a9722a6e2a",
+    "releaseReference": {
+        "projectId": "7db5f8f4-c378-4ba5-a48f-f435bc4c034b",
+        "commit": "1e022ae871fd9e26a4331ca02dbdb7fd0f82e117",
+        "verifiedAt": "2026-10-29T14:50:11.171Z"
+    },
+    "sourceTreeDirty": false,
+    "physicalMachineCount": 1,
+    "logicalProviderCount": 1,
+    "caseEvidence": [
+        {
+            "id": "cancel-completion-simultaneous-race-e2e",
+            "status": "passed",
+            "source": "fault_injected_cloud_one_mac",
+            "detail": "Real native generation finished and its response was held. After refreshing an action-only cloud grant and preconnecting the actual MCPWire peer, response release raced signed cancellation via Promise.all. Observed winner: cancelled; exact immutable receipt charged 0 atomic TEST_CREDIT with 0 settlement(s), then authenticated retrieval agreed. This races completed-response delivery/cancellation, not a claim of ongoing native generation.",
+            "durationMs": 76346,
+            "requestIds": ["d720fcb6-2fbc-4e1b-b351-ef4314838f4b"],
+            "receiptIds": ["06c0f91a-a0ce-4285-ab47-15eab47360aa"]
+        },
+        {
+            "id": "two-physical-macs",
+            "status": "pending",
+            "source": "manual_pending",
+            "detail": "Second physical Mac exists but is inaccessible to this agent. Local logical providers are not separate physical machines."
+        }
+    ],
+    "gates": {
+        "twoPhysicalMacs": "pending",
+        "release9": "referenced_verified_report",
+        "issue10Complete": false
+    },
+    "cleanup": {
+        "ownedProcessesStopped": true,
+        "runtimePortsClosed": true
+    }
+}
