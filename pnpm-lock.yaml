@@ -166,6 +166,12 @@ importers:
 
   .:
     devDependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: 1.32.2
+        version: 1.32.2(zod@4.6.7)
+      '@panas/contracts':
+        specifier: workspace:*
+        version: link:packages/contracts
       '@panas/eslint-config':
         specifier: workspace:*
         version: link:packages/eslint-config
@@ -175,9 +181,21 @@ importers:
       '@types/node':
         specifier: 24.19.2
         version: 24.19.2
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+      '@volcano.dev/cli':
+        specifier: 0.55.0
+        version: 0.55.0
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       eslint:
         specifier: 10.13.0
         version: 10.13.0(jiti@2.7.0)
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
       prettier:
         specifier: 3.9.10
         version: 3.9.10
@@ -1383,6 +1401,13 @@ packages:
 
   '@vitest/spy@5.0.5':
     resolution: {integrity: sha512-lwJRExuH417257Q5wv9QYugN9IMJkoxcrKrYxGPQkBzl7wlNpTUxD/5yNX4ESKVUIShKPgkGchYPFMWOOk0wzw==}
+
+  '@volcano.dev/cli@0.55.0':
+    resolution: {integrity: sha512-SyRTrtm35gvA+0G0fRyNdqdTVeT5l8ghARlT0YvriH0+fpr5IZv1cKnZ+sEZRaIRa2dB/RipQA0KqV1FrJ/VZg==}
+    engines: {node: '>=18'}
+    cpu: [x64, arm64]
+    os: [linux, darwin, win32]
+    hasBin: true
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -3527,6 +3552,8 @@ snapshots:
       vite: 8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
 
   '@vitest/spy@5.0.5': {}
+
+  '@volcano.dev/cli@0.55.0': {}
 
   accepts@2.0.0:
     dependencies:

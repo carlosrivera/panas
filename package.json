@@ -10,13 +10,18 @@
     "scripts": {
         "dev": "pnpm --filter @panas/web dev",
         "build": "turbo run build",
-        "typecheck": "turbo run typecheck",
+        "typecheck": "turbo run typecheck && pnpm platform:typecheck",
         "lint": "eslint . --max-warnings 0",
         "test": "vitest run",
         "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
         "format": "prettier --write .",
         "format:check": "prettier --check .",
-        "provider:doctor": "pnpm --filter @panas/provider run doctor"
+        "provider:doctor": "pnpm --filter @panas/provider run doctor",
+        "platform:migrate": "tsx scripts/platform/migrate.ts",
+        "platform:bundle": "tsx scripts/platform/bundle.ts",
+        "platform:deploy": "tsx scripts/platform/deploy.ts",
+        "platform:verify": "tsx scripts/platform/verify.ts",
+        "platform:typecheck": "tsc -p scripts/platform/tsconfig.json --noEmit"
     },
     "devDependencies": {
         "@panas/eslint-config": "workspace:*",
@@ -27,7 +32,13 @@
         "turbo": "2.11.10",
         "typescript": "6.0.3",
         "vitest": "5.0.5",
-        "tsx": "4.23.15"
+        "tsx": "4.23.15",
+        "pg": "8.23.1",
+        "@types/pg": "8.23.1",
+        "@modelcontextprotocol/sdk": "1.32.2",
+        "@panas/contracts": "workspace:*",
+        "@volcano.dev/cli": "0.55.0",
+        "esbuild": "0.28.2"
     },
     "type": "module"
 }

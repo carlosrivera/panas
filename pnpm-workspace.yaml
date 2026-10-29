@@ -3,3 +3,6 @@ packages:
     - "packages/*"
 allowBuilds:
     esbuild: true
+    "@volcano.dev/cli": true
+minimumReleaseAgeExclude:
+    - "@volcano.dev/cli@0.55.0"
