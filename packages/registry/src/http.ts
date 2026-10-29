@@ -1,6 +1,7 @@
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 import { checkDiscoveryToken, type RequestProof } from "./auth.js";
 import { RegistryError } from "./errors.js";
+import { toPublicPage, toPublicDetail, publicQueryFromUrl } from "./public.js";
 import { handleMcp } from "./mcp.js";
 import { queryFromUrl, type RegistryService } from "./service.js";
 
@@ -18,8 +19,51 @@ export function createHttpHandler(
     tokenHash: string | undefined,
 ) {
     return async (request: Request): Promise<Response> => {
+        const path = new URL(request.url).pathname;
+        const publicGet =
+            request.method === "GET" &&
+            (path === "/public/providers" ||
+                /^\/public\/providers\/[^/]+$/.test(path));
+        const respond = (body: unknown, status = 200) => {
+            const response = jsonResponse(body, status);
+            if (publicGet) {
+                response.headers.set("Access-Control-Allow-Origin", "*");
+                response.headers.set("Access-Control-Allow-Methods", "GET");
+            }
+            return response;
+        };
         try {
             const url = new URL(request.url);
+            // Anonymous GET only: safe informational projection, never an authorization boundary.
+            if (
+                request.method === "GET" &&
+                (url.pathname === "/public/providers" ||
+                    /^\/public\/providers\/[^/]+$/.test(url.pathname))
+            ) {
+                const query =
+                    path === "/public/providers"
+                        ? publicQueryFromUrl(new URL(request.url))
+                        : null;
+                const id = query
+                    ? null
+                    : z.uuid().parse(path.split("/")[3] ?? "");
+                try {
+                    const value = query
+                        ? toPublicPage(await service.discover(query))
+                        : toPublicDetail(
+                              await service.getProvider(id!),
+                              new Date().toISOString(),
+                          );
+                    return respond(value);
+                } catch (error) {
+                    if (error instanceof RegistryError) throw error;
+                    throw new RegistryError(
+                        "UNAVAILABLE",
+                        503,
+                        "Public provider data is temporarily unavailable",
+                    );
+                }
+            }
             // This endpoint is for agent clients, not credential-bearing browser requests.
             if (request.headers.has("origin"))
                 throw new RegistryError(
@@ -38,7 +82,7 @@ export function createHttpHandler(
                         .get("content-type")
                         ?.startsWith("application/json")
                 )
-                    return jsonResponse(
+                    return respond(
                         {
                             error: {
                                 code: "INVALID_INPUT",
@@ -64,7 +108,7 @@ export function createHttpHandler(
                 const result = url.pathname.endsWith("/register")
                     ? await service.register(rawBody, proof)
                     : await service.heartbeat(rawBody, proof);
-                return jsonResponse(result);
+                return respond(result);
             }
             checkDiscoveryToken(
                 request.headers.get("authorization"),
@@ -73,15 +117,15 @@ export function createHttpHandler(
             if (url.pathname === "/mcp")
                 return await handleMcp(request, service);
             if (request.method === "GET" && url.pathname === "/providers")
-                return jsonResponse(await service.discover(queryFromUrl(url)));
+                return respond(await service.discover(queryFromUrl(url)));
             if (
                 request.method === "GET" &&
                 /^\/providers\/[^/]+$/.test(url.pathname)
             )
-                return jsonResponse(
+                return respond(
                     await service.getProvider(url.pathname.split("/")[2] ?? ""),
                 );
-            return jsonResponse(
+            return respond(
                 {
                     error: {
                         code: "NOT_FOUND",
@@ -92,12 +136,12 @@ export function createHttpHandler(
             );
         } catch (error) {
             if (error instanceof RegistryError)
-                return jsonResponse(
+                return respond(
                     { error: { code: error.code, message: error.message } },
                     error.status,
                 );
             if (error instanceof ZodError || error instanceof SyntaxError)
-                return jsonResponse(
+                return respond(
                     {
                         error: {
                             code: "INVALID_INPUT",
@@ -107,7 +151,7 @@ export function createHttpHandler(
                     400,
                 );
             // Never send SQL diagnostics, connection strings, request bodies, or credentials to clients/logs.
-            return jsonResponse(
+            return respond(
                 {
                     error: {
                         code: "UNAVAILABLE",
