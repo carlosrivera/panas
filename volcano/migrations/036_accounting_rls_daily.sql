@@ -1,0 +1,1 @@
+ALTER TABLE panas_accounting_daily ENABLE ROW LEVEL SECURITY;
