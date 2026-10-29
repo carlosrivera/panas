@@ -52,3 +52,9 @@ Run `pnpm check` and `pnpm format:check` from the repository root. Complete end-
 ### Verified transport hop
 
 On October 28, 2026, `PANAS_RUN_P2P_TESTS=1 pnpm exec vitest run apps/provider-mcp/src/service.test.ts` passed the separate-process MCPWire share/probe/join test. It verified the startup, signed run response, and rejection of deliberately malformed private-sentinel arguments while managed transport events exposed neither argument previews, prompts, nor the ticket. This exercised the real external MCPWire CLI with injectable inference/accounting, not the full paid cloud transaction.
+
+### Integrated paid prototype evidence
+
+The team subsequently exercised the actual deployed Volcano accounting service and a real Mac/Ollama provider through the buyer MCP SDK: discover, quote, reserve test credit, join through MCPWire, infer, verify the provider signature, retrieve a matching receipt, reject duplicate execution, and retrieve again through a fresh peer without changing the charge. The fixed buyer debit was3atomic TEST_CREDIT units. This is a single-provider prototype smoke, not a claim of a two-Mac or real-money launch.
+
+A valid action grant for a request with no local durable record returns `REQUEST_NOT_FOUND`. The host cannot honestly assert cancellation if its prior state may have been lost; the buyer should inspect cloud pending state and use the bounded reconciliation path. It must not automatically replay inference or assume the hold was released.
