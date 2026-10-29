@@ -1,4 +1,5 @@
 import { parseArgs } from "node:util";
+import { runFaultSeams } from "./fault-seams.js";
 import { prepare } from "./prepare.js";
 import { run } from "./runner.js";
 import { runFailureFixtures } from "./fixtures.js";
@@ -13,6 +14,8 @@ try {
         artifact = await prepare(values.config);
     else if (mode === "local-simulation" && values.config)
         artifact = await run(values.config);
+    else if (mode === "fault-seams" && values.config)
+        artifact = await runFaultSeams(values.config);
     else if (mode === "release-smoke" && values.config)
         artifact = await run(values.config, false, true);
     else if (mode === "manual-two-machine" && values.config)

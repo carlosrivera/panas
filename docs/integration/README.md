@@ -64,3 +64,17 @@ pnpm --filter @panas/integration run release-smoke --config /private/path/new-ru
 This mode refuses to launch or purchase if the release reference is absent or invalid. It runs the actual provider startup/discovery/quote/purchase/inference/receipt and reconnect checks, performs only one new paid request, and records the referenced release commit separately from the harness commit. The hardware gate remains pending.
 
 [The final release smoke](evidence/release-smoke-2026-10-29.json) passed on clean harness commit `22e33941a0b9931147bfd474a8159b7bb624fe51` against verified Volcano release `759c14e8141ed04e4ef8d907f4d79cf5a2ce627e`. In 42.98 seconds, two real provider processes on one physical Mac published startup-tested readiness; the buyer selected the intended lower fixed price, completed exactly one new paid request through MCPWire and the pinned model, then retrieved the same receipt after adapter replacement and duplicate attempts. The receipt balanced 1 buyer debit / 1 provider earnings / 0 fee in atomic TEST_CREDIT units, with 6 input tokens, 16 output tokens, and actual finish reason `length`. Both owned inference processes stopped and both dedicated runtime ports closed. The referenced full-release report passed all seven named checks; `release9` is `referenced_verified_report`. Physical two-Mac evidence and the seven explicit end-to-end fault drills remain pending; `issue10Complete` stays false.
+
+## Actual authorization and queue fault seams
+
+Create a fresh isolated setup directory/buyer (existing held requests are rejected), then run:
+
+```sh
+pnpm --filter @panas/integration run fault-seams --config /private/path/new-run/run.json
+```
+
+This mode uses a raw owner-controlled MCPWire peer because the normal buyer facade deliberately prevents sending malformed authorization. It purchases real cloud grants and checks copied-ticket/no-entitlement rejection, altered grant/payload/buyer identity, actual short-proof expiry, exact signed-nonce replay, and natural cloud `executeBefore` expiry using a fresh proof after the real deadline. Invalid authorization must leave no fabricated provider request/terminal state or settlement; the original legitimate request is executed once and kept retrievable.
+
+The queue seam briefly sends SIGSTOP only to the actual Ollama listener after verifying its dedicated port, exact command and ancestry under the controller this runner launched. A three-second independent SIGCONT watchdog, finally cleanup and signal cleanup prevent an assertion failure leaving it stopped. Four pre-purchased requests fill one active/two queued slots and require a genuine QUEUE_FULL rejection for the fourth. That decline must create a durable failed zero-charge cloud receipt. The other requests are explicitly cancelled and require durable cancelled zero-charge receipts. This is process-level injection on this Mac, not physical sleep or two-Mac evidence.
+
+The natural execution-expiry request deliberately retains its reservation: an unexecuted request has no provider terminal decision, so missing local state must not be relabeled cancelled. Keep its request ID for bounded reconciliation and the existing audited operator resolution path after the real reconciliation deadline. The harness never silently releases, refunds, deletes a ledger row or alters the clock. Controlled early/late cancellation observations do not claim a simultaneous cancellation/completion race. Actual crash, deadline, physical sleep/wake and service outage remain separate gates unless later artifacts establish them.

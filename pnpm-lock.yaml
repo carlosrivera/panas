@@ -427,6 +427,9 @@ importers:
       '@panas/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@panas/mcpwire':
+        specifier: workspace:*
+        version: link:../mcpwire
       '@panas/protocol':
         specifier: workspace:*
         version: link:../protocol
