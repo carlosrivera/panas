@@ -5,7 +5,7 @@ export default function Home() {
         <>
             <video
                 id="v"
-                src="/video.mp4"
+                data-src="/video.mp4"
                 muted
                 playsInline
                 preload="auto"
