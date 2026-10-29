@@ -16,7 +16,7 @@ export function assertDescendant(
     throw new Error("RUNTIME_NOT_OWNED");
 }
 /** Suspends only the verified listening Ollama descendant, never the host, shell or Mac. */
-export function suspendRuntime(provider: OwnedProvider): () => void {
+export function ownedRuntimePid(provider: OwnedProvider): number {
     if (!provider.child.pid || provider.stopped)
         throw new Error("OWNER_NOT_RUNNING");
     const port = new URL(provider.env.PANAS_OLLAMA_ENDPOINT!).port;
@@ -41,6 +41,10 @@ export function suspendRuntime(provider: OwnedProvider): () => void {
     }).trim();
     if (command !== `${provider.env.PANAS_OLLAMA_BINARY} serve`)
         throw new Error("RUNTIME_COMMAND_MISMATCH");
+    return pid;
+}
+export function suspendRuntime(provider: OwnedProvider): () => void {
+    const pid = ownedRuntimePid(provider);
     process.kill(pid, "SIGSTOP");
     let resumed = false;
     const resume = () => {
@@ -56,4 +60,37 @@ export function suspendRuntime(provider: OwnedProvider): () => void {
     // Even a failed assertion must not leave a stopped model process behind.
     const watchdog = setTimeout(resume, 3000);
     return resume;
+}
+
+/** Use only a PID whose live ancestry was captured before stopping this run's host. */
+export function stopCapturedRuntime(
+    provider: OwnedProvider,
+    pid: number,
+): void {
+    const port = new URL(provider.env.PANAS_OLLAMA_ENDPOINT!).port;
+    try {
+        const listening = execFileSync(
+            "lsof",
+            ["-nP", `-tiTCP:${port}`, "-sTCP:LISTEN"],
+            { encoding: "utf8" },
+        ).trim();
+        if (listening !== String(pid)) return;
+        const command = execFileSync(
+            "ps",
+            ["-p", String(pid), "-o", "command="],
+            { encoding: "utf8" },
+        ).trim();
+        if (command !== `${provider.env.PANAS_OLLAMA_BINARY} serve`)
+            throw new Error("RUNTIME_CHANGED_BEFORE_CLEANUP");
+        process.kill(pid, "SIGTERM");
+    } catch (error) {
+        if (
+            typeof error === "object" &&
+            error !== null &&
+            "status" in error &&
+            error.status === 1
+        )
+            return;
+        throw error;
+    }
 }

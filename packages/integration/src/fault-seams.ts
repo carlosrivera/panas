@@ -37,7 +37,12 @@ import {
 } from "./processes.js";
 import { inspectFixtureRequest } from "./prepare.js";
 import { inspectRelease } from "./release.js";
-import { suspendRuntime } from "./owned-runtime.js";
+import { BuyerError } from "../../../apps/buyer-mcp/src/errors.js";
+import {
+    ownedRuntimePid,
+    stopCapturedRuntime,
+    suspendRuntime,
+} from "./owned-runtime.js";
 
 const purchaseSchema = z.object({
     signedGrant: signedGrantSchema,
@@ -56,8 +61,16 @@ async function poll<T>(
 ): Promise<T> {
     const deadline = Date.now() + timeoutMs;
     do {
-        const value = await action();
-        if (value !== undefined) return value;
+        try {
+            const value = await action();
+            if (value !== undefined) return value;
+        } catch (error) {
+            if (
+                !(error instanceof BuyerError) ||
+                !["UNAVAILABLE", "PROVIDER_UNAVAILABLE"].includes(error.code)
+            )
+                throw error;
+        }
         await delay(250);
     } while (Date.now() < deadline);
     throw new SeamFailure("OBSERVATION_TIMEOUT");
@@ -297,6 +310,13 @@ export async function runFaultSeams(path: string): Promise<string> {
                     }),
                 ),
             );
+            const captured = owned.map((p) => {
+                try {
+                    return { provider: p, pid: ownedRuntimePid(p) };
+                } catch {
+                    return undefined;
+                }
+            });
             await Promise.all(
                 owned.map((p) =>
                     stopProvider(p).catch(() => {
@@ -304,6 +324,9 @@ export async function runFaultSeams(path: string): Promise<string> {
                     }),
                 ),
             );
+            for (const item of captured)
+                if (item) stopCapturedRuntime(item.provider, item.pid);
+            await delay(300);
         })());
     const signalCleanup = () => {
         void cleanup().finally(() => process.exit(130));
@@ -353,7 +376,11 @@ export async function runFaultSeams(path: string): Promise<string> {
         const alteredGrant = envelope(legitimate);
         alteredGrant.grant = {
             ...alteredGrant.grant,
-            payload: { ...alteredGrant.grant.payload, totalAtomic: "99" },
+            payload: {
+                ...alteredGrant.grant.payload,
+                totalAtomic: "99",
+                providerAtomic: "99",
+            },
         };
         await expectRejected(
             peer,
@@ -496,6 +523,13 @@ export async function runFaultSeams(path: string): Promise<string> {
             [expires],
         );
     } catch (error) {
+        await writeFile(
+            join(config.privateDir, `failure-${runId}.private.log`),
+            error instanceof Error
+                ? `${error.name}: ${error.message}\n${error.stack ?? ""}`
+                : "Unknown failure",
+            { mode: 0o600 },
+        );
         failed = true;
         cases.push({
             id: "fault-run-failure",
