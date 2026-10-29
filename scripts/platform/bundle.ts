@@ -48,3 +48,26 @@ run("pnpm", [
     "--ignore-workspace",
 ]);
 console.log("Bundled all functions as isolated Node 24 ESM packages.");
+
+const health = resolve(root, "volcano/functions/health");
+await writeFile(
+    resolve(health, "package.json"),
+    JSON.stringify(
+        {
+            name: "panas-health-function",
+            private: true,
+            type: "module",
+            packageManager: `pnpm@${PLATFORM.pnpm}`,
+            engines: { node: ">=24 <25" },
+        },
+        null,
+        2,
+    ) + "\n",
+);
+run("pnpm", [
+    "--dir",
+    health,
+    "install",
+    "--lockfile-only",
+    "--ignore-workspace",
+]);

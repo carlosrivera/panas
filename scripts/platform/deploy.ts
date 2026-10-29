@@ -52,6 +52,20 @@ try {
             }),
         },
     );
+    const keys = await management<{
+        data: { name: string; project_id: string }[];
+    }>(`/projects/${PLATFORM.projectId}/service-keys`);
+    if (
+        !keys.data.some(
+            (key) =>
+                key.name === "panas-operations" &&
+                key.project_id === PLATFORM.projectId,
+        )
+    )
+        await management(`/projects/${PLATFORM.projectId}/service-keys`, {
+            method: "POST",
+            body: JSON.stringify({ name: "panas-operations" }),
+        });
     const pool = new pg.Pool({
         connectionString: await variable("PANAS_REGISTRY_DATABASE_URL"),
         max: 1,

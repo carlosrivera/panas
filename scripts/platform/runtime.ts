@@ -102,3 +102,44 @@ export function assertClean() {
             "Commit all release sources before deploying or verifying",
         );
 }
+
+export async function invokeOperations(
+    fn: { id: string; project_id: string; name: string },
+    payload: { job: "health" | "reconcile" },
+): Promise<unknown> {
+    if (
+        fn.project_id !== PLATFORM.projectId ||
+        fn.name !== "operations" ||
+        !/^[a-f0-9-]{36}$/.test(fn.id)
+    )
+        throw new Error("Private function project binding refused");
+    const keys = await management<{
+        data: { name: string; project_id: string; key_value: string }[];
+    }>(`/projects/${PLATFORM.projectId}/service-keys`);
+    const key = keys.data.find(
+        (key) =>
+            key.name === "panas-operations" &&
+            key.project_id === PLATFORM.projectId,
+    );
+    if (!key?.key_value?.startsWith("sk-"))
+        throw new Error("Dedicated operations service key missing");
+    let response: Response;
+    try {
+        response = await fetch(`${PLATFORM.apiUrl}/functions/${fn.id}/invoke`, {
+            method: "POST",
+            headers: {
+                authorization: `Bearer ${key.key_value}`,
+                "content-type": "application/json",
+            },
+            body: JSON.stringify({ payload }),
+            signal: AbortSignal.timeout(30000),
+        });
+    } catch {
+        throw new Error("Private operational invocation failed");
+    }
+    if (!response.ok)
+        throw new Error(
+            `Private operational invocation returned ${response.status}`,
+        );
+    return (await response.json()) as unknown;
+}
