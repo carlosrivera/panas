@@ -44,6 +44,8 @@ export class ProviderController {
             throw new Error(
                 "Registry requires HTTPS or local development loopback",
             );
+        if (base.username || base.password || base.search || base.hash)
+            throw new Error("Invalid registry URL");
         const raw = JSON.stringify(body);
         const proof = signProviderRequest(
             this.config.privateKey,

@@ -118,6 +118,7 @@ export class ProviderDaemon {
                 : evidence.status === "failed"
                   ? "unhealthy"
                   : "testing";
+        if (report.state === "ready") this.lastHeartbeatAt = this.now();
     }
     heartbeat(): CapabilityReport | null {
         const report = this.status;
@@ -286,6 +287,31 @@ export class ProviderDaemon {
             this.queue.push(task);
             this.buyerAdmissions.set(buyerKeyId, [...recent, this.now()]);
             this.kick();
+            return record;
+        });
+    }
+    async declineAuthenticated(
+        input: unknown,
+        buyerKeyId: string,
+        authorization: unknown,
+        code: string,
+    ): Promise<StoredRequest> {
+        const request = inferenceRequestSchema.parse(input);
+        return this.exclusive(async () => {
+            const existing = await this.get(request.requestId, buyerKeyId);
+            if (existing) return existing;
+            const record: StoredRequest = {
+                requestId: request.requestId,
+                buyerKeyId,
+                fingerprint: createHash("sha256")
+                    .update(JSON.stringify({ request, buyerKeyId }))
+                    .digest("hex"),
+                status: "failed",
+                updatedAt: this.now(),
+                error: code,
+                authorization,
+            };
+            await this.persistTerminal(record);
             return record;
         });
     }
