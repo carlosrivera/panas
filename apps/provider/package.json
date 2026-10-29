@@ -5,7 +5,8 @@
     "type": "module",
     "scripts": {
         "doctor": "tsx src/doctor.ts",
-        "typecheck": "tsc --noEmit"
+        "typecheck": "tsc --noEmit",
+        "start": "tsx src/start.ts"
     },
     "dependencies": {
         "@panas/contracts": "workspace:*"
