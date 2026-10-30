@@ -96,7 +96,9 @@ await writeFile(
                 type: "git",
                 url: "https://github.com/carlosrivera/panas.git",
             },
-            dependencies: { "@mcpwire/cli": "1.1.0" },
+            // bogon 1.3.0 (via hyperdht) imports b4a without declaring it.
+            // npm can nest hyperdht's copy; provide the runtime dependency explicitly.
+            dependencies: { "@mcpwire/cli": "1.1.0", b4a: "1.9.0" },
         },
         null,
         2,

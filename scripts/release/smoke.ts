@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import {
     mkdtemp,
+    readdir,
     readFile,
     writeFile,
     rm,
@@ -60,20 +61,29 @@ const ipc = createServer((socket) => {
     });
 });
 try {
-    await writeFile(
-        join(scratch, "package.json"),
-        JSON.stringify({
-            private: true,
-            dependencies: { "@panas/cli": `file:${tarball}` },
-        }),
+    const cache = join(scratch, "cache");
+    const initial = execFileSync(
+        "npx",
+        [
+            "--yes",
+            "--loglevel=error",
+            "--cache",
+            cache,
+            `--package=${tarball}`,
+            "panas",
+            "--version",
+        ],
+        { cwd: scratch, env, encoding: "utf8", timeout: 120000 },
     );
-    execFileSync("pnpm", ["install", "--ignore-workspace"], {
-        cwd: scratch,
-        env,
-        stdio: "pipe",
-        timeout: 120000,
-    });
-    const installed = join(scratch, "node_modules/@panas/cli");
+    assert.equal(JSON.parse(initial).version, version);
+    const installs = await readdir(join(cache, "_npx"));
+    assert.equal(installs.length, 1);
+    const installed = join(
+        cache,
+        "_npx",
+        installs[0]!,
+        "node_modules/@panas/cli",
+    );
     const bin = join(installed, "bin/panas.js");
     const run = (args: string[]) =>
         execFileSync(process.execPath, [bin, ...args], {
@@ -110,6 +120,9 @@ try {
         bin: { mcpwire: string };
     };
     assert.equal(wire.version, "1.1.0");
+    // --help alone does not load the real share/join native dependency graph.
+    const wireRequire = createRequire(wirePath);
+    assert.equal(typeof wireRequire("hyperdht"), "function");
     assert.match(
         execFileSync(
             process.execPath,
@@ -138,7 +151,7 @@ try {
     });
     assert.deepEqual(result.structuredContent, { fixture: "packaged-ipc" });
     console.log(
-        `Installed tarball outside checkout: CLI, immutable identity, external MCPWire and bundled MCP adapter/IPC passed (${version}).`,
+        `Fresh npx cache outside checkout: CLI, immutable identity, external MCPWire and bundled MCP adapter/IPC passed (${version}).`,
     );
 } finally {
     await client?.close();
