@@ -1,4 +1,4 @@
-import pg from "pg";
+import { edgePostgresPool } from "./postgres-pool.js";
 import { createPublicKey } from "node:crypto";
 import { AccountingService } from "../../packages/accounting/src/service.js";
 import { createHttpHandler as accountingHttp } from "../../packages/accounting/src/http.js";
@@ -22,20 +22,35 @@ export interface Env {
     };
 }
 function poolFor(env: Env) {
-    // Volcano's existing PostgreSQL proxy requires application_name at startup.
-    // Keep its original TLS URL intact. Sockets belong to this invocation only.
-    const pool = new pg.Pool({
-        connectionString: env.PANAS_REGISTRY_DATABASE_URL,
-        max: 1,
-        connectionTimeoutMillis: 5000,
-        query_timeout: 15000,
-        idleTimeoutMillis: 1000,
-    });
-    pool.on("error", () => {
-        /* Never log connection diagnostics or credentials. */
-    });
-    return pool;
+    return edgePostgresPool(env.PANAS_REGISTRY_DATABASE_URL);
 }
+function reportInfrastructureError(error: unknown, operation = "other") {
+    const e = error as {
+        name?: unknown;
+        code?: unknown;
+        panasQueryHash?: string;
+        message?: string;
+    };
+    console.warn(
+        JSON.stringify({
+            event: "api_infrastructure_failure",
+            operation,
+            queryHash: e?.panasQueryHash,
+            inputType: e?.message?.match(
+                /^invalid input syntax for type ([a-zA-Z0-9 ]+):/,
+            )?.[1],
+            type:
+                typeof e?.name === "string" && /^[a-zA-Z]{1,40}$/.test(e.name)
+                    ? e.name
+                    : "Error",
+            code:
+                typeof e?.code === "string" && /^[A-Z0-9_]{1,32}$/.test(e.code)
+                    ? e.code
+                    : null,
+        }),
+    );
+}
+
 function unavailable() {
     return Response.json(
         {
@@ -98,6 +113,21 @@ export default {
             });
         }
         const pool = poolFor(env);
+        const operation = [
+            "/quotes",
+            "/purchases",
+            "/balance",
+            "/demo/enroll",
+            "/provider/descriptor",
+            "/providers/register",
+            "/providers/heartbeat",
+        ].includes(url.pathname)
+            ? url.pathname
+            : /^\/provider\/requests\//.test(url.pathname)
+              ? "provider-request"
+              : /^\/requests\//.test(url.pathname)
+                ? "buyer-request"
+                : "other";
         try {
             const key = Buffer.from(
                 env.PANAS_PLATFORM_PRIVATE_KEY_BASE64,
@@ -114,6 +144,8 @@ export default {
                           createPublicKey(key)
                               .export({ type: "spki", format: "pem" })
                               .toString(),
+                          (error) =>
+                              reportInfrastructureError(error, "registry-read"),
                       )(routed)
                     : await accountingHttp(
                           new AccountingService(pool, {
@@ -137,6 +169,8 @@ export default {
                                     }
                                   : {}),
                           }),
+                          (error) =>
+                              reportInfrastructureError(error, operation),
                       )(routed);
             // Consume JSON MCP replies before closing this invocation's DB sockets.
             const body = await response.arrayBuffer();
@@ -146,7 +180,8 @@ export default {
                 status: response.status,
                 headers,
             });
-        } catch {
+        } catch (error) {
+            reportInfrastructureError(error, operation);
             return unavailable();
         } finally {
             await pool.end();

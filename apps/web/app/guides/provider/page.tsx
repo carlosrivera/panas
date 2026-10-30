@@ -39,7 +39,7 @@ export default function ProviderGuide() {
             quickStart={
                 <GuideQuickStart
                     command={
-                        "curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh | sh && ~/.local/bin/panas provider --free"
+                        "curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.8/install.sh | sh && ~/.local/bin/panas provider --free"
                     }
                 >
                     <>
@@ -71,7 +71,7 @@ export default function ProviderGuide() {
                     Enroll the provider UUID and Ed25519 public key with the
                     operator before publication.
                 </p>
-                <CodeSample label="Download and run the release installer">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh -o /tmp/panas-install.sh
+                <CodeSample label="Download and run the release installer">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.8/install.sh -o /tmp/panas-install.sh
 sh /tmp/panas-install.sh`}</CodeSample>
                 <p>
                     Public serving requires a Docker gateway and a separate

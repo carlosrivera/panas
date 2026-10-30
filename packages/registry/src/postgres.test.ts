@@ -1,3 +1,4 @@
+import { edgePostgresPool } from "../../../scripts/edge/postgres-pool.js";
 import { generateKeyPairSync, randomUUID } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import pg from "pg";
@@ -13,11 +14,14 @@ describe.skipIf(!databaseUrl)(
     "real Postgres registry concurrency, replay, and readiness",
     { timeout: 30000 },
     () => {
-        const pool = new pg.Pool({
-            connectionString: databaseUrl,
-            max: 5,
-            connectionTimeoutMillis: 10000,
-        });
+        const pool =
+            process.env.PANAS_TEST_EDGE_DRIVER === "1" && databaseUrl
+                ? edgePostgresPool(databaseUrl)
+                : new pg.Pool({
+                      connectionString: databaseUrl,
+                      max: 5,
+                      connectionTimeoutMillis: 10000,
+                  });
         const repo = new PostgresRegistryRepository(pool);
         let now = new Date();
         const service = new RegistryService(repo, () => now);

@@ -489,14 +489,6 @@ export class BuyerService {
                     status: "purchased",
                     ...publicQuote(record.quote),
                 };
-            if (
-                record.purchaseState === "quoted" &&
-                Date.parse(record.quote.expiresAt) <= this.clock().getTime()
-            )
-                throw new BuyerError(
-                    "QUOTE_EXPIRED",
-                    "Quote expired; obtain a new quote",
-                );
             this.enforceBudget(state, record, record.quote);
             record.idempotencyKey = input.idempotencyKey;
             record.purchaseState = "purchasing";
@@ -533,6 +525,38 @@ export class BuyerService {
                     ...publicQuote(record.quote),
                 };
             } catch (error) {
+                if (
+                    error instanceof BuyerError &&
+                    error.code === "QUOTE_EXPIRED" &&
+                    record.quote.totalAtomic === "0" &&
+                    record.runState === "not_sent" &&
+                    record.signedGrant === null
+                ) {
+                    // purchase() checked expiry only after locking the buyer and
+                    // checking this idempotency key. A subsequent authoritative
+                    // absence proves this expired quote cannot execute later.
+                    try {
+                        await this.options.cloud.get(record.requestId);
+                    } catch (lookupError) {
+                        if (
+                            lookupError instanceof BuyerError &&
+                            lookupError.code === "NOT_FOUND"
+                        ) {
+                            record.purchaseState = "quoted";
+                            record.reservedAtomic = "0";
+                            this.options.store.save(state);
+                            throw new BuyerError(
+                                "QUOTE_EXPIRED",
+                                "The expired quote was not purchased. A fresh free quote is safe.",
+                                {
+                                    requestId: record.requestId,
+                                    safeToRequote: true,
+                                },
+                            );
+                        }
+                        // An unavailable lookup leaves the purchase uncertain.
+                    }
+                }
                 // Even typed infrastructure failures may follow a committed purchase. Keep the hold.
                 record.purchaseState = "uncertain";
                 this.options.store.save(state);

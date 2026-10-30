@@ -20,6 +20,7 @@ export function createHttpHandler(
     service: RegistryService,
     tokenHash: string | undefined,
     demoPublicKey?: string,
+    onUnexpectedError?: (error: unknown) => void,
 ) {
     return async (request: Request): Promise<Response> => {
         const path = new URL(request.url).pathname;
@@ -193,6 +194,7 @@ export function createHttpHandler(
                     },
                     400,
                 );
+            onUnexpectedError?.(error);
             // Never send SQL diagnostics, connection strings, request bodies, or credentials to clients/logs.
             return respond(
                 {

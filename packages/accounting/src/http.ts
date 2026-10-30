@@ -27,7 +27,10 @@ function buyerJson(value: unknown, request: Request) {
     }
     return json(value);
 }
-export function createHttpHandler(service: AccountingService) {
+export function createHttpHandler(
+    service: AccountingService,
+    onUnexpectedError?: (error: unknown) => void,
+) {
     return async (request: Request): Promise<Response> => {
         try {
             if (request.headers.has("origin"))
@@ -171,6 +174,7 @@ export function createHttpHandler(service: AccountingService) {
                     },
                     400,
                 );
+            onUnexpectedError?.(error);
             return json(
                 {
                     error: {

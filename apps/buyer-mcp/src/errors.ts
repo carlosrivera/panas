@@ -14,6 +14,7 @@ export class BuyerError extends Error {
     constructor(
         public readonly code: BuyerErrorCode,
         public readonly safeMessage: string,
+        public readonly recovery?: { requestId: string; safeToRequote: true },
     ) {
         super(safeMessage);
         this.name = "BuyerError";
@@ -21,7 +22,11 @@ export class BuyerError extends Error {
 }
 export function publicError(error: unknown) {
     return error instanceof BuyerError
-        ? { code: error.code, message: error.safeMessage }
+        ? {
+              code: error.code,
+              message: error.safeMessage,
+              ...(error.recovery ? { recovery: error.recovery } : {}),
+          }
         : {
               code: "UNAVAILABLE" as const,
               message:

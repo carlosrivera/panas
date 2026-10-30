@@ -150,7 +150,7 @@ it("preserves the registry mount and bearer credential for discovery", async () 
     ]);
 });
 
-it("retries an unavailable quote with the same request identity and fresh proof, without retrying a purchase", async () => {
+it("retries unavailable quotes and purchases with the same identities and fresh proofs", async () => {
     const pair = generateKeyPairSync("ed25519");
     const bodies: string[] = [],
         nonces: string[] = [];
@@ -194,5 +194,7 @@ it("retries an unavailable quote with the same request identity and fresh proof,
             idempotencyKey: randomUUID(),
         }),
     ).rejects.toMatchObject({ code: "UNAVAILABLE" });
-    expect(attempts).toBe(3);
+    expect(attempts).toBe(5);
+    expect(new Set(bodies.slice(2)).size).toBe(1);
+    expect(new Set(nonces.slice(2)).size).toBe(3);
 });

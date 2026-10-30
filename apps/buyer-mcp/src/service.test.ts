@@ -24,7 +24,7 @@ import {
 } from "./state";
 import type { OwnerConfig } from "./config";
 
-function setup() {
+function setup(free = false) {
     const buyer = generateKeyPairSync("ed25519"),
         provider = generateKeyPairSync("ed25519"),
         platform = generateKeyPairSync("ed25519");
@@ -94,9 +94,9 @@ function setup() {
                     startupId,
                     modelDigest: "a".repeat(64),
                     priceVersion: "1",
-                    totalAtomic: "60",
-                    providerAtomic: "50",
-                    feeAtomic: "10",
+                    totalAtomic: free ? "0" : "60",
+                    providerAtomic: free ? "0" : "50",
+                    feeAtomic: free ? "0" : "10",
                     currency: "TEST_CREDIT",
                     limits: prototypeLimits,
                     payloadDigest: input.payloadDigest,
@@ -173,9 +173,9 @@ function setup() {
                           requestId,
                           status: "completed",
                           currency: "TEST_CREDIT",
-                          buyerDebitAtomic: "60",
-                          providerEarningsAtomic: "50",
-                          feeAtomic: "10",
+                          buyerDebitAtomic: free ? "0" : "60",
+                          providerEarningsAtomic: free ? "0" : "50",
+                          feeAtomic: free ? "0" : "10",
                           issuedAt: now.toISOString(),
                       }
                     : null,
@@ -596,3 +596,60 @@ it("does not reopen stricter local owner authority after a remote refund, even i
     ).rejects.toMatchObject({ code: "SPENDING_LIMIT" });
     expect(s.cloud.purchase).toHaveBeenCalledTimes(1);
 });
+
+it("runs multiple independent free requests with zero session and daily money caps", async () => {
+    const s = setup(true);
+    s.owner.limits = {
+        maxRequestAtomic: "0",
+        maxSessionAtomic: "0",
+        maxDailyAtomic: "0",
+    };
+    const service = s.service();
+    const ids = new Set<string>();
+    for (let i = 0; i < 3; i++) {
+        const b = await buy(s, service);
+        ids.add(b.requestId);
+        await service.run({ requestId: b.requestId });
+        s.settled = true;
+        const result = await service.get({ requestId: b.requestId });
+        expect(result.chargeAtomic).toBe("0");
+    }
+    expect(ids.size).toBe(3);
+    expect(s.executed).toBe(3);
+    expect(
+        Object.values(s.state.requests).every((r) => r.spentAtomic === "0"),
+    ).toBe(true);
+});
+it.each(["NOT_FOUND", "UNAVAILABLE"] as const)(
+    "permits a fresh quote only after server expiry and authoritative absence, lookup %s",
+    async (code) => {
+        const s = setup(true);
+        const service = s.service();
+        const q = await service.quote({
+            providerId: s.providerId,
+            prompt: "Hello world",
+            maxOutputTokens: 32,
+        });
+        s.cloud.purchase.mockRejectedValue(
+            new BuyerError("QUOTE_EXPIRED", "Expired"),
+        );
+        s.cloud.get.mockRejectedValue(new BuyerError(code, "Lookup result"));
+        const result = await service
+            .purchase({
+                quoteId: q.quoteId as string,
+                idempotencyKey: randomUUID(),
+            })
+            .catch((e) => e);
+        expect(result.code).toBe("QUOTE_EXPIRED");
+        expect(Boolean(result.recovery?.safeToRequote)).toBe(
+            code === "NOT_FOUND",
+        );
+        expect(s.cloud.purchase.mock.invocationCallOrder[0]).toBeLessThan(
+            s.cloud.get.mock.invocationCallOrder[0]!,
+        );
+        expect(s.executed).toBe(0);
+        expect(s.state.requests[q.requestId as string]!.purchaseState).toBe(
+            code === "NOT_FOUND" ? "quoted" : "uncertain",
+        );
+    },
+);
