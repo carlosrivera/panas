@@ -46,12 +46,16 @@ export const previewProviderPage = publicProviderPageSchema.parse({
                 testedAt,
                 lastSeenAt: state === "offline" ? heartbeatAt : observedAt,
                 expiresAt: leaseAt(60),
-                readyUntil: leaseAt(ready ? Math.min(60, Math.max(1, timeout)) : 1),
+                readyUntil: leaseAt(
+                    ready ? Math.min(60, Math.max(1, timeout)) : 1,
+                ),
                 state,
                 readiness: { ready, reason },
-                evidence: { source: "provider-reported", peerProbe: "verified" },
+                evidence: {
+                    source: "provider-reported",
+                    peerProbe: "verified",
+                },
             };
         },
     ),
 });
-
