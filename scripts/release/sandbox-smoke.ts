@@ -90,6 +90,7 @@ try {
         release.modelDigest,
     );
     const imageId = JSON.parse(await docker(["image", "inspect", image]))[0].Id;
+    let gatewayArgs: string[] = [];
     await prepareIpcVolume(id);
     for (const role of ["worker", "gateway"] as const) {
         const args = sandboxArgs(role, id, imageId, staged.modelsPath);
@@ -104,6 +105,7 @@ try {
                 "setInterval(()=>{},1000)",
             );
         }
+        if (role === "gateway") gatewayArgs = [...args];
         await docker(args);
         const name = `${prefix}-${role}`;
         owned.push(name);
@@ -186,6 +188,26 @@ try {
     assert(generation.outputTokens > 0 && generation.outputTokens <= 8);
     assert.equal(await rpc("cancellationCheck"), true);
     await rpc("stop");
+    await docker([
+        "exec",
+        `${prefix}-gateway`,
+        "node",
+        "/opt/panas/apps/provider/src/container-probe.js",
+        "gateway",
+        "--claim-owner",
+    ]);
+    await docker(["rm", "--force", `${prefix}-gateway`]);
+    await docker(gatewayArgs);
+    await docker(["start", `${prefix}-gateway`]);
+    const recovered = await docker([
+        "exec",
+        `${prefix}-gateway`,
+        "node",
+        "/opt/panas/apps/provider/src/container-probe.js",
+        "gateway",
+        "--claim-owner",
+    ]);
+    assert.equal(JSON.parse(recovered.split("\n").at(-1)!).recovered, true);
     console.log(
         JSON.stringify({
             sandbox: "passed",
@@ -195,6 +217,7 @@ try {
             outputTokens: generation.outputTokens,
             cancellation: true,
             publicPeerDrill: false,
+            containerOwnershipRecovery: true,
         }),
     );
 } finally {

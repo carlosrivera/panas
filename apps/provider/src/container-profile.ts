@@ -1,4 +1,4 @@
-import { readFile, access, statfs } from "node:fs/promises";
+import { readFile, access, statfs, readlink } from "node:fs/promises";
 export type ContainerRole = "gateway" | "worker";
 export const containerLimits = {
     gateway: { memory: 1073741824, pids: 256, cpus: 1 },
@@ -78,4 +78,12 @@ export async function assertContainerProfile(role: ContainerRole) {
         pids,
         cpus: quota / period,
     };
+}
+
+export async function gatewayOwnershipScope() {
+    await assertContainerProfile("gateway");
+    const hostname = (await readFile("/etc/hostname", "utf8")).trim();
+    if (!/^[a-f0-9]{12}$/.test(hostname))
+        throw new Error("Docker instance hostname required");
+    return `docker:${hostname}:${await readlink("/proc/self/ns/pid")}`;
 }
