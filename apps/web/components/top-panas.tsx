@@ -31,7 +31,7 @@ export function TopPanas() {
         const startedAt = performance.now();
         try {
             let parsed: PublicProviderPage;
-            if (isFixturePreview()) {
+            if (process.env.NODE_ENV === "development" && isFixturePreview()) {
                 const { previewProviderPage } =
                     await import("../lib/preview-providers");
                 parsed = publicProviderPageSchema.parse(previewProviderPage);
@@ -104,10 +104,10 @@ export function TopPanas() {
                     <h2 id="top-panas-title">
                         panas on <span className="lime">call.</span>
                     </h2>
-                    <p>free friends first. awake as last observed.</p>
+                    <p>awake right now. they have lives, so no promises.</p>
                 </div>
-                <Link className="text-link" href="/providers">
-                    view all panas →
+                <Link className="top-panas-cta" href="/providers">
+                    view all panas <span aria-hidden="true">→</span>
                 </Link>
             </div>
             {fromFixtures && (

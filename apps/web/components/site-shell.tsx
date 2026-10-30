@@ -33,15 +33,15 @@ export function SiteFooter() {
                 <Link href="/guides/buyer">buyer setup</Link>
                 <Link href="/guides/provider">provider setup</Link>
                 <a href="https://github.com/carlosrivera/mcpwire">
-                    MCPWire source ↗
+                    mcpwire source ↗
                 </a>
             </nav>
             <p className="footer-note">
-                Browsing never reserves capacity
+                browsing never books a mac.
                 <br />
-                or authorizes a purchase.
+                test credits only. no real money,
                 <br />
-                Test-credit prototype. No real money.
+                no real drama.
             </p>
         </footer>
     );

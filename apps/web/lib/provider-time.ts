@@ -87,3 +87,29 @@ export function formatPublicDate(value: string): string {
         }).format(new Date(value)) + " UTC"
     );
 }
+/** Elapsed time since an instant, measured on the observation's monotonic clock. */
+export function elapsedSinceMs(
+    instant: string,
+    observation: Observation,
+    monotonicNow: number,
+): number {
+    return Math.max(
+        0,
+        Date.parse(observation.observedAt) -
+            Date.parse(instant) +
+            Math.max(0, monotonicNow - observation.startedAt),
+    );
+}
+export function formatAgo(ms: number): string {
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+}
+/** Compact card label; the full label stays available to assistive technology. */
+export function shortReadinessLabel(label: string, ready: boolean): string {
+    return ready ? "awake" : label.toLowerCase();
+}

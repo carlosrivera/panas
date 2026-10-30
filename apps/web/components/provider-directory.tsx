@@ -3,20 +3,26 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
     publicProviderPageSchema,
     publicProviderDetailSchema,
-    type PublicProvider,
     type PublicProviderPage,
 } from "@panas/contracts/public-registry";
 import {
     anchorObservation,
     displayedReadiness,
-    formatCredits,
-    formatPublicDate,
+    elapsedSinceMs,
+    formatAgo,
     remainingReadyMs,
     type Observation,
 } from "../lib/provider-time";
+import { Icon } from "./icons";
 import { ProviderCard } from "./pana-card";
 import { isFixturePreview } from "../lib/preview-mode";
 
+type FilterMode = "all" | "awake" | "free";
+const filterModes: { mode: FilterMode; label: string }[] = [
+    { mode: "all", label: "all panas" },
+    { mode: "awake", label: "awake now" },
+    { mode: "free", label: "free only" },
+];
 export function ProviderDirectory({ providerId }: { providerId?: string }) {
     const [page, setPage] = useState<PublicProviderPage | null>(null);
     const [observation, setObservation] = useState<Observation>({
@@ -30,7 +36,7 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
     const [error, setError] = useState<string | null>(null);
     const [fromFixtures, setFromFixtures] = useState(false);
     const [query, setQuery] = useState("");
-    const [readyFilter, setReadyFilter] = useState("false");
+    const [mode, setMode] = useState<FilterMode>("all");
     const [maxPrice, setMaxPrice] = useState("");
     const [cursor, setCursor] = useState<string | null>(null);
     const [history, setHistory] = useState<(string | null)[]>([]);
@@ -48,7 +54,11 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
             if (forceUnknown)
                 setObservation((old) => ({ ...old, trusted: false }));
             try {
-                if (isFixturePreview() && !providerId) {
+                if (
+                    process.env.NODE_ENV === "development" &&
+                    isFixturePreview() &&
+                    !providerId
+                ) {
                     const { previewProviderPage } =
                         await import("../lib/preview-providers");
                     const parsed =
@@ -170,6 +180,19 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
         );
         return () => clearTimeout(timer);
     }, [page, observation, now]);
+    useEffect(() => {
+        const timer = setInterval(() => setNow(performance.now()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+    const applyFilters = (nextMode: FilterMode, nextMax: string) => {
+        const params = new URLSearchParams();
+        params.set("readyOnly", String(nextMode === "awake"));
+        if (nextMode === "free") params.set("maxPriceAtomic", "0");
+        else if (nextMax) params.set("maxPriceAtomic", nextMax);
+        setHistory([]);
+        setCursor(null);
+        setQuery(params.toString());
+    };
     const hasFilters =
         new URLSearchParams(query).get("readyOnly") === "true" ||
         new URLSearchParams(query).has("maxPriceAtomic");
@@ -186,145 +209,152 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                         : `${page.providers.filter((provider) => displayedReadiness(provider, observation, now).ready).length} ready as observed out of ${page.providers.length} displayed reports.${observation.trusted ? "" : " Availability is unknown."}`
                     : ""}
             </p>
-            {!providerId && (
-                <form
-                    className="directory-filters"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        const params = new URLSearchParams();
-                        params.set("readyOnly", readyFilter);
-                        if (maxPrice) params.set("maxPriceAtomic", maxPrice);
-                        setHistory([]);
-                        setCursor(null);
-                        setQuery(params.toString());
-                    }}
-                >
-                    <label>
-                        Readiness
-                        <select
-                            value={readyFilter}
-                            onChange={(event) =>
-                                setReadyFilter(event.target.value)
-                            }
-                        >
-                            <option value="false">
-                                All reported providers
-                            </option>
-                            <option value="true">Ready as observed</option>
-                        </select>
-                    </label>
-                    <label>
-                        Maximum price{" "}
-                        <span className="small-note">(test credits)</span>
-                        <input
-                            inputMode="numeric"
-                            autoComplete="off"
-                            value={maxPrice}
-                            onChange={(event) =>
-                                setMaxPrice(event.target.value)
-                            }
-                            placeholder="No maximum"
-                            aria-describedby="credit-unit"
-                        />
-                    </label>
-                    <button type="submit" className="filter-button">
-                        Apply filters
-                    </button>
-                    <p id="credit-unit" className="filter-note">
-                        One integer unit is one test credit. No real money.
-                    </p>
-                </form>
-            )}
-            {fromFixtures && (
-                <p className="small-note">
-                    development preview · fixtures, not live providers
-                </p>
-            )}
-            <div className="directory-toolbar">
-                <p className="small-note">
-                    {page ? (
-                        <>
-                            Observed{" "}
-                            <time dateTime={page.observedAt}>
-                                {formatPublicDate(page.observedAt)}
-                            </time>{" "}
-                            · refreshes every 15 seconds
-                        </>
-                    ) : (
-                        "Public provider data · no sign-in required"
-                    )}
-                </p>
-                <button
-                    className="text-link"
-                    onClick={() => void load(true)}
-                    disabled={refreshing}
-                >
-                    {refreshing ? "Refreshing…" : "Refresh"}
-                    <span aria-hidden="true">↻</span>
-                </button>
-            </div>
             {!providerId &&
                 page &&
                 (() => {
                     const ready = page.providers.filter(
                         (p) => displayedReadiness(p, observation, now).ready,
                     ).length;
-                    const cheapest =
-                        page.providers.reduce<PublicProvider | null>(
-                            (best, item) =>
-                                !best ||
-                                BigInt(item.price.totalAtomic) <
-                                    BigInt(best.price.totalAtomic)
-                                    ? item
-                                    : best,
-                            null,
-                        );
+                    const cheapest = page.providers.reduce<bigint | null>(
+                        (best, item) => {
+                            const price = BigInt(item.price.totalAtomic);
+                            return best === null || price < best ? price : best;
+                        },
+                        null,
+                    );
                     return (
                         <section
                             className="directory-summary"
-                            aria-label="Directory summary"
+                            aria-label="directory summary"
                         >
                             <div>
-                                <span>panas listed</span>
+                                <span>
+                                    <Icon name="mac" /> panas listed
+                                </span>
                                 <strong>{page.providers.length}</strong>
-                                <small>this page</small>
                             </div>
                             <div>
-                                <span>ready now</span>
-                                <strong>
+                                <span>
+                                    <span
+                                        className="lime-dot"
+                                        aria-hidden="true"
+                                    />{" "}
+                                    awake now
+                                </span>
+                                <strong className="is-lime">
                                     {observation.trusted ? ready : "—"}
                                 </strong>
-                                <small>
-                                    {observation.trusted
-                                        ? "as observed"
-                                        : "status unknown"}
-                                </small>
                             </div>
                             <div>
-                                <span>cheapest request</span>
+                                <span>
+                                    <Icon name="tag" /> cheapest ask
+                                </span>
                                 <strong>
-                                    {cheapest
-                                        ? cheapest.price.totalAtomic === "0"
-                                            ? "free"
-                                            : formatCredits(
-                                                  cheapest.price.totalAtomic,
-                                              )
-                                        : "—"}
+                                    {cheapest === null
+                                        ? "—"
+                                        : cheapest === 0n
+                                          ? "free"
+                                          : `${new Intl.NumberFormat("en-US").format(cheapest)} credits`}
                                 </strong>
-                                <small>on this page</small>
+                            </div>
+                            <div>
+                                <span>
+                                    <Icon name="refresh" /> last checked
+                                </span>
+                                <strong>
+                                    {observation.trusted ? (
+                                        <time dateTime={page.observedAt}>
+                                            {formatAgo(
+                                                elapsedSinceMs(
+                                                    page.observedAt,
+                                                    observation,
+                                                    now,
+                                                ),
+                                            ).replace(" ago", "")}
+                                            <small> ago</small>
+                                        </time>
+                                    ) : (
+                                        "—"
+                                    )}
+                                </strong>
                             </div>
                         </section>
                     );
                 })()}
+            {!providerId && (
+                <div className="directory-filters">
+                    <div
+                        className="filter-chips"
+                        role="group"
+                        aria-label="filter panas"
+                    >
+                        {filterModes.map((item) => (
+                            <button
+                                key={item.mode}
+                                type="button"
+                                className="filter-chip"
+                                aria-pressed={mode === item.mode}
+                                onClick={() => {
+                                    setMode(item.mode);
+                                    applyFilters(item.mode, maxPrice);
+                                }}
+                            >
+                                {item.mode === "awake" && (
+                                    <span
+                                        className="lime-dot"
+                                        aria-hidden="true"
+                                    />
+                                )}
+                                {item.label}
+                            </button>
+                        ))}
+                        <form
+                            className="filter-chip filter-price"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                applyFilters(mode, maxPrice);
+                            }}
+                        >
+                            <label htmlFor="max-price">max price</label>
+                            <input
+                                id="max-price"
+                                inputMode="numeric"
+                                autoComplete="off"
+                                value={mode === "free" ? "0" : maxPrice}
+                                disabled={mode === "free"}
+                                onChange={(event) =>
+                                    setMaxPrice(event.target.value)
+                                }
+                                onBlur={() => applyFilters(mode, maxPrice)}
+                                placeholder="any"
+                                aria-describedby="credit-unit"
+                            />
+                            <span id="credit-unit" className="sr-only">
+                                in whole test credits
+                            </span>
+                        </form>
+                    </div>
+                    <button
+                        type="button"
+                        className="filter-refresh"
+                        onClick={() => void load(true)}
+                        disabled={refreshing}
+                    >
+                        <Icon name="refresh" />
+                        {refreshing ? "refreshing…" : "refreshes every 15s"}
+                        <span className="sr-only"> · refresh now</span>
+                    </button>
+                </div>
+            )}
+            {fromFixtures && (
+                <p className="small-note fixture-note">
+                    development preview · fixtures, not live providers
+                </p>
+            )}
             {loading && !page && (
                 <div className="directory-message" role="status">
-                    <span className="tiny-label">
-                        Checking the public registry
-                    </span>
-                    <h2>Finding the latest reports.</h2>
-                    <p>
-                        Readiness is shown only after a valid public response.
-                    </p>
+                    <h2>checking who’s awake…</h2>
+                    <p>status shows up once the registry answers.</p>
                 </div>
             )}
             {error && (
@@ -334,17 +364,17 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                 >
                     <h2>
                         {error === "NOT_FOUND"
-                            ? "Provider not found."
+                            ? "no pana by that name."
                             : error === "INVALID_FILTERS"
-                              ? "These filters need a second look."
-                              : "We can’t verify availability right now."}
+                              ? "those filters need a second look."
+                              : "can’t tell who’s awake right now."}
                     </h2>
                     <p>
                         {error === "NOT_FOUND"
-                            ? "This identifier is not in the public registry. Return to the directory for current entries."
+                            ? "it’s not in the public registry. the directory has everyone current."
                             : error === "INVALID_FILTERS"
-                              ? "Use a nonnegative integer price, or reset an expired page cursor."
-                              : "The registry did not return valid current data. Any previous reports below are last-known information with status unknown."}
+                              ? "use a whole number of credits, or start the pages over."
+                              : "the registry didn’t answer cleanly. anything below is last known, status unknown."}
                     </p>
                     <button
                         className="text-link"
@@ -353,30 +383,29 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                                 setQuery("");
                                 setCursor(null);
                                 setHistory([]);
-                                setReadyFilter("false");
+                                setMode("all");
                                 setMaxPrice("");
                             } else void load(true);
                         }}
                     >
                         {error === "INVALID_FILTERS"
-                            ? "Reset filters and pagination"
-                            : "Try again"}{" "}
+                            ? "reset filters"
+                            : "try again"}{" "}
                         →
                     </button>
                 </div>
             )}
             {!loading && !error && page?.providers.length === 0 && (
                 <div className="directory-message" role="status">
-                    <span className="tiny-label">The public registry</span>
                     <h2>
                         {hasFilters
-                            ? "No providers match these filters."
+                            ? "no panas match that."
                             : "no panas on the porch yet."}
                     </h2>
                     <p>
                         {hasFilters
-                            ? "Try all reported providers or a higher price ceiling. A result is still only an observation, not reserved capacity."
-                            : "Providers appear after enrollment and capability reporting. Buyer agents can check the registry again later."}
+                            ? "try all panas or a higher price."
+                            : "panas show up after they enroll and pass their checks."}
                     </p>
                     {hasFilters && (
                         <button
@@ -385,11 +414,11 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                                 setQuery("");
                                 setCursor(null);
                                 setHistory([]);
-                                setReadyFilter("false");
+                                setMode("all");
                                 setMaxPrice("");
                             }}
                         >
-                            Clear filters →
+                            clear filters →
                         </button>
                     )}
                 </div>
@@ -423,7 +452,7 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                             setCursor(last);
                         }}
                     >
-                        ← Previous page
+                        ← previous
                     </button>
                     <button
                         className="text-link"
@@ -433,15 +462,17 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                             setCursor(page.nextCursor);
                         }}
                     >
-                        Next page →
+                        next →
                     </button>
                 </nav>
             )}
             <p className="directory-disclaimer">
-                a listing isn’t a quote or reservation; browsing doesn’t reserve
-                capacity. provider claims aren’t hardware attestation. test
-                credits only, no real money. providers can read prompts on their
-                Mac; connections are encrypted in transit.
+                <Icon name="info" />
+                <span>
+                    pana-reported, not attested. a listing isn’t a booking.
+                    panas can read prompts on their mac; the wire is encrypted.
+                    test credits only, no real money.
+                </span>
             </p>
         </div>
     );

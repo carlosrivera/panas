@@ -2,10 +2,14 @@ import Link from "next/link";
 import type { PublicProvider } from "@panas/contracts/public-registry";
 import {
     displayedReadiness,
+    elapsedSinceMs,
+    formatAgo,
     formatCredits,
     formatPublicDate,
+    shortReadinessLabel,
     type Observation,
 } from "../lib/provider-time";
+import { Icon, type IconName } from "./icons";
 
 function ProviderStatus({
     provider,
@@ -71,6 +75,115 @@ function StatIcon({
         </svg>
     );
 }
+function compactTokens(value: number): string {
+    return value >= 1024
+        ? `${Number((value / 1024).toFixed(1))}k`
+        : String(value);
+}
+function CompactCard({
+    provider,
+    observation,
+    now,
+}: {
+    provider: PublicProvider;
+    observation: Observation;
+    now: number;
+}) {
+    const status = displayedReadiness(provider, observation, now);
+    const free = provider.price.totalAtomic === "0";
+    const name = `pana ${provider.providerId.slice(0, 8)}`;
+    const stats: { icon: IconName; label: string; value: string }[] = [
+        {
+            icon: "context",
+            label: "context limit",
+            value: compactTokens(provider.profile.maxContextTokens),
+        },
+        {
+            icon: "output",
+            label: "output limit",
+            value: compactTokens(provider.profile.maxOutputTokens),
+        },
+        {
+            icon: "deadline",
+            label: "request deadline",
+            value: `${provider.profile.timeoutMs / 1000}s`,
+        },
+        {
+            icon: "concurrency",
+            label: "concurrency",
+            value: `${provider.profile.concurrency}×`,
+        },
+    ];
+    return (
+        <article
+            className={`pana-card ${status.tone === "warning" ? "is-stale" : ""}`}
+        >
+            <div className="pana-card-head">
+                <span className="pana-card-avatar">
+                    <Icon name="mac" size={16} />
+                </span>
+                <div className="pana-card-name">
+                    <h3>{name}</h3>
+                    <p>{provider.model.name}</p>
+                </div>
+                <span
+                    className={`status-pill status-${status.tone}`}
+                    title={status.label}
+                >
+                    <span aria-hidden="true" />
+                    <span aria-hidden="true">
+                        {shortReadinessLabel(status.label, status.ready)}
+                    </span>
+                    <span className="sr-only">{status.label}</span>
+                </span>
+            </div>
+            <p className={`pana-card-price ${free ? "is-free" : ""}`}>
+                {free ? (
+                    <strong>free</strong>
+                ) : (
+                    <>
+                        <strong>
+                            {new Intl.NumberFormat("en-US").format(
+                                BigInt(provider.price.totalAtomic),
+                            )}
+                        </strong>
+                        <span className="sr-only">
+                            {formatCredits(provider.price.totalAtomic)}
+                        </span>
+                        <span aria-hidden="true"> credits</span>
+                    </>
+                )}
+                <span> / request</span>
+            </p>
+            <dl className="pana-card-stats">
+                {stats.map((stat) => (
+                    <div key={stat.icon} title={stat.label}>
+                        <dt>
+                            <Icon name={stat.icon} />
+                            <span className="sr-only">{stat.label}</span>
+                        </dt>
+                        <dd>{stat.value}</dd>
+                    </div>
+                ))}
+            </dl>
+            <div className="pana-card-foot">
+                <time
+                    dateTime={provider.lastSeenAt}
+                    title={formatPublicDate(provider.lastSeenAt)}
+                >
+                    seen{" "}
+                    {formatAgo(
+                        elapsedSinceMs(provider.lastSeenAt, observation, now),
+                    )}
+                </time>
+                <Link href={`/providers/${provider.providerId}`}>
+                    details<span className="sr-only"> for {name}</span>{" "}
+                    <span aria-hidden="true">↗</span>
+                </Link>
+            </div>
+        </article>
+    );
+}
 export function ProviderCard({
     provider,
     observation,
@@ -82,10 +195,16 @@ export function ProviderCard({
     now: number;
     detail?: boolean;
 }) {
+    if (!detail)
+        return (
+            <CompactCard
+                provider={provider}
+                observation={observation}
+                now={now}
+            />
+        );
     return (
-        <article
-            className={`provider-card-public ${detail ? "provider-detail" : ""}`}
-        >
+        <article className="provider-card-public provider-detail">
             <div className="provider-card-heading">
                 <span className="tiny-label">
                     text inference · provider report
@@ -97,16 +216,7 @@ export function ProviderCard({
                 />
             </div>
             <h2>
-                {detail ? (
-                    <>
-                        pana <span>{provider.providerId.slice(0, 8)}</span>
-                    </>
-                ) : (
-                    <Link href={`/providers/${provider.providerId}`}>
-                        pana {provider.providerId.slice(0, 8)}{" "}
-                        <span aria-hidden="true">↗</span>
-                    </Link>
-                )}
+                pana <span>{provider.providerId.slice(0, 8)}</span>
             </h2>
             <p className="provider-model">{provider.model.name}</p>
             <div className="provider-price">
@@ -147,65 +257,53 @@ export function ProviderCard({
                     <dd>{provider.profile.concurrency}</dd>
                 </div>
             </dl>
-            {detail && (
-                <>
-                    <dl className="provider-facts provider-revisions">
-                        <div>
-                            <dt>Pseudonymous identity</dt>
-                            <dd className="long-value">
-                                {provider.providerId}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt>Model digest</dt>
-                            <dd className="long-value">
-                                {provider.model.digest ?? "Not reported"}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt>Ollama revision</dt>
-                            <dd>
-                                {provider.model.runtimeVersion ??
-                                    "Not reported"}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt>Price version</dt>
-                            <dd className="long-value">
-                                {provider.price.version}
-                            </dd>
-                        </div>
-                        <div>
-                            <dt>Queue depth</dt>
-                            <dd>{provider.profile.queueDepth}</dd>
-                        </div>
-                    </dl>
-                    <div className="benchmark-block">
-                        <h3>Provider-reported benchmark</h3>
-                        {provider.benchmark ? (
-                            <p>
-                                {provider.benchmark.warmLatencyMs.toLocaleString(
-                                    "en-US",
-                                )}{" "}
-                                ms warm latency ·{" "}
-                                {provider.benchmark.tokensPerSecond.toLocaleString(
-                                    "en-US",
-                                    { maximumFractionDigits: 2 },
-                                )}{" "}
-                                output tokens/second
-                            </p>
-                        ) : (
-                            <p>No benchmark reported.</p>
-                        )}
-                        <p className="small-note">
-                            Measured with the capability report on{" "}
-                            {formatPublicDate(provider.testedAt)}. This is a
-                            provider assertion, not independently verified
-                            performance.
-                        </p>
-                    </div>
-                </>
-            )}
+            <dl className="provider-facts provider-revisions">
+                <div>
+                    <dt>Pseudonymous identity</dt>
+                    <dd className="long-value">{provider.providerId}</dd>
+                </div>
+                <div>
+                    <dt>Model digest</dt>
+                    <dd className="long-value">
+                        {provider.model.digest ?? "Not reported"}
+                    </dd>
+                </div>
+                <div>
+                    <dt>Ollama revision</dt>
+                    <dd>{provider.model.runtimeVersion ?? "Not reported"}</dd>
+                </div>
+                <div>
+                    <dt>Price version</dt>
+                    <dd className="long-value">{provider.price.version}</dd>
+                </div>
+                <div>
+                    <dt>Queue depth</dt>
+                    <dd>{provider.profile.queueDepth}</dd>
+                </div>
+            </dl>
+            <div className="benchmark-block">
+                <h3>Provider-reported benchmark</h3>
+                {provider.benchmark ? (
+                    <p>
+                        {provider.benchmark.warmLatencyMs.toLocaleString(
+                            "en-US",
+                        )}{" "}
+                        ms warm latency ·{" "}
+                        {provider.benchmark.tokensPerSecond.toLocaleString(
+                            "en-US",
+                            { maximumFractionDigits: 2 },
+                        )}{" "}
+                        output tokens/second
+                    </p>
+                ) : (
+                    <p>No benchmark reported.</p>
+                )}
+                <p className="small-note">
+                    Measured with the capability report on{" "}
+                    {formatPublicDate(provider.testedAt)}. This is a provider
+                    assertion, not independently verified performance.
+                </p>
+            </div>
             <div className="provider-times">
                 <p>
                     Checks:{" "}
@@ -219,14 +317,12 @@ export function ProviderCard({
                         {formatPublicDate(provider.lastSeenAt)}
                     </time>
                 </p>
-                {detail && (
-                    <p>
-                        Readiness valid no later than:{" "}
-                        <time dateTime={provider.readyUntil}>
-                            {formatPublicDate(provider.readyUntil)}
-                        </time>
-                    </p>
-                )}
+                <p>
+                    Readiness valid no later than:{" "}
+                    <time dateTime={provider.readyUntil}>
+                        {formatPublicDate(provider.readyUntil)}
+                    </time>
+                </p>
             </div>
         </article>
     );
