@@ -1,3 +1,4 @@
+import { edgePostgresPool } from "../../../scripts/edge/postgres-pool.js";
 import apiWorker from "../../../scripts/edge/api-worker.js";
 import { receiptSchema } from "./types";
 import {
@@ -34,12 +35,15 @@ describe.skipIf(!databaseUrl)(
     "real Postgres fixed-price authorization and ledger",
     { timeout: 90000 },
     () => {
-        const pool = new pg.Pool({
-            connectionString: databaseUrl,
-            max: 8,
-            connectionTimeoutMillis: 10000,
-            query_timeout: 30000,
-        });
+        const pool =
+            process.env.PANAS_TEST_EDGE_DRIVER === "1" && databaseUrl
+                ? edgePostgresPool(databaseUrl)
+                : new pg.Pool({
+                      connectionString: databaseUrl,
+                      max: 8,
+                      connectionTimeoutMillis: 10000,
+                      query_timeout: 30000,
+                  });
         const platform = generateKeyPairSync("ed25519"),
             provider = generateKeyPairSync("ed25519"),
             buyer = generateKeyPairSync("ed25519");

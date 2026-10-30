@@ -7,7 +7,7 @@ website. Existing clients retain their URLs and signing trust anchors.
 PostgreSQL remains the same Volcano database. Keep its full connection string,
 including TLS and `application_name=volcano_full_access`. Hyperdrive's origin
 validation currently rejects this proxy's required startup parameter. The Worker
-uses per-invocation `pg` pools, closes them before responding, and does not cache
+uses per-invocation Postgres.js connections through the service pool adapter, closes them before responding, and does not cache
 SQL reads or API responses. No database migration or key rotation is required.
 
 Use Node 24 and the repository's pinned pnpm. Authenticate Wrangler locally and
@@ -45,3 +45,10 @@ leaving `panas.mcpwire.co/*` on `panas-web-router`. That forwards API paths to t
 existing Volcano origin again. Existing PostgreSQL data and keys stay intact.
 Automatic enrollment will be unavailable on the old origin; never remove existing
 sessions or fabricate success to hide that difference.
+
+The edge adapter preserves bound parameters, transaction ownership and the existing
+service result shape. It normalizes JSON objects and dates before binding and
+preserves already serialized JSON strings. Both database integration suites run
+against this adapter in CI. Unexpected failures log only an operation, error
+class, SQLSTATE and query fingerprint; credential values and SQL parameters are
+never logged.

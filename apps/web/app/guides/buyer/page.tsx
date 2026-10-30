@@ -69,7 +69,7 @@ export default function BuyerGuide() {
             quickStart={
                 <GuideQuickStart
                     command={
-                        "curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh | sh && ~/.local/bin/panas demo-prompt"
+                        "curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.8/install.sh | sh && ~/.local/bin/panas demo-prompt"
                     }
                 >
                     <>
@@ -100,7 +100,7 @@ export default function BuyerGuide() {
                     Docker or Ollama. The provider runs the sandboxed worker on
                     its own Mac.
                 </p>
-                <CodeSample label="Install without cloning">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh -o /tmp/panas-install.sh
+                <CodeSample label="Install without cloning">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.8/install.sh -o /tmp/panas-install.sh
 sh /tmp/panas-install.sh`}</CodeSample>
                 <p>
                     No repository checkout or pnpm installation is needed by

@@ -6,6 +6,16 @@ import { homedir } from "node:os";
 import { enrollDemo, SetupError } from "./client-setup.js";
 import { terminalText } from "./console.js";
 
+class DemoStepError extends SetupError {
+    constructor(
+        readonly code: string,
+        readonly safeToRequote = false,
+    ) {
+        super(
+            `Demo request could not complete (${code}). Retain its request ID and retrieve uncertain work instead of replaying inference.`,
+        );
+    }
+}
 /** One free request. Uncertainty is retrieved by request ID, never replayed. */
 export async function helloWorld(cliPath: string, resumeRequestId?: string) {
     const { envPath } = await enrollDemo({
@@ -24,10 +34,23 @@ export async function helloWorld(cliPath: string, resumeRequestId?: string) {
             undefined,
             { timeout: 120000 },
         );
-        if (result.isError)
-            throw new SetupError(
-                `Demo step ${name} could not complete. Retain the request ID and use get_request after uncertainty.`,
+        if (result.isError) {
+            const error = z
+                .object({
+                    error: z.object({
+                        code: z.string().regex(/^[A-Z_]{1,40}$/),
+                        recovery: z
+                            .object({ safeToRequote: z.literal(true) })
+                            .optional(),
+                    }),
+                })
+                .safeParse(result.structuredContent);
+            throw new DemoStepError(
+                error.success ? error.data.error.code : "UNAVAILABLE",
+                error.success &&
+                    error.data.error.recovery?.safeToRequote === true,
             );
+        }
         return z
             .record(z.string(), z.unknown())
             .parse(result.structuredContent);
@@ -58,25 +81,49 @@ export async function helloWorld(cliPath: string, resumeRequestId?: string) {
             );
         const providerId = providers[0]!.providerId;
         await call("get_provider", { providerId });
-        const quoted = await call("quote_inference", {
-            providerId,
-            prompt: "Reply with a short Hello world greeting from Panas.",
-            maxOutputTokens: 32,
-        });
-        const quote = z
-            .object({
-                quoteId: z.uuid(),
-                requestId: z.uuid(),
-                totalAtomic: z.literal("0"),
-                providerAtomic: z.literal("0"),
-                feeAtomic: z.literal("0"),
-            })
-            .parse(quoted);
-        process.stderr.write(`Free demo request ${quote.requestId}\n`);
-        await call("purchase_access", {
-            quoteId: quote.quoteId,
-            idempotencyKey: randomUUID(),
-        });
+        let quote:
+            | {
+                  quoteId: string;
+                  requestId: string;
+                  totalAtomic: "0";
+                  providerAtomic: "0";
+                  feeAtomic: "0";
+              }
+            | undefined;
+        for (let attempt = 0; attempt < 2; attempt++) {
+            const quoted = await call("quote_inference", {
+                providerId,
+                prompt: "Reply with a short Hello world greeting from Panas.",
+                maxOutputTokens: 32,
+            });
+            const nextQuote = z
+                .object({
+                    quoteId: z.uuid(),
+                    requestId: z.uuid(),
+                    totalAtomic: z.literal("0"),
+                    providerAtomic: z.literal("0"),
+                    feeAtomic: z.literal("0"),
+                })
+                .parse(quoted);
+            process.stderr.write(`Free demo request ${nextQuote.requestId}\n`);
+            try {
+                await call("purchase_access", {
+                    quoteId: nextQuote.quoteId,
+                    idempotencyKey: randomUUID(),
+                });
+                quote = nextQuote;
+                break;
+            } catch (error) {
+                if (
+                    !(error instanceof DemoStepError) ||
+                    !error.safeToRequote ||
+                    attempt >= 1
+                )
+                    throw error;
+            }
+        }
+        if (!quote)
+            throw new SetupError("A free purchase could not be confirmed.");
         let state: Record<string, unknown> = {};
         try {
             state = await call("run_inference", { requestId: quote.requestId });

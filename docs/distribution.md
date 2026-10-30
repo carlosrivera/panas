@@ -5,7 +5,7 @@
 Share your Mac’s spare inference capacity for free. With Node.js 24, Docker Desktop, the approved model and your enrolled provider configuration ready, install and start with one command:
 
 ```sh
-curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh | sh && ~/.local/bin/panas provider --free
+curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.8/install.sh | sh && ~/.local/bin/panas provider --free
 ```
 
 Try free inference with `~/.local/bin/panas demo`: choose Codex or Antigravity, press c to copy the prompt and paste it into your agent. Personal enrollment and MCP setup are automatic. `~/.local/bin/panas hello` runs the demo directly. Buyers need Node.js 24, without Docker, a wallet or a local model.
@@ -43,7 +43,7 @@ Provider enrollment and paid buyer setup remain operator-managed.
 
 ## Install the CLI
 
-Install the compiled release once. Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh) and run:
+Install the compiled release once. Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.8/install.sh) and run:
 
 ```sh
 sh ~/Downloads/install.sh
@@ -51,9 +51,9 @@ sh ~/Downloads/install.sh
 
 Requires Node.js **24** with its bundled npm. The installer verifies the tarball against the SHA-256 embedded in the versioned script, installs into `~/.local/share/panas/releases/`, and links `~/.local/bin/panas`. No sudo, source clone, pnpm, shell-profile changes or npm account are needed. If `~/.local/bin` is on PATH, use `panas`; otherwise the full short path below always works. HTTPS/source trust still matters: the script is executable code, and a checksum is not an independent signing/attestation claim.
 
-## Upgrade to alpha.7
+## Upgrade to alpha.8
 
-Stop the existing provider and buyer MCP processes, then rerun the alpha.7 installer. The CLI loads the matching `panas-provider:0.1.0-alpha.7` Docker image from this release when needed and checks its source revision against the installed CLI.
+Stop the existing provider and buyer MCP processes, then rerun the alpha.8 installer. The CLI loads the matching `panas-provider:0.1.0-alpha.8` Docker image from this release when needed and checks its source revision against the installed CLI.
 
 Preserve enrolled identities, keys, sessions, model data and durable state. Update only these endpoint fields in existing private configuration; the installer does not rewrite owner files:
 

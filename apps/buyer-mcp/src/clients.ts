@@ -184,28 +184,37 @@ export function createCloudClient(options: {
             );
         }
     };
+    const retrySafe = async (
+        method: "GET" | "POST",
+        path: string,
+        body: unknown = null,
+    ) => {
+        for (let attempt = 0; ; attempt++) {
+            try {
+                return await send(method, path, body);
+            } catch (error) {
+                if (
+                    !(error instanceof BuyerError) ||
+                    error.code !== "UNAVAILABLE" ||
+                    attempt >= 2
+                )
+                    throw error;
+                await new Promise((resolve) =>
+                    setTimeout(resolve, 150 * (attempt + 1)),
+                );
+            }
+        }
+    };
     return {
-        balance: (body) => send("POST", "/balance", body),
+        balance: (body) => retrySafe("POST", "/balance", body),
         createFundingIntent: (body) =>
             send("POST", "/funding/solana-devnet/intents", body),
         confirmFunding: (body) =>
             send("POST", "/funding/solana-devnet/confirm", body, 30000),
-        quote: async (body) => {
-            try {
-                return await send("POST", "/quotes", body);
-            } catch (error) {
-                if (
-                    !(error instanceof BuyerError) ||
-                    error.code !== "UNAVAILABLE"
-                )
-                    throw error;
-                // Quotes are idempotent by buyer/request ID. Keep the exact body,
-                // mint a fresh proof nonce, and never retry purchases or inference here.
-                return send("POST", "/quotes", body);
-            }
-        },
-        purchase: (body) => send("POST", "/purchases", body),
-        get: (id) => send("GET", `/requests/${z.uuid().parse(id)}`),
+        quote: (body) => retrySafe("POST", "/quotes", body),
+        // The exact original quote/key is retained; fresh proof nonces do not create new purchases.
+        purchase: (body) => retrySafe("POST", "/purchases", body),
+        get: (id) => retrySafe("GET", `/requests/${z.uuid().parse(id)}`),
         cancel: (id) =>
             send("POST", `/requests/${z.uuid().parse(id)}/cancel`, {}),
     };

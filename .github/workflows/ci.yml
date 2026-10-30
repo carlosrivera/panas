@@ -64,6 +64,13 @@ jobs:
             - run: pnpm exec vitest run packages/registry/src/postgres.test.ts
               env:
                   PANAS_REGISTRY_TEST_DATABASE_URL: postgres://panas:local-ci-only@127.0.0.1:5432/panas_test
+            - run: pnpm test:accounting-db
+              env:
+                  PANAS_TEST_EDGE_DRIVER: "1"
+            - run: pnpm exec vitest run packages/registry/src/postgres.test.ts
+              env:
+                  PANAS_TEST_EDGE_DRIVER: "1"
+                  PANAS_REGISTRY_TEST_DATABASE_URL: postgres://panas:local-ci-only@127.0.0.1:5432/panas_test
     docker-sandbox:
         runs-on: ubuntu-24.04-arm
         timeout-minutes: 20
