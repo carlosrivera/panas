@@ -1,3 +1,4 @@
+import { sqlStatements } from "../../../scripts/sql-statements.js";
 import { readdir, readFile } from "node:fs/promises";
 import pg from "pg";
 const connectionString =
@@ -14,7 +15,10 @@ try {
     for (const name of (await readdir(dir))
         .filter((v) => /^0[2-9]\d_.*\.sql$/.test(v))
         .sort()) {
-        await client.query(await readFile(new URL(name, dir), "utf8"));
+        for (const statement of sqlStatements(
+            await readFile(new URL(name, dir), "utf8"),
+        ))
+            await client.query(statement);
         console.log(`Applied ${name}`);
     }
 } finally {
