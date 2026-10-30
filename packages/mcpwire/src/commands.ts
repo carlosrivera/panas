@@ -1,4 +1,4 @@
-export const MCPWIRE_VERSION = "1.1.0";
+export const MCPWIRE_VERSION = "1.1.1";
 const ticketPattern = /^wire:\/\/[a-fA-F0-9]{64}$/;
 export function validateTicket(ticket: string): string {
     if (!ticketPattern.test(ticket)) throw new Error("Invalid MCPWire ticket");

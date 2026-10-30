@@ -157,9 +157,15 @@ export class ProviderController {
         const session = superviseShare({
             command: process.execPath,
             args: [
-                "--import",
-                "tsx",
-                fileURLToPath(new URL("./main.ts", import.meta.url)),
+                ...(import.meta.url.endsWith(".ts") ? ["--import", "tsx"] : []),
+                fileURLToPath(
+                    new URL(
+                        import.meta.url.endsWith(".ts")
+                            ? "./main.ts"
+                            : "./main.js",
+                        import.meta.url,
+                    ),
+                ),
             ],
         });
         this.share = session;

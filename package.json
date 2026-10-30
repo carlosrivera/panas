@@ -10,7 +10,7 @@
     "scripts": {
         "dev": "pnpm --filter @panas/web dev",
         "build": "turbo run build",
-        "typecheck": "turbo run typecheck && pnpm platform:typecheck",
+        "typecheck": "turbo run typecheck && pnpm platform:typecheck && tsc -p scripts/release/tsconfig.json --noEmit && tsc -p scripts/payments/tsconfig.json --noEmit",
         "lint": "eslint . --max-warnings 0",
         "test": "vitest run",
         "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
@@ -21,24 +21,31 @@
         "platform:bundle": "tsx scripts/platform/bundle.ts",
         "platform:deploy": "tsx scripts/platform/deploy.ts",
         "platform:verify": "tsx scripts/platform/verify.ts",
-        "platform:typecheck": "tsc -p scripts/platform/tsconfig.json --noEmit"
+        "platform:typecheck": "tsc -p scripts/platform/tsconfig.json --noEmit",
+        "release:bundle": "tsx scripts/release/bundle.ts",
+        "release:pack": "tsx scripts/release/pack.ts",
+        "release:smoke": "tsx scripts/release/smoke.ts && tsx scripts/release/install-smoke.ts",
+        "test:accounting-db": "node scripts/test-accounting-database.mjs && vitest run packages/accounting/src/accounting.test.ts",
+        "treasury:create": "tsx scripts/payments/treasury.ts"
     },
     "devDependencies": {
-        "@panas/eslint-config": "workspace:*",
-        "@panas/typescript-config": "workspace:*",
-        "@types/node": "24.19.2",
-        "eslint": "10.13.0",
-        "prettier": "3.9.10",
-        "turbo": "2.11.10",
-        "typescript": "6.0.3",
-        "vitest": "5.0.5",
-        "tsx": "4.23.15",
-        "pg": "8.23.1",
-        "@types/pg": "8.23.1",
         "@modelcontextprotocol/sdk": "1.32.2",
         "@panas/contracts": "workspace:*",
+        "@panas/eslint-config": "workspace:*",
+        "@panas/typescript-config": "workspace:*",
+        "@solana-program/token": "0.18.0",
+        "@solana/kit": "8.6.0",
+        "@types/node": "24.19.2",
+        "@types/pg": "8.23.1",
         "@volcano.dev/cli": "0.55.0",
-        "esbuild": "0.28.2"
+        "esbuild": "0.28.2",
+        "eslint": "10.13.0",
+        "pg": "8.23.1",
+        "prettier": "3.9.10",
+        "tsx": "4.23.15",
+        "turbo": "2.11.10",
+        "typescript": "6.0.3",
+        "vitest": "5.0.5"
     },
     "type": "module"
 }

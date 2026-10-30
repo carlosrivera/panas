@@ -1,17 +1,18 @@
 import { randomBytes } from "node:crypto";
 import { writeFile, chmod } from "node:fs/promises";
 import { configFromEnv, prepareDataPath } from "./config.js";
-import { OllamaRuntime } from "./runtime.js";
+import { createProviderRuntime } from "./docker-runtime.js";
 import { inspectHost } from "./capabilities.js";
 import { EncryptedStore } from "./store.js";
 import { ProviderDaemon } from "./daemon.js";
 import { serveLocal } from "./ipc.js";
-import { claimProviderHost, waitForPreviousRuntime } from "./ownership.js";
+import { claimProviderHost } from "./ownership.js";
+import { gatewayOwnershipScope } from "./container-profile.js";
 
 const config = configFromEnv(),
     paths = await prepareDataPath(config.dataPath);
-const ownership = await claimProviderHost(config.dataPath);
-const runtime = new OllamaRuntime(config);
+await claimProviderHost(config.dataPath, await gatewayOwnershipScope());
+const runtime = await createProviderRuntime(config);
 const daemon = new ProviderDaemon(
     config,
     runtime,
@@ -35,7 +36,6 @@ process.once("SIGINT", earlyStop);
 process.once("SIGTERM", earlyStop);
 const token = randomBytes(32).toString("hex");
 // The private parent directory and socket permissions limit access to this local account.
-if (ownership.recovered) await waitForPreviousRuntime(runtime.url);
 const report = await daemon.launch();
 const server = await serveLocal(daemon, paths.socketPath, token).catch(
     async (error: unknown) => {

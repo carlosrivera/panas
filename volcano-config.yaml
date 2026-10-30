@@ -21,6 +21,9 @@ functions:
           - PANAS_REGISTRY_DATABASE_URL
           - PANAS_PLATFORM_PRIVATE_KEY_BASE64
           - PANAS_DESCRIPTOR_KEY_BASE64
+          - PANAS_SOLANA_DEVNET_RPC_URL
+          - PANAS_SOLANA_DEVNET_TREASURY_OWNER
+          - PANAS_SOLANA_DEVNET_TREASURY_TOKEN_ACCOUNT
     - name: operations
       visibility: private
       variable_scope: scoped

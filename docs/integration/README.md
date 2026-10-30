@@ -1,5 +1,13 @@
 # Integration reproduction and evidence gates
 
+## Current Docker and payment boundary
+
+The native harness modes and recorded runs below belong to the earlier native-build integration path; they are not the current public provider launcher. Current serving requires the Docker gateway and offline Linux ARM64 worker with no native fallback. Follow [distribution](../distribution.md) and the updated [two-machine protocol](two-machine.md) for a current-build drill. [Docker validation](../validation/docker-sandbox.md) records local confinement/inference observations separately.
+
+The historical harness uses TEST_CREDIT. Current product modes additionally include free access and prepaid Solana devnet USDC; use the separate [payment protocol](../payments.md) for funding/asset validation. A passing native harness or Solana RPC fixture is not evidence of a Docker peer transaction or actual funded transfer.
+
+## Historical native harness
+
 Issue #10 remains open until the actual two-physical-Mac validation and outstanding end-to-end fault observations are satisfied. The #9 release gate is now backed by the final verified release and the real one-request smoke below. The second Mac exists but is inaccessible to this agent. Two provider processes on the available Mac are a **local simulation of the topology**, not two machines or two GPU resource pools.
 
 ## Modes
@@ -10,7 +18,7 @@ Issue #10 remains open until the actual two-physical-Mac validation and outstand
 | `failure-fixtures`   | Existing owning-package failure tests with injected runtimes/clients/clocks                                        | Component fixtures; never relabeled as live cloud or hardware proof                                              |
 | `manual-two-machine` | Buyer MCP calls both already running, distinct operator-attested physical hosts                                    | Requires human setup and truthful host declaration; script does not remotely install software or attest hardware |
 
-All money is TEST_CREDIT. Do not configure production or real-payment endpoints. Operator setup creates fresh fixture provider/buyer IDs and keys; it must not modify a real buyer's policy or reuse another run's private directory.
+All money in these historical native harness modes is TEST_CREDIT. Do not configure production or real-payment endpoints. Operator setup creates fresh fixture provider/buyer IDs and keys; it must not modify a real buyer's policy or reuse another run's private directory.
 
 ## Local setup
 

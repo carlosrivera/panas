@@ -4,12 +4,12 @@ import {
     displayedReadiness,
     elapsedSinceMs,
     formatAgo,
-    formatCredits,
     formatPublicDate,
     shortReadinessLabel,
     type Observation,
 } from "../lib/provider-time";
 import { Icon, type IconName } from "./icons";
+import { priceParts } from "../lib/provider-price";
 
 function ProviderStatus({
     provider,
@@ -91,6 +91,7 @@ function CompactCard({
 }) {
     const status = displayedReadiness(provider, observation, now);
     const free = provider.price.totalAtomic === "0";
+    const price = priceParts(provider.price);
     const name = `pana ${provider.providerId.slice(0, 8)}`;
     const stats: { icon: IconName; label: string; value: string }[] = [
         {
@@ -142,15 +143,8 @@ function CompactCard({
                     <strong>free</strong>
                 ) : (
                     <>
-                        <strong>
-                            {new Intl.NumberFormat("en-US").format(
-                                BigInt(provider.price.totalAtomic),
-                            )}
-                        </strong>
-                        <span className="sr-only">
-                            {formatCredits(provider.price.totalAtomic)}
-                        </span>
-                        <span aria-hidden="true"> credits</span>
+                        <strong>{price.amount}</strong>
+                        <span> {price.unit}</span>
                     </>
                 )}
                 <span> / request</span>
@@ -203,6 +197,7 @@ export function ProviderCard({
                 now={now}
             />
         );
+    const price = priceParts(provider.price);
     return (
         <article className="provider-card-public provider-detail">
             <div className="provider-card-heading">
@@ -221,11 +216,10 @@ export function ProviderCard({
             <p className="provider-model">{provider.model.name}</p>
             <div className="provider-price">
                 <strong>
-                    {provider.price.totalAtomic === "0"
-                        ? "free"
-                        : formatCredits(provider.price.totalAtomic)}
+                    {price.amount}
+                    {price.unit ? ` ${price.unit}` : ""}
                 </strong>
-                <span>per successful request · test credits</span>
+                <span>per successful request</span>
             </div>
             <dl className="provider-facts provider-card-stats">
                 <div>

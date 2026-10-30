@@ -16,6 +16,15 @@ import { BuyerError, type BuyerErrorCode } from "./errors";
 import type { PrivateDescriptor } from "./state";
 
 export interface CloudClient {
+    balance?(body: { sessionId: string }): Promise<unknown>;
+    createFundingIntent?(body: {
+        intentId: string;
+        amountAtomic: string;
+    }): Promise<unknown>;
+    confirmFunding?(body: {
+        intentId: string;
+        signature: string;
+    }): Promise<unknown>;
     quote(body: {
         providerId: string;
         sessionId: string;
@@ -132,6 +141,7 @@ export function createCloudClient(options: {
         method: "GET" | "POST",
         path: string,
         body: unknown = null,
+        timeoutMs = 15000,
     ) => {
         const now = (options.clock ?? (() => new Date()))();
         const proof = signDocument(
@@ -161,7 +171,7 @@ export function createCloudClient(options: {
                         ).toString("base64url"),
                     },
                     ...(method === "POST" ? { body: canonicalJson(body) } : {}),
-                    signal: AbortSignal.timeout(15_000),
+                    signal: AbortSignal.timeout(timeoutMs),
                 }),
             );
         } catch (error) {
@@ -173,6 +183,11 @@ export function createCloudClient(options: {
         }
     };
     return {
+        balance: (body) => send("POST", "/balance", body),
+        createFundingIntent: (body) =>
+            send("POST", "/funding/solana-devnet/intents", body),
+        confirmFunding: (body) =>
+            send("POST", "/funding/solana-devnet/confirm", body, 30000),
         quote: (body) => send("POST", "/quotes", body),
         purchase: (body) => send("POST", "/purchases", body),
         get: (id) => send("GET", `/requests/${z.uuid().parse(id)}`),

@@ -94,8 +94,8 @@ export function NeedTabs() {
                 hidden={selected !== "free"}
             >
                 <p className="prototype-annotation">
-                    concept / planned use cases · current prototype: one bounded
-                    model request with fixed test credits
+                    the vision: agents sharing work across a network of panas.
+                    built on discovery, encrypted inference, and receipts.
                 </p>
                 <div className="use-cases-inner">
                     <h2>
@@ -104,8 +104,8 @@ export function NeedTabs() {
                         is a friend in <span className="lime">deed.</span>
                     </h2>
                     <p className="sub">
-                        one small model is a toy. a network of free friends is a
-                        tool.
+                        one shared model is a start. a network of panas is
+                        infrastructure.
                     </p>
                     <table>
                         <thead>
@@ -149,9 +149,8 @@ export function NeedTabs() {
                 hidden={selected !== "paid"}
             >
                 <p className="prototype-annotation">
-                    concept / planned · prototype: qwen2.5:0.5b only; no
-                    real-money payments, bigger models, or multi-provider
-                    fan-out
+                    built today: free sharing and solana devnet usdc. on the
+                    roadmap: bigger models and multi-provider jobs.
                 </p>
                 <div className="use-cases-inner">
                     <h2>

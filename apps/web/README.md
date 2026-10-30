@@ -16,7 +16,9 @@ Dev/start default to3333. Use a separate checkout when serving production and re
 
 Set only nonsecret server-side `PUBLIC_REGISTRY_URL` to the public registry base URL. The same-origin API appends `/public/providers`; no discovery/operator/database/buyer credentials belong in this app or browser. Missing config fails safely to unavailable. Public reads are no-store, with8s upstream/10s browser timeouts,15s refresh and conservative heartbeat/report expiry. `/api/health` reports the web process only.
 
-Shared styles/primitives live in `@panas/ui`. The original landing CSS is scoped in app/pr27.css. The user deferred the clip: data-src retains `/video.mp4` without requesting it; supply the actual public asset and restore src when resuming that work. Original shader/hover/focus/reduced-motion code remains; no substitute artwork or external font service is used.
+Shared styles/primitives live in `@panas/ui`. The original landing CSS is scoped in app/pr27.css. The original handshake clip is served from `public/video.mp4` and connected to the landing canvas animation via `/video.mp4`. This short visual asset is separate from the product demonstration recording. Original shader/hover/focus/reduced-motion code remains; no substitute artwork or external font service is used.
+
+The homepage combines accessible free/paid tabs with live provider cards. The directory preserves the chip/card design and adds explicit currency selection: devnet USDC accepts up to six decimal places, test credits use integer units, and all-currency views do not compare paid assets without an exchange rate. Development-only fixtures include free, devnet-USDC and TEST_CREDIT examples; production excludes the preview modules.
 
 Evidence and handoff:
 

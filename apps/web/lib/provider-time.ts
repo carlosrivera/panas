@@ -1,5 +1,6 @@
 import type { PublicProvider } from "@panas/contracts/public-registry";
 import { TEST_CREDIT_SCALE } from "@panas/contracts/public-registry";
+import { priceParts } from "./provider-price";
 
 const REPORT_TTL_MS = 24 * 60 * 60 * 1000;
 const SCHEDULING_GUARD_MS = 250;
@@ -72,11 +73,18 @@ export function displayedReadiness(
         return { label: "Readiness expired", tone: "warning", ready: false };
     return { label: "Ready as observed", tone: "ready", ready: true };
 }
-export function formatCredits(value: string): string {
+export function formatCredits(
+    value: string,
+    currency: "TEST_CREDIT" | "SOLANA_DEVNET_USDC" = "TEST_CREDIT",
+): string {
     if (TEST_CREDIT_SCALE !== 0 || !/^(0|[1-9][0-9]{0,29})$/.test(value))
         throw new Error("Invalid public test-credit amount");
-    const integer = BigInt(value);
-    return `${new Intl.NumberFormat("en-US").format(integer)} ${integer === 1n ? "test credit" : "test credits"}`;
+    const price = priceParts({
+        version: "display",
+        totalAtomic: value,
+        currency,
+    });
+    return price.unit ? `${price.amount} ${price.unit}` : "Free";
 }
 export function formatPublicDate(value: string): string {
     return (

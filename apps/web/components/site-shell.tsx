@@ -39,9 +39,9 @@ export function SiteFooter() {
             <p className="footer-note">
                 browsing never books a mac.
                 <br />
-                test credits only. no real money,
+                free sharing or solana devnet usdc.
                 <br />
-                no real drama.
+                your compute. your terms.
             </p>
         </footer>
     );
