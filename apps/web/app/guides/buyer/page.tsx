@@ -12,8 +12,8 @@ const ownerTemplate = `{
   "sessionId": "OWNER_SELECTED_SESSION_UUID",
   "privateKeyPath": "/absolute/private/buyer-ed25519.pem",
   "dataDir": "/absolute/private/panas-buyer-data",
-  "accountingUrl": "https://ACCOUNTING_HOST",
-  "registryUrl": "https://REGISTRY_HOST",
+  "accountingUrl": "https://panas.mcpwire.co/accounting",
+  "registryUrl": "https://panas.mcpwire.co/registry",
   "discoveryTokenPath": "/absolute/private/discovery-token",
   "platformPublicKeyPath": "/absolute/private/platform-public.pem",
   "limits": {
@@ -86,12 +86,12 @@ export default function BuyerGuide() {
                 title="Prepare the local tools."
             >
                 <p>
-                    Install the compiled alpha.4 CLI with Node.js 24. Codex
+                    Install the compiled alpha.5 CLI with Node.js 24. Codex
                     connects to the local stdio facade; the buyer does not need
                     Docker or Ollama. The provider runs the sandboxed worker on
                     its own Mac.
                 </p>
-                <CodeSample label="Install without cloning">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.4/install.sh -o /tmp/panas-install.sh
+                <CodeSample label="Install without cloning">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.5/install.sh -o /tmp/panas-install.sh
 sh /tmp/panas-install.sh`}</CodeSample>
                 <p>
                     No repository checkout or pnpm installation is needed by

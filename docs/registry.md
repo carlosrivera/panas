@@ -93,4 +93,4 @@ Cloud endpoint and invocation evidence are recorded in the registry PR after ver
 
 ## Deployed verification
 
-The test endpoint is `https://cdb5c197-93ad-4c13-8dca-45e1d18140f5.functions.volcano.run/mcp`. A real official MCP client successfully initialized, listed tools, discovered providers, and fetched the ephemeral test provider. Signed HTTP registration and heartbeat succeeded, missing discovery credentials returned 401, and the unverified fixture was excluded from ready-only discovery. Fixture rows were removed afterward. This verifies registry protocol/storage behavior, not a real provider's hardware or the paid product flow.
+The test endpoint is `https://panas.mcpwire.co/registry/mcp`. A real official MCP client successfully initialized, listed tools, discovered providers, and fetched the ephemeral test provider. Signed HTTP registration and heartbeat succeeded, missing discovery credentials returned 401, and the unverified fixture was excluded from ready-only discovery. Fixture rows were removed afterward. This verifies registry protocol/storage behavior, not a real provider's hardware or the paid product flow.
