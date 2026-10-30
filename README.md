@@ -2,9 +2,19 @@
 
 Agent-discovered inference on shared Macs, powered by MCPWire. Repository: `carlosrivera/panas`.
 
-This is the foundation for the prototype, not a working compute marketplace. The informational site and health endpoints run; shared validation schemas and MCPWire command adapters are implemented. Discovery, paid entitlements, durable accounting, real inference serving, and peer lifecycle integration are tracked in GitHub issues.
+The prototype includes agent discovery, fixed TEST_CREDIT purchases, signed entitlements, durable accounting and native Mac inference through MCPWire. Physical two-Mac and recovery acceptance checks remain tracked in issue #10; real payments are disabled.
 
-## Requirements and setup
+## Run the release without cloning
+
+Install Node.js 24, then:
+
+```sh
+npx --yes --package=https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.1/panas-cli-0.1.0-alpha.1.tgz panas --help
+```
+
+Follow [installation and Mac B setup](docs/distribution.md) for a fresh identity, operator enrollment, the pinned native runtime/model and provider configuration. The same package exposes the buyer MCP facade. Use the exact release URL; the short `npx panas` command has not been published to npm.
+
+## Development requirements and setup
 
 - Node.js 24 (`nvm use` reads `.nvmrc`).
 - pnpm 12.16.1, as pinned in `packageManager`. Older Corepack releases may not support pnpm 12’s native launcher; install current pnpm using its official installation method or update Corepack.
@@ -23,14 +33,17 @@ pnpm check
 pnpm provider:doctor
 ```
 
-`provider:doctor` checks the local platform and installed Ollama model without downloading anything or exposing a provider. It intentionally exits nonzero until the full capability suite is implemented: passing local prerequisites alone must not make a provider discoverable. Install the proposed model explicitly with `ollama pull qwen2.5:0.5b` when working on the provider issue.
+`provider:doctor` runs the local capability suite against an explicitly installed, pinned native Ollama/model without publishing a provider. Passing local checks leaves connectivity unverified. The full provider host must also pass its separate-peer probe before readiness publication.
 
 ## Workspace
 
 | Path                                                   | Responsibility                                                                  |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
 | `apps/web`                                             | Next.js informational frontend and `/api/health`                                |
-| `apps/provider`                                        | Local provider startup diagnostic; persistent daemon follows                    |
+| `apps/provider`                                        | Persistent native worker, capability checks and durable state                   |
+| `apps/provider-mcp`                                    | Paid host and disposable per-peer MCP adapter                                   |
+| `apps/buyer-mcp`                                       | Stable buyer MCP facade                                                         |
+| `apps/cli`                                             | Compiled release command entry point                                            |
 | `packages/contracts`                                   | Zod schemas for states, bounded limits, local reports, fixed test-credit quotes |
 | `packages/mcpwire`                                     | Pinned external CLI invocation, ticket validation, approved tool allowlist      |
 | `packages/ui`                                          | Shared UI primitives and Tailwind CSS                                           |
