@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { ProviderDaemon, EncryptedStore } from "@panas/provider";
 import { probePeer, superviseShare } from "@panas/mcpwire";
+import { verifyProviderProof } from "../../../packages/registry/src/auth.js";
 import { ProviderController } from "./controller.js";
 import type { ProviderHostService } from "./service.js";
 
@@ -122,9 +123,29 @@ async function fixture() {
         "fetch",
         vi.fn(async (url: URL, init: RequestInit) => {
             posts.push({
-                path: url.pathname,
+                path: url.pathname.replace(/^\/registry/, ""),
                 body: JSON.parse(String(init.body)) as Record<string, unknown>,
             });
+            expect(url.pathname.startsWith("/registry/")).toBe(true);
+            const headers = new Headers(init.headers);
+            verifyProviderProof(
+                {
+                    providerId: config.providerId,
+                    publicKeyPem: keys.publicKey
+                        .export({ type: "spki", format: "pem" })
+                        .toString(),
+                    enabled: true,
+                },
+                {
+                    providerId: headers.get("x-panas-provider-id")!,
+                    timestamp: headers.get("x-panas-timestamp")!,
+                    nonce: headers.get("x-panas-nonce")!,
+                    signature: headers.get("x-panas-signature")!,
+                },
+                posts.at(-1)!.path,
+                String(init.body),
+                new Date(clock.now),
+            );
             return publication(posts.at(-1)!);
         }),
     );
@@ -135,7 +156,7 @@ async function fixture() {
     };
     const controller = new ProviderController(
         {
-            registryUrl: "http://127.0.0.1:1",
+            registryUrl: "http://127.0.0.1:1/registry",
             providerId: config.providerId,
             privateKey: keys.privateKey,
             providerPublicKeyPem: keys.publicKey

@@ -4,12 +4,12 @@ The platform supports free access, prepaid Solana devnet USDC and internal TEST_
 
 The committed `.volcano/project.json` binds every release to project `panas`, `7db5f8f4-c378-4ba5-a48f-f435bc4c034b`. Deployment refuses another project override, an account-wide token, a dirty checkout, or a different CLI/runtime family. Node 24, pnpm 12.16.1 and Volcano CLI 0.55.0 are checked; exact framework/dependency versions come from the committed pnpm lockfile. The frontend source layout uploads the workspace root with app root `apps/web`. Generated bundles use function-local Git ignores; root ignores also affect Volcano upload and must not hide a function entrypoint or its isolated manifest. The runtime supports Next 16; the actual built version and runtime patch are recorded in release evidence.
 
-| Service    | Address                                                            | Authorization                                                                                          |
-| ---------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| Registry   | https://cdb5c197-93ad-4c13-8dca-45e1d18140f5.functions.volcano.run | Public `/public/providers`; bearer read credential for `/providers` and `/mcp`; signed provider writes |
-| Accounting | https://e32b4a0e-51a7-4d7e-acab-b64501184f2a.functions.volcano.run | Signed buyer/provider requests                                                                         |
-| Website    | https://b694dc37-574c-4668-adf0-9371a728f16f.frontends.volcano.run | Informational public read only                                                                         |
-| Operations | Discovered by name through the project management API              | Private project-token invocation                                                                       |
+| Service    | Address                                               | Authorization                                                                                          |
+| ---------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Registry   | https://panas.mcpwire.co/registry                     | Public `/public/providers`; bearer read credential for `/providers` and `/mcp`; signed provider writes |
+| Accounting | https://panas.mcpwire.co/accounting                   | Signed buyer/provider requests                                                                         |
+| Website    | https://panas.mcpwire.co                              | Informational public read only                                                                         |
+| Operations | Discovered by name through the project management API | Private project-token invocation                                                                       |
 
 ## Credentials and scopes
 

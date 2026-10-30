@@ -6,7 +6,7 @@ afterEach(() => vi.unstubAllGlobals());
 it("verifies release image bytes before loading and removes its temporary archive", async () => {
     const bytes = Buffer.from("fixture image archive"),
         sha = createHash("sha256").update(bytes).digest("hex"),
-        name = "panas-provider-0.1.0-alpha.4-linux-arm64.tar.gz";
+        name = "panas-provider-0.1.0-alpha.5-linux-arm64.tar.gz";
     let checksum = sha;
     vi.stubGlobal(
         "fetch",
@@ -24,12 +24,12 @@ it("verifies release image bytes before loading and removes its temporary archiv
         path = p;
         expect(await readFile(p)).toEqual(bytes);
     });
-    await withReleaseImage("0.1.0-alpha.4", load);
+    await withReleaseImage("0.1.0-alpha.5", load);
     expect(load).toHaveBeenCalledOnce();
     await expect(lstat(path)).rejects.toMatchObject({ code: "ENOENT" });
     checksum = "0".repeat(64);
     load.mockClear();
-    await expect(withReleaseImage("0.1.0-alpha.4", load)).rejects.toThrow(
+    await expect(withReleaseImage("0.1.0-alpha.5", load)).rejects.toThrow(
         "checksum mismatch",
     );
     expect(load).not.toHaveBeenCalled();
