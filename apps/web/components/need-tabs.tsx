@@ -13,6 +13,7 @@ export function NeedTabs() {
     const paidTabId = `${id}-paid-tab`;
     const freePanelId = `${id}-free-panel`;
     const paidPanelId = `${id}-paid-panel`;
+    const labelId = `${id}-label`;
     const tabs = useRef<Array<HTMLButtonElement | null>>([]);
 
     function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
@@ -44,45 +45,51 @@ export function NeedTabs() {
 
     return (
         <section className="use-cases need-tabs" aria-label="Panas use cases">
-            <div
-                className="need-tabs-list"
-                role="tablist"
-                aria-label="Panas plans"
-            >
-                <button
-                    ref={(element) => {
-                        tabs.current[0] = element;
-                    }}
-                    className="need-tabs-tab"
-                    id={freeTabId}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected === "free"}
-                    aria-controls={freePanelId}
-                    tabIndex={selected === "free" ? 0 : -1}
-                    data-index="0"
-                    onClick={() => setSelected("free")}
-                    onKeyDown={onTabKeyDown}
+            <div className="need-tabs-control">
+                <p className="need-tabs-label" id={labelId}>
+                    choose your kind of need
+                </p>
+                <div
+                    className="need-tabs-list"
+                    role="tablist"
+                    aria-labelledby={labelId}
+                    data-selected={selected}
                 >
-                    free panas
-                </button>
-                <button
-                    ref={(element) => {
-                        tabs.current[1] = element;
-                    }}
-                    className="need-tabs-tab"
-                    id={paidTabId}
-                    type="button"
-                    role="tab"
-                    aria-selected={selected === "paid"}
-                    aria-controls={paidPanelId}
-                    tabIndex={selected === "paid" ? 0 : -1}
-                    data-index="1"
-                    onClick={() => setSelected("paid")}
-                    onKeyDown={onTabKeyDown}
-                >
-                    paid panas
-                </button>
+                    <button
+                        ref={(element) => {
+                            tabs.current[0] = element;
+                        }}
+                        className="need-tabs-tab"
+                        id={freeTabId}
+                        type="button"
+                        role="tab"
+                        aria-selected={selected === "free"}
+                        aria-controls={freePanelId}
+                        tabIndex={selected === "free" ? 0 : -1}
+                        data-index="0"
+                        onClick={() => setSelected("free")}
+                        onKeyDown={onTabKeyDown}
+                    >
+                        free panas
+                    </button>
+                    <button
+                        ref={(element) => {
+                            tabs.current[1] = element;
+                        }}
+                        className="need-tabs-tab"
+                        id={paidTabId}
+                        type="button"
+                        role="tab"
+                        aria-selected={selected === "paid"}
+                        aria-controls={paidPanelId}
+                        tabIndex={selected === "paid" ? 0 : -1}
+                        data-index="1"
+                        onClick={() => setSelected("paid")}
+                        onKeyDown={onTabKeyDown}
+                    >
+                        paid panas
+                    </button>
+                </div>
             </div>
 
             <div
