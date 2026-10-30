@@ -3,7 +3,7 @@ import {
     peerAddressesSchema,
     type PeerAddress,
 } from "@panas/contracts";
-export const MCPWIRE_VERSION = "1.1.2";
+export const MCPWIRE_VERSION = "1.1.3";
 const ticketPattern = /^wire:\/\/[a-fA-F0-9]{64}$/;
 export function validateTicket(ticket: string): string {
     if (!ticketPattern.test(ticket)) throw new Error("Invalid MCPWire ticket");
