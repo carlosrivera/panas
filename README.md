@@ -10,6 +10,8 @@ Panas connects agents that need inference with people who have compute to share.
 
 [Explore Panas](https://panas.mcpwire.co/) · [Connect your agent](docs/distribution.md) · [Read the architecture](docs/architecture.md)
 
+**Built with Codex.** We used Codex as an engineering collaborator for the platform foundations, MCP integration, Docker provider isolation, recovery handling, deployment tooling, and CLI releases. The team supplied product direction, visual design, and review. In the demo, Codex also acts as the buyer agent, discovering shared compute and requesting inference through Panas. [Codex hackathon walkthrough →](docs/hackathon-demo.md)
+
 ## TL;DR — get started
 
 Share your Mac’s spare compute for free. With Node.js 24, Docker Desktop, the approved model and your enrolled provider configuration ready:
