@@ -19,3 +19,10 @@ The shipped demo prompt has no developer-specific home path or fixed provider ID
 Testing is intentionally deferred for this publication at the maintainer’s request: no fresh unit, integration, sandbox, inference, installer or post-release smoke tests were run. Artifacts were built and packaged with matching source metadata and SHA-256 checksums. Prior native macOS demo evidence is recorded in #56; this publication does not claim a new run. Two physical Macs and other network/NAT paths remain manual acceptance checks.
 
 Mainnet and automated on-chain payouts remain disabled.
+
+Installer hotfix (2026-10-30): the alpha.6 `install.sh` and its entry in
+`SHA256SUMS` were updated to pin Ink's transitive `es-toolkit` dependency to
+1.53.0 because npm advertised 1.53.1 while its tarball returned 404. The CLI
+tarball, Docker image, source metadata and their checksums are unchanged. The
+corrected installer was verified with an empty npm cache, repeat installation,
+checksum rejection and MCPWire native dependency loading.
