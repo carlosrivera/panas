@@ -333,7 +333,23 @@ export async function prepareIpcVolume(providerId: string) {
 export async function launchDockerProvider(
     command: "provider" | "doctor",
     imageOverride?: string,
+    presentation?: {
+        progress: (phase: string, detail: string) => void;
+        status: (value: unknown) => void;
+        signal: AbortSignal;
+    },
 ) {
+    let cancelled = presentation?.signal.aborted ?? false;
+    let attaching = false;
+    const progress = (phase: string, detail: string) => {
+        if (cancelled || presentation?.signal.aborted)
+            throw new Error("Provider startup cancelled");
+        presentation?.progress(phase, detail);
+    };
+    progress(
+        "Checking Docker",
+        "Looking for a local Apple Silicon Docker runtime.",
+    );
     const release = JSON.parse(
         await readFile(new URL("../release.json", import.meta.url), "utf8"),
     );
@@ -359,6 +375,10 @@ export async function launchDockerProvider(
     )
         throw new Error("ARM64 Linux Docker required");
     const image = imageOverride ?? `panas-provider:${release.version}`;
+    progress(
+        "Verifying the sandbox",
+        "Checking the matching release image and its source revision.",
+    );
     if (!/^[a-zA-Z0-9][a-zA-Z0-9/:@._-]*$/.test(image))
         throw new Error("Invalid sandbox image");
     let details: DockerInfo;
@@ -367,9 +387,15 @@ export async function launchDockerProvider(
     } catch {
         if (imageOverride)
             throw new Error("Build the specified development image first");
-        process.stderr.write(
-            "Downloading and verifying the matching Panas sandbox image…\n",
-        );
+        if (presentation)
+            progress(
+                "Downloading the sandbox",
+                "Downloading, verifying and loading the matching release image.",
+            );
+        else
+            process.stderr.write(
+                "Downloading and verifying the matching Panas sandbox image…\n",
+            );
         await withReleaseImage(release.version, (path) =>
             docker(["load", "--input", path], 300000),
         );
@@ -383,6 +409,10 @@ export async function launchDockerProvider(
     )
         throw new Error("Sandbox image must match this CLI build");
     const imageId = details.Id;
+    progress(
+        "Checking the model",
+        "Verifying the approved model files before mounting them read-only.",
+    );
     const modelsPath = await realpath(process.env.PANAS_MODELS_PATH ?? "");
     if (
         modelsPath.includes(",") ||
@@ -416,29 +446,54 @@ export async function launchDockerProvider(
         modelsPath,
         process.env.PANAS_MODEL_DIGEST ?? "",
     );
-    const peerPort = await reservePeerPort().catch(async (error: unknown) => {
+    const peerPort = await (async () => {
+        if (presentation?.signal.aborted)
+            throw new Error("Provider startup cancelled");
+        return reservePeerPort();
+    })().catch(async (error: unknown) => {
         await model.cleanup();
         throw error;
     });
     let closed = false;
+    let cleaning: Promise<void> | undefined;
     const created: string[] = [];
-    const cleanup = async () => {
-        if (closed) return;
+    const cleanup = (): Promise<void> => {
+        if (cleaning) return cleaning;
         closed = true;
-        await peerPort.release();
-        for (const name of [...created].reverse()) {
-            await docker(["stop", "--time", "10", name], 20000).catch(() => {});
-            await docker(["rm", "--force", name]).catch(() => {});
-        }
+        cleaning = (async () => {
+            await peerPort.release();
+            for (const name of [...created].reverse()) {
+                await docker(["stop", "--time", "10", name], 20000).catch(
+                    () => {},
+                );
+                await docker(["rm", "--force", name]).catch(() => {});
+            }
+        })();
+        return cleaning;
     };
     const signal = () => {
-        void cleanup();
+        cancelled = true;
+        // Creation must finish before cleanup enumerates owned containers.
+        if (attaching) void cleanup();
     };
     process.once("SIGINT", signal);
     process.once("SIGTERM", signal);
+    presentation?.signal.addEventListener("abort", signal, { once: true });
     try {
+        progress(
+            "Preparing the sandbox",
+            "Creating private IPC and checking container confinement.",
+        );
         await prepareIpcVolume(providerId);
         for (const role of ["worker", "gateway"] as const) {
+            progress(
+                role === "worker"
+                    ? "Starting the offline worker"
+                    : "Starting the gateway",
+                role === "worker"
+                    ? "The model runs in a network-disabled CPU worker."
+                    : "Preparing signed admission and encrypted peer connections.",
+            );
             const name = `${prefix}-${role}`;
             await docker(
                 sandboxArgs(
@@ -509,15 +564,27 @@ export async function launchDockerProvider(
                 "PANAS_PLATFORM_PUBLIC_KEY_PATH",
             ),
         };
-        process.stderr.write(
-            "Panas Docker sandbox: isolated gateway with one UDP peer port + offline CPU inference worker; no Docker socket or treasury mounts.\n",
-        );
+        if (!presentation)
+            process.stderr.write(
+                "Panas Docker sandbox: isolated gateway with one UDP peer port + offline CPU inference worker; no Docker socket or treasury mounts.\n",
+            );
         await peerPort.release();
         const child = spawn(
             "docker",
             ["start", "--attach", "--interactive", `${prefix}-gateway`],
-            { stdio: ["pipe", "inherit", "inherit"] },
+            {
+                stdio: [
+                    "pipe",
+                    presentation ? "pipe" : "inherit",
+                    presentation ? "pipe" : "inherit",
+                ],
+            },
         );
+        if (!child.stdin) throw new Error("Gateway input unavailable");
+        const input = child.stdin;
+        attaching = true;
+        child.stdout?.resume();
+        child.stderr?.resume();
         let attachFailed = false;
         const attached = new Promise<number | null>((resolve) => {
             child.once("error", () => {
@@ -526,9 +593,10 @@ export async function launchDockerProvider(
             });
             child.once("exit", resolve);
         });
-        child.stdin.on("error", () => {});
+        input.on("error", () => {});
         let hostPort: number | undefined;
         for (let i = 0; i < 80; i++) {
+            if (cancelled) throw new Error("Provider startup cancelled");
             if (attachFailed || child.exitCode !== null)
                 throw new Error("Gateway exited before UDP forwarding");
             const row: DockerInfo | undefined = await inspect(
@@ -548,22 +616,66 @@ export async function launchDockerProvider(
         config.env.PANAS_PEER_ADDRESSES = JSON.stringify(
             advertisedPeerAddresses(hostPort),
         );
-        child.stdin.write(JSON.stringify(config) + "\n");
+        input.write(JSON.stringify(config) + "\n");
+        if (presentation)
+            progress(
+                "Testing your provider",
+                "Running capability checks, registering, and verifying an independent peer connection.",
+            );
+        // Read the existing authenticated local IPC. No backend or container changes.
+        let polling = false;
+        const pollStatus = async () => {
+            if (!presentation || polling || closed || cancelled) return;
+            polling = true;
+            try {
+                const text = await docker(
+                    [
+                        "exec",
+                        `${prefix}-gateway`,
+                        "node",
+                        "-e",
+                        gatewayStatusScript,
+                    ],
+                    4000,
+                );
+                if (!closed && !cancelled)
+                    presentation.status(JSON.parse(text));
+            } catch {
+                /* Startup and disconnected IPC never become a ready indicator. */
+            } finally {
+                polling = false;
+            }
+        };
+        const statusTimer = presentation
+            ? setInterval(() => void pollStatus(), 2000)
+            : undefined;
+        void pollStatus();
         const heartbeat = setInterval(() => {
-            if (!closed) child.stdin.write("ping\n");
+            if (!closed) input.write("ping\n");
         }, 5000);
         try {
             const code = await attached;
             if (attachFailed || (code !== 0 && !closed))
                 throw new Error("Provider sandbox exited");
         } finally {
+            if (statusTimer) clearInterval(statusTimer);
             clearInterval(heartbeat);
-            child.stdin.destroy();
+            input.destroy();
         }
     } finally {
         await cleanup();
         await model.cleanup();
         process.off("SIGINT", signal);
         process.off("SIGTERM", signal);
+        presentation?.signal.removeEventListener("abort", signal);
     }
 }
+
+// Tokens stay inside the gateway. Only the existing status report leaves it.
+const gatewayStatusScript = `
+const fs=require('node:fs'), net=require('node:net');
+const socket=net.connect('/state/daemon.sock');let data='';
+socket.setTimeout(2500,()=>process.exit(1));socket.on('error',()=>process.exit(1));
+socket.on('connect',()=>socket.write(JSON.stringify({token:fs.readFileSync('/state/ipc-token','utf8').trim(),method:'status'})+'\\n'));
+socket.on('data',chunk=>{data+=chunk;if(data.length>65536)process.exit(1);if(!data.includes('\\n'))return;try{const value=JSON.parse(data.split('\\n')[0]);if(!value.ok||!value.result)process.exit(1);console.log(JSON.stringify(value.result));socket.end();}catch{process.exit(1);}});
+`;

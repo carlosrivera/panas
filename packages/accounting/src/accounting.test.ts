@@ -1,3 +1,4 @@
+import apiWorker from "../../../scripts/edge/api-worker.js";
 import { receiptSchema } from "./types";
 import {
     SolanaDevnetVerifier,
@@ -15,6 +16,8 @@ import { prototypeLimits } from "@panas/contracts";
 import { requiredCapabilityChecks } from "@panas/contracts/provider";
 import {
     DOMAIN,
+    demoBuyerId,
+    verifyDemoDiscovery,
     digest,
     keyId,
     signDocument,
@@ -181,6 +184,153 @@ describe.skipIf(!databaseUrl)(
                 expiresAt: new Date(now.getTime() + 3600000).toISOString(),
             });
         }
+        it("automatically enrolls key-owned free-only buyers idempotently, rejects paid quotes and settles one free request", async () => {
+            const proof = signDocument(
+                DOMAIN.enrollment,
+                {
+                    version: 1,
+                    publicKeyPem: buyerPem,
+                    sessionId: randomUUID(),
+                    issuedAt: now.toISOString(),
+                    expiresAt: new Date(now.getTime() + 120000).toISOString(),
+                },
+                buyer.privateKey,
+            );
+            const response = await apiWorker.fetch(
+                new Request("https://panas.test/accounting/demo/enroll", {
+                    method: "POST",
+                    body: JSON.stringify(proof),
+                }),
+                {
+                    PANAS_REGISTRY_DATABASE_URL: databaseUrl!,
+                    PANAS_PLATFORM_PRIVATE_KEY_BASE64: Buffer.from(
+                        platform.privateKey.export({
+                            type: "pkcs8",
+                            format: "pem",
+                        }),
+                    ).toString("base64"),
+                    PANAS_DESCRIPTOR_KEY_BASE64:
+                        Buffer.alloc(32).toString("base64"),
+                    PANAS_DISCOVERY_TOKEN_SHA256: "a".repeat(64),
+                    RELEASE_SHA: "fixture",
+                    ENROLLMENT_LIMIT: {
+                        limit: async () => ({ success: true }),
+                    },
+                },
+            );
+            expect(response.headers.get("x-panas-api-host")).toBe(
+                "cloudflare-workers",
+            );
+            expect(response.status).toBe(200);
+            const enrollment = await response.json();
+            expect(enrollment).toMatchObject({
+                buyerId: demoBuyerId(buyer.publicKey),
+                freeOnly: true,
+            });
+            expect(
+                verifyDemoDiscovery(
+                    enrollment.discoveryToken,
+                    platform.publicKey,
+                    now.getTime(),
+                ),
+            ).toMatchObject({
+                scope: "free-discovery",
+                buyerId: enrollment.buyerId,
+            });
+            await Promise.all(
+                Array.from({ length: 5 }, () => service.enrollFreeDemo(proof)),
+            );
+            buyerId = enrollment.buyerId;
+            sessionId = enrollment.sessionId;
+            const stored = (
+                await pool.query(
+                    "SELECT max_request::text,max_session::text,max_daily::text,balance::text FROM panas_accounting_buyers WHERE buyer_id=$1",
+                    [buyerId],
+                )
+            ).rows[0];
+            expect(Object.values(stored)).toEqual(["0", "0", "0", "0"]);
+            await expect(quote()).rejects.toMatchObject({
+                code: "SPENDING_LIMIT",
+            });
+            await pool.query(
+                "UPDATE panas_registry_current SET price=jsonb_set(price,'{totalAtomic}','\"0\"'::jsonb) WHERE provider_id=$1",
+                [providerId],
+            );
+            const q = await quote();
+            expect([q.totalAtomic, q.providerAtomic, q.feeAtomic]).toEqual([
+                "0",
+                "0",
+                "0",
+            ]);
+            const g = await purchase(q);
+            await authorize(g.signedGrant.payload);
+            const completed = await terminal(
+                event(g.signedGrant.payload, "completed"),
+            );
+            expect(completed.receipt).toMatchObject({
+                buyerDebitAtomic: "0",
+                providerEarningsAtomic: "0",
+                feeAtomic: "0",
+            });
+        });
+        it("rejects forged or expired enrollment and cannot take over sessions, reenable disabled buyers or change operator authority", async () => {
+            const make = (id: string) =>
+                signDocument(
+                    DOMAIN.enrollment,
+                    {
+                        version: 1,
+                        publicKeyPem: buyerPem,
+                        sessionId: id,
+                        issuedAt: now.toISOString(),
+                        expiresAt: new Date(
+                            now.getTime() + 120000,
+                        ).toISOString(),
+                    },
+                    buyer.privateKey,
+                );
+            await expect(
+                service.enrollFreeDemo(make(sessionId)),
+            ).rejects.toMatchObject({ code: "CONFLICT" });
+            const proof = make(randomUUID());
+            await expect(
+                service.enrollFreeDemo({ ...proof, signature: "a".repeat(86) }),
+            ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+            now = new Date(now.getTime() + 180000);
+            await expect(service.enrollFreeDemo(proof)).rejects.toMatchObject({
+                code: "UNAUTHORIZED",
+            });
+            const valid = make(randomUUID());
+            const enrolled = await service.enrollFreeDemo(valid);
+            await pool.query(
+                "UPDATE panas_accounting_sessions SET enabled=false WHERE session_id=$1",
+                [enrolled.sessionId],
+            );
+            await expect(service.enrollFreeDemo(valid)).rejects.toMatchObject({
+                code: "CONFLICT",
+            });
+            await pool.query(
+                "UPDATE panas_accounting_buyers SET enabled=false WHERE buyer_id=$1",
+                [enrolled.buyerId],
+            );
+            await expect(
+                service.enrollFreeDemo(make(randomUUID())),
+            ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+            await pool.query(
+                "UPDATE panas_accounting_buyers SET enabled=true,max_request=100,policy_version='operator-owned' WHERE buyer_id=$1",
+                [enrolled.buyerId],
+            );
+            await expect(
+                service.enrollFreeDemo(make(randomUUID())),
+            ).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+            expect(
+                (
+                    await pool.query(
+                        "SELECT max_request::text,policy_version FROM panas_accounting_buyers WHERE buyer_id=$1",
+                        [enrolled.buyerId],
+                    )
+                ).rows[0],
+            ).toEqual({ max_request: "100", policy_version: "operator-owned" });
+        });
         it("serves a zero-balance zero-budget buyer for free, waives a nonzero platform fee and issues one zero-charge receipt", async () => {
             await unfundedBuyer("TEST_CREDIT");
             const balanceInput = { sessionId };

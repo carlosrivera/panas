@@ -17,6 +17,8 @@ export const DOMAIN = {
     response: "panas.provider-response.v1",
     terminal: "panas.provider-terminal.v1",
     cloud: "panas.cloud-request.v1",
+    enrollment: "panas.free-enrollment.v1",
+    discovery: "panas.free-discovery.v1",
 } as const;
 export type SigningDomain = (typeof DOMAIN)[keyof typeof DOMAIN];
 export const digestSchema = z.string().regex(/^[a-f0-9]{64}$/);
@@ -317,4 +319,58 @@ export function assertFresh(
         expires - issued > maxLifetimeMs
     )
         throw new Error("Expired or invalid signed operation window");
+}
+
+export const demoEnrollmentSchema = signedSchema(
+    z
+        .object({
+            version: z.literal(1),
+            publicKeyPem: publicKeySchema,
+            sessionId: z.uuid(),
+            issuedAt: z.iso.datetime(),
+            expiresAt: z.iso.datetime(),
+        })
+        .strict(),
+);
+export const demoDiscoverySchema = signedSchema(
+    z
+        .object({
+            version: z.literal(1),
+            scope: z.literal("free-discovery"),
+            buyerId: z.uuid(),
+            sessionId: z.uuid(),
+            issuedAt: z.iso.datetime(),
+            expiresAt: z.iso.datetime(),
+        })
+        .strict(),
+);
+export const demoEnrollmentResponseSchema = z
+    .object({
+        buyerId: z.uuid(),
+        sessionId: z.uuid(),
+        expiresAt: z.iso.datetime(),
+        platformPublicKeyPem: publicKeySchema,
+        discoveryToken: z.string().min(1).max(8192),
+        freeOnly: z.literal(true),
+    })
+    .strict();
+/** Stable key-derived UUIDv8; callers cannot select an existing buyer identity. */
+export function demoBuyerId(key: KeyLike): string {
+    const hex = keyId(key);
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-8${hex.slice(13, 16)}-${((parseInt(hex[16]!, 16) & 3) | 8).toString(16)}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+export function verifyDemoDiscovery(
+    token: string,
+    publicKey: KeyLike,
+    now = Date.now(),
+) {
+    if (!token.startsWith("demo1.") || token.length > 8192)
+        throw new Error("Invalid discovery token");
+    const document = demoDiscoverySchema.parse(
+        JSON.parse(Buffer.from(token.slice(6), "base64url").toString("utf8")),
+    );
+    assertFresh(document.payload, now, 86400000);
+    if (!verifyDocument(DOMAIN.discovery, document, publicKey))
+        throw new Error("Invalid discovery signature");
+    return document.payload;
 }

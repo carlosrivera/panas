@@ -9,7 +9,7 @@ Panas AI lets buyer agents discover a Mac provider and purchase a bounded infere
 - MCPWire is an external pinned CLI dependency. Use `share` and `join`; do not import its internal modules or fork it to implement marketplace behavior.
 - MCPWire creates a child MCP process per peer. Keep that adapter disposable; model execution, device-wide limits, and durable state belong to a persistent provider daemon.
 - Buyer agents discover and purchase through structured tools. The public website is informational and must not be required in the agent transaction.
-- Volcano owns cloud discovery and accounting. Inference payloads stay on the buyer-to-provider path by default.
+- Cloudflare Workers hosts cloud discovery and accounting, with the existing Volcano PostgreSQL database. Inference payloads stay on the buyer-to-provider path by default.
 
 ## Collaboration
 

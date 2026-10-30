@@ -3,5 +3,5 @@
     "compilerOptions": {
         "types": ["node"]
     },
-    "include": ["*.ts", "../../tests/platform/**/*.ts"]
+    "include": ["*.ts", "../edge/api-worker.ts", "../../tests/platform/**/*.ts"]
 }

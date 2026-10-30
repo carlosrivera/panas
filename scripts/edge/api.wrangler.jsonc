@@ -1,0 +1,25 @@
+{
+    "name": "panas-api",
+    "main": "api-worker.ts",
+    "account_id": "19981030b0f061f36e671289f4170345",
+    "compatibility_date": "2026-10-30",
+    "compatibility_flags": ["nodejs_compat"],
+    "workers_dev": true,
+    "routes": [
+        { "pattern": "panas.mcpwire.co/registry*", "zone_name": "mcpwire.co" },
+        {
+            "pattern": "panas.mcpwire.co/accounting*",
+            "zone_name": "mcpwire.co",
+        },
+    ],
+    "vars": { "RELEASE_SHA": "development" },
+    "ratelimits": [
+        {
+            "name": "ENROLLMENT_LIMIT",
+            "namespace_id": "1001",
+            "simple": { "limit": 10, "period": 60 },
+        },
+    ],
+    "triggers": { "crons": ["*/10 * * * *"] },
+    "observability": { "enabled": true, "head_sampling_rate": 1 },
+}

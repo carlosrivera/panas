@@ -149,3 +149,50 @@ it("preserves the registry mount and bearer credential for discovery", async () 
         `https://panas.mcpwire.co/registry/providers/${id}`,
     ]);
 });
+
+it("retries an unavailable quote with the same request identity and fresh proof, without retrying a purchase", async () => {
+    const pair = generateKeyPairSync("ed25519");
+    const bodies: string[] = [],
+        nonces: string[] = [];
+    let attempts = 0;
+    const client = createCloudClient({
+        url: "https://account.test",
+        buyerId: randomUUID(),
+        privateKey: pair.privateKey,
+        fetch: async (input, init) => {
+            const request = new Request(input, init);
+            bodies.push(await request.text());
+            nonces.push(
+                JSON.parse(
+                    Buffer.from(
+                        request.headers.get("x-panas-proof")!,
+                        "base64url",
+                    ).toString(),
+                ).payload.nonce,
+            );
+            attempts++;
+            return attempts === 2
+                ? Response.json({ ok: true })
+                : Response.json(
+                      { error: { code: "UNAVAILABLE" } },
+                      { status: 503 },
+                  );
+        },
+    });
+    await client.quote({
+        providerId: randomUUID(),
+        requestId: randomUUID(),
+        sessionId: randomUUID(),
+        payloadDigest: "a".repeat(64),
+        maxOutputTokens: 32,
+    });
+    expect(bodies[0]).toBe(bodies[1]);
+    expect(nonces[0]).not.toBe(nonces[1]);
+    await expect(
+        client.purchase({
+            quoteId: randomUUID(),
+            idempotencyKey: randomUUID(),
+        }),
+    ).rejects.toMatchObject({ code: "UNAVAILABLE" });
+    expect(attempts).toBe(3);
+});

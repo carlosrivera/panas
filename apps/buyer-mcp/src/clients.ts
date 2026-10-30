@@ -190,7 +190,20 @@ export function createCloudClient(options: {
             send("POST", "/funding/solana-devnet/intents", body),
         confirmFunding: (body) =>
             send("POST", "/funding/solana-devnet/confirm", body, 30000),
-        quote: (body) => send("POST", "/quotes", body),
+        quote: async (body) => {
+            try {
+                return await send("POST", "/quotes", body);
+            } catch (error) {
+                if (
+                    !(error instanceof BuyerError) ||
+                    error.code !== "UNAVAILABLE"
+                )
+                    throw error;
+                // Quotes are idempotent by buyer/request ID. Keep the exact body,
+                // mint a fresh proof nonce, and never retry purchases or inference here.
+                return send("POST", "/quotes", body);
+            }
+        },
         purchase: (body) => send("POST", "/purchases", body),
         get: (id) => send("GET", `/requests/${z.uuid().parse(id)}`),
         cancel: (id) =>

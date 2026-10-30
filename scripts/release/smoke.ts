@@ -216,6 +216,10 @@ try {
     assert(codex.includes(JSON.stringify(process.execPath)));
     assert(!codex.includes("private-demo-fixture-token"));
     assert(run(["demo-prompt"]).includes("Use FREE access only"));
+    const antigravityDemo = run(["demo", "--plain", "--client", "antigravity"]);
+    assert(antigravityDemo.startsWith("This demo is running in Antigravity."));
+    assert(antigravityDemo.includes("panas setup --client antigravity"));
+    assert(antigravityDemo.includes("Hello world"));
     assert(run(["demo-prompt", "--paid"]).includes("SOLANA_DEVNET_USDC"));
     const buyerTransport = new StdioClientTransport({
         ...config.mcpServers.panas,

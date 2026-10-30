@@ -1,28 +1,20 @@
-Panas alpha.6 includes the native macOS buyer → Docker provider routing fix, the portable free/paid demo prompts and MCPWire 1.1.3. The CLI and matching Linux ARM64 Docker image come from the same clean source commit.
+Panas alpha.7 adds provider and buyer terminal dashboards, automatic personal free-only buyer enrollment, and automatic MCP setup for Codex and Antigravity. Registry and accounting now run on Cloudflare Workers with the existing PostgreSQL database and unchanged public URLs.
 
-The gateway publishes one explicitly reserved UDP port and shares bounded connection hints only through the encrypted private handoff. The CPU worker keeps networking disabled. Existing non-root, read-only filesystem, capability and resource restrictions remain in place. No host networking, Docker socket or native inference fallback is added.
-
-Install or upgrade:
+Install:
 
 ```sh
-curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.6/install.sh -o /tmp/panas-install.sh
-sh /tmp/panas-install.sh
-~/.local/bin/panas provider --free
-# On the buyer computer, after owner configuration:
-~/.local/bin/panas demo-prompt
+curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh | sh
+~/.local/bin/panas demo
 ```
 
-Stop existing provider/buyer processes before upgrading; preserve identities, keys, model data, sessions and durable state. Public service bases remain `https://panas.mcpwire.co/registry` and `https://panas.mcpwire.co/accounting`. The installer preserves private owner files.
+Choose your agent, press c to copy the complete prompt, and paste it into Codex or Antigravity. The agent enrolls its own free buyer and writes its MCP configuration. No account provisioning, owner files, wallet or local model is required for the free buyer demo. Node.js 24 is required. A ready free provider must be available.
 
-The shipped demo prompt has no developer-specific home path or fixed provider ID. `panas codex-config` generates the installed Node/package paths for the current user; enrollment and owner configuration are still required. The provider requires Apple Silicon macOS 14+, Docker Desktop and the pinned model; the buyer needs Node.js 24 and an MCP client.
+`panas hello` performs one bounded free request immediately. After uncertainty, retain the printed request ID and use `panas request REQUEST_UUID`; never replay hello as recovery. Demos have zero spending caps on the client and server and scoped free-only discovery. Paid access and provider enrollment remain operator-managed.
 
-Testing is intentionally deferred for this publication at the maintainer’s request: no fresh unit, integration, sandbox, inference, installer or post-release smoke tests were run. Artifacts were built and packaged with matching source metadata and SHA-256 checksums. Prior native macOS demo evidence is recorded in #56; this publication does not claim a new run. Two physical Macs and other network/NAT paths remain manual acceptance checks.
+`panas provider --free` opens a live dashboard showing startup stages and verified readiness. Use Tab for activity, c for the public provider link and q to stop owned containers while preserving durable state. Use --plain for scripts. Provider requirements remain Apple Silicon macOS 14+, Docker Desktop and the pinned offline CPU model.
 
-Mainnet and automated on-chain payouts remain disabled.
+MCP setup preserves unrelated settings and creates local backups. Codex uses its native MCP configuration command; Antigravity uses ~/.gemini/config/mcp_config.json. A client may need to reload MCP servers; the copied prompt can run hello directly in the meantime.
 
-Installer hotfix (2026-10-30): the alpha.6 `install.sh` and its entry in
-`SHA256SUMS` were updated to pin Ink's transitive `es-toolkit` dependency to
-1.53.0 because npm advertised 1.53.1 while its tarball returned 404. The CLI
-tarball, Docker image, source metadata and their checksums are unchanged. The
-corrected installer was verified with an empty npm cache, repeat installation,
-checksum rejection and MCPWire native dependency loading.
+Validation includes repository lint/typecheck/tests/build, isolated PostgreSQL enrollment/authority/settlement tests, fresh-cache installer and packaged MCP checks, and a real fresh-buyer → existing Docker provider request through Cloudflare with an authoritative zero-charge receipt. This is one-machine native buyer/Docker provider evidence; independent physical hosts and other NAT paths remain manual acceptance checks. The release workflow validates and packages the matching Linux ARM64 sandbox image from the same clean source commit.
+
+Mainnet and automatic on-chain payouts remain disabled. Private identities, keys, sessions and durable state are preserved during installation.

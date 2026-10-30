@@ -9,7 +9,7 @@ const run = (args: string[]) =>
     execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
 const manifest = JSON.parse(
     await readFile(resolve(root, "apps/cli/package.json"), "utf8"),
-) as { name: string; version: string };
+) as { name: string; version: string; dependencies: Record<string, string> };
 const destination = resolve(root, "dist/panas-cli");
 if (Number(process.versions.node.split(".")[0]) !== 24)
     throw new Error("Use Node 24");
@@ -34,7 +34,7 @@ const result = await build({
     target: "node24",
     format: "esm",
     packages: "bundle",
-    external: ["@mcpwire/cli", "@mcpwire/cli/*"],
+    external: ["@mcpwire/cli", "@mcpwire/cli/*", "ink", "react", "react/*"],
     legalComments: "linked",
     metafile: true,
     banner: {
@@ -113,7 +113,14 @@ await writeFile(
                 type: "git",
                 url: "https://github.com/carlosrivera/panas.git",
             },
-            dependencies: { "@mcpwire/cli": "1.1.3" },
+            dependencies: {
+                ...Object.fromEntries(
+                    Object.entries(manifest.dependencies ?? {}).filter(
+                        ([, version]) => !version.startsWith("workspace:"),
+                    ),
+                ),
+                "@mcpwire/cli": "1.1.3",
+            },
         },
         null,
         2,

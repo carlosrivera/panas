@@ -4,7 +4,7 @@ const pagesPrefix = "/panas";
 /** @param {Request} request */
 export async function routeWebRequest(request, upstreamFetch = fetch) {
     const url = new URL(request.url);
-    // Defense in depth: production has more-specific, no-Worker API routes.
+    // Defense in depth: production has more-specific API Worker routes.
     // Forward the original request intact so signed paths and streaming survive.
     if (/^\/(registry|accounting)(\/|$)/.test(url.pathname))
         return upstreamFetch(request);

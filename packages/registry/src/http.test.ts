@@ -1,7 +1,8 @@
-import { createHash } from "node:crypto";
+import { createHash, generateKeyPairSync, randomUUID } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { DOMAIN, signDocument } from "@panas/protocol";
 import { RegistryService } from "./service";
 import { createHttpHandler } from "./http";
 import { fixtureRecord } from "./fixtures";
@@ -43,6 +44,79 @@ describe("authenticated shared API and stateless MCP discovery", () => {
             ).status,
         ).toBe(403);
         expect(repo.discover).not.toHaveBeenCalled();
+    });
+    it("scopes demo tokens to free providers and rejects tampered or expired discovery authority", async () => {
+        const { service, repo, row } = setup();
+        const platform = generateKeyPairSync("ed25519");
+        const handle = createHttpHandler(
+            service,
+            hash,
+            platform.publicKey
+                .export({ type: "spki", format: "pem" })
+                .toString(),
+        );
+        const nowMs = Date.now();
+        const signed = signDocument(
+            DOMAIN.discovery,
+            {
+                version: 1,
+                scope: "free-discovery",
+                buyerId: randomUUID(),
+                sessionId: randomUUID(),
+                issuedAt: new Date(nowMs).toISOString(),
+                expiresAt: new Date(nowMs + 86400000).toISOString(),
+            },
+            platform.privateKey,
+        );
+        const token = `demo1.${Buffer.from(JSON.stringify(signed)).toString("base64url")}`;
+        const request = (path: string, bearer = token) =>
+            handle(
+                new Request(`https://registry.test${path}`, {
+                    headers: { authorization: `Bearer ${bearer}` },
+                }),
+            );
+        expect((await request("/providers?maxPriceAtomic=10000")).status).toBe(
+            200,
+        );
+        expect(repo.discover).toHaveBeenLastCalledWith(
+            expect.objectContaining({ maxPriceAtomic: "0" }),
+            null,
+            expect.anything(),
+            expect.anything(),
+        );
+        row.price.totalAtomic = "100";
+        expect((await request(`/providers/${row.providerId}`)).status).toBe(
+            403,
+        );
+        const forged = {
+            ...signed,
+            payload: { ...signed.payload, scope: "paid" },
+        };
+        expect(
+            (
+                await request(
+                    "/providers",
+                    `demo1.${Buffer.from(JSON.stringify(forged)).toString("base64url")}`,
+                )
+            ).status,
+        ).toBe(401);
+        const expired = signDocument(
+            DOMAIN.discovery,
+            {
+                ...signed.payload,
+                issuedAt: new Date(nowMs - 86400000).toISOString(),
+                expiresAt: new Date(nowMs - 1).toISOString(),
+            },
+            platform.privateKey,
+        );
+        expect(
+            (
+                await request(
+                    "/providers",
+                    `demo1.${Buffer.from(JSON.stringify(expired)).toString("base64url")}`,
+                )
+            ).status,
+        ).toBe(401);
     });
     it("rejects invalid filters and repeated query arguments", async () => {
         const { handle } = setup();
