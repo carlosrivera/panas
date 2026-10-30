@@ -1,4 +1,4 @@
-Panas hackathon demo launcher for macOS 14+ on Apple Silicon. Node.js 24 required.
+Panas hackathon demo CLI. The provider launcher requires macOS 14+ on Apple Silicon and Docker Desktop; gateway/worker execution is Linux ARM64. The buyer requires Node.js 24 and an MCP client, not a Mac, Docker or a local model. Buyer process supervision supports macOS/Linux; Windows supervision is outside the current matrix.
 
 Download `install.sh` from this release, then run `sh ~/Downloads/install.sh`. It installs the checksum-verified compiled CLI under your home directory. With operator-provided configuration in `~/.config/panas`:
 

@@ -1,5 +1,7 @@
 # Free access and devnet funding validation
 
+This is a recorded validation report. Native-build observations and deployment/treasury status below describe that run, not a claim about the latest deployed release. Current serving uses [Docker](../docker-sandbox.md); the implemented Solana payment protocol and required configuration are in [payments](../payments.md).
+
 The one-Mac free drill used a development alpha.3 build (before the balance-inspection tool was added), the existing deployed Volcano control plane, a real native Ollama worker and a newly enrolled buyer with balance, held funds and owner spending caps all zero. No operator funding or wallet transfer was performed. Discovery, signed purchase and one peer inference completed with generated output and an authoritative zero-charge receipt:
 
 - Request: `cca45110-f789-419b-be31-dfbb88b21057`
