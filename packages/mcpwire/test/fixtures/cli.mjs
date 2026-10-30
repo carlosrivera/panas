@@ -14,7 +14,7 @@ if (mode === "share" || mode === "tree") {
         );
         writeFileSync(args[0], String(child.pid));
     }
-    const out = `MCPWire v1.1.0 · fixture · Listening\n  "args": ["-y", "@mcpwire/cli", "join", "${ticket}"]\n`;
+    const out = `MCPWire v1.1.3 · fixture · Listening\n  "args": ["-y", "@mcpwire/cli", "join", "${ticket}"]\n`;
     process.stderr.write(out.slice(0, 37));
     setTimeout(() => process.stderr.write(out.slice(37)), 10);
     process.stderr.write("UPSTREAM_SECRET_ARGUMENT_PREVIEW_MUST_NOT_ESCAPE\n");

@@ -21,6 +21,12 @@ it("references only the exact Panas test project and complete named release chec
     expect(
         validReleaseReference({
             ...proof,
+            functions: [...proof.functions, { name: "operations" }],
+        }),
+    ).toBe(true);
+    expect(
+        validReleaseReference({
+            ...proof,
             projectId: "11111111-1111-4111-8111-111111111111",
         }),
     ).toBe(false);

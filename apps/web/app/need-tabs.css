@@ -1,0 +1,141 @@
+.pr27-page .need-tabs-control {
+    --track-inset: 6px;
+    --track-gap: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 1200px;
+    margin: 0 auto 8px;
+}
+
+.pr27-page .need-tabs-label {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    line-height: 18px;
+    text-transform: uppercase;
+}
+
+.pr27-page .need-tabs-list {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--track-gap);
+    width: min(100%, 600px);
+    height: 80px;
+    padding: var(--track-inset);
+    border: 1px solid var(--rule);
+    border-radius: 22px;
+    background: #151513;
+}
+
+/* Sliding thumb behind the selected option. */
+.pr27-page .need-tabs-list::before {
+    position: absolute;
+    top: var(--track-inset);
+    bottom: var(--track-inset);
+    left: var(--track-inset);
+    width: calc((100% - 2 * var(--track-inset) - var(--track-gap)) / 2);
+    border-radius: 16px;
+    background: var(--lime);
+    content: "";
+    transition: transform 220ms ease;
+}
+
+.pr27-page .need-tabs-list[data-selected="paid"]::before {
+    transform: translateX(calc(100% + var(--track-gap)));
+}
+
+.pr27-page .need-tabs-tab {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 16px;
+    background: transparent;
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 24px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        color 220ms ease,
+        background-color 220ms ease;
+}
+
+.pr27-page .need-tabs-tab[aria-selected="true"] {
+    color: var(--bg);
+}
+
+.pr27-page .need-tabs-tab:not([aria-selected="true"]):hover {
+    background: #292923;
+}
+
+.pr27-page .need-tabs-tab:focus-visible {
+    outline: 2px solid var(--fg);
+    outline-offset: 2px;
+}
+
+.pr27-page .need-tabs-panel:focus-visible {
+    outline: 2px solid var(--lime);
+    outline-offset: 3px;
+}
+
+.pr27-page .need-tabs-panel[hidden] {
+    display: none;
+}
+
+.pr27-page .need-tabs-panel .prototype-annotation {
+    position: relative;
+    inset: auto;
+    margin: 28px 0 0;
+}
+
+.pr27-page .need-tabs-panel .prototype-policy {
+    margin-top: 32px;
+}
+
+.pr27-page .need-tabs-panel .use-cases-inner {
+    padding-top: 24px;
+}
+
+@media (max-width: 640px) {
+    .pr27-page .need-tabs-control {
+        --track-inset: 5px;
+        --track-gap: 3px;
+        gap: 12px;
+    }
+
+    .pr27-page .need-tabs-label {
+        font-size: 12px;
+        line-height: 16px;
+    }
+
+    .pr27-page .need-tabs-list {
+        width: 100%;
+        height: 72px;
+        border-radius: 20px;
+    }
+
+    .pr27-page .need-tabs-list::before,
+    .pr27-page .need-tabs-tab {
+        border-radius: 14px;
+    }
+
+    .pr27-page .need-tabs-tab {
+        font-size: 16px;
+        line-height: 20px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pr27-page .need-tabs-list::before,
+    .pr27-page .need-tabs-tab {
+        transition: none;
+    }
+}

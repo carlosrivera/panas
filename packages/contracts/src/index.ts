@@ -9,7 +9,12 @@ export const providerStateSchema = z.enum([
     "paused",
     "unhealthy",
 ]);
-export const atomicAmountSchema = z.string().regex(/^(0|[1-9][0-9]{0,29})$/);
+export {
+    paymentCurrencySchema,
+    atomicAmountSchema,
+    type PaymentCurrency,
+} from "./money.js";
+import { paymentCurrencySchema, atomicAmountSchema } from "./money.js";
 export const requestLimitsSchema = z
     .object({
         maxContextTokens: z.number().int().positive().max(2048),
@@ -35,7 +40,7 @@ export const fixedQuoteSchema = z
         modelDigest: z.string().min(1),
         priceVersion: z.string().min(1),
         totalAtomic: atomicAmountSchema,
-        currency: z.literal("TEST_CREDIT"),
+        currency: paymentCurrencySchema,
         limits: requestLimitsSchema,
         expiresAt: z.iso.datetime(),
     })
@@ -69,3 +74,10 @@ export const inferenceRequestSchema = z
     })
     .strict();
 export type InferenceRequest = z.infer<typeof inferenceRequestSchema>;
+
+export {
+    peerAddressSchema,
+    peerAddressesSchema,
+    gatewayDhtPort,
+    type PeerAddress,
+} from "./connectivity.js";

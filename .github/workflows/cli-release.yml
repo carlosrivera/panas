@@ -1,0 +1,45 @@
+name: CLI release
+on:
+    push:
+        tags: ["v0.*"]
+permissions:
+    contents: read
+jobs:
+    release:
+        runs-on: ubuntu-24.04-arm
+        timeout-minutes: 25
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@v7.0.1
+            - uses: pnpm/action-setup@v6.1.0
+            - uses: actions/setup-node@v7.1.0
+              with:
+                  node-version: 24
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - name: Verify tag and version
+              run: node --input-type=module -e 'import fs from "node:fs"; const p=JSON.parse(fs.readFileSync("apps/cli/package.json")); if(process.env.GITHUB_REF_NAME !== `v${p.version}`) process.exit(1)'
+            - run: pnpm format:check && pnpm check
+            - run: pnpm release:pack && pnpm release:smoke
+            - name: Check clean provenance and prepare assets
+              run: |
+                  node --input-type=module -e 'import fs from "node:fs"; const p=JSON.parse(fs.readFileSync("dist/panas-cli/release.json")); if(p.sourceDirty || p.sourceCommit !== process.env.GITHUB_SHA) process.exit(1)'
+                  cp dist/panas-cli/release.json dist/panas-cli/provider.env.example dist/panas-cli/demo-prompt.md dist/panas-cli/demo-paid-prompt.md artifacts/
+                  cd artifacts
+                  sha256sum *.tgz install.sh release.json provider.env.example demo-prompt.md demo-paid-prompt.md > SHA256SUMS
+            - run: ./docker/build.sh
+            - run: pnpm exec tsx scripts/release/sandbox-smoke.ts
+            - name: Package matching sandbox image
+              run: |
+                  docker save "panas-provider:${GITHUB_REF_NAME#v}" | gzip -1 > "artifacts/panas-provider-${GITHUB_REF_NAME#v}-linux-arm64.tar.gz"
+                  cd artifacts
+                  sha256sum *.tgz *.tar.gz install.sh release.json provider.env.example demo-prompt.md demo-paid-prompt.md > SHA256SUMS
+            - name: Publish prototype prerelease
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: >-
+                  gh release create "$GITHUB_REF_NAME"
+                  artifacts/*.tgz artifacts/*.tar.gz artifacts/install.sh artifacts/SHA256SUMS artifacts/release.json artifacts/provider.env.example artifacts/demo-prompt.md artifacts/demo-paid-prompt.md
+                  --verify-tag --prerelease --title "Panas $GITHUB_REF_NAME"
+                  --notes-file docs/releases/cli-alpha.md

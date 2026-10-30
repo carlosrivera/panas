@@ -1,5 +1,7 @@
 # Second Mac: concrete test handoff
 
+> Historical native-build drill setup. Public serving now requires the Docker gateway and offline worker. Use the [current provider guide](../distribution.md) for serving; these native observer commands reproduce only the recorded isolated fixture.
+
 Use a second physical Apple Silicon Mac with macOS 14+. This is a manual handoff; the agent cannot access that Mac. The October29 one-Mac crash/startup/rate observations are recorded separately and do not satisfy two-host connectivity or physical sleep.
 
 ## 1. Match the tested host release

@@ -1,3 +1,4 @@
+import { assertContainerProfile } from "./container-profile.js";
 import { arch, platform, totalmem } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -11,6 +12,7 @@ import {
 import type { InferenceRuntime } from "./runtime.js";
 
 export interface HostInfo {
+    sandbox?: "docker";
     platform: string;
     architecture: string;
     osMajor: number;
@@ -24,6 +26,7 @@ export interface CapabilityConfig {
     dataPath: string;
 }
 export async function inspectHost(dataPath: string): Promise<HostInfo> {
+    await assertContainerProfile("gateway");
     const fs = await statfs(dataPath);
     const osMajor =
         platform() === "darwin"
@@ -38,6 +41,7 @@ export async function inspectHost(dataPath: string): Promise<HostInfo> {
               )
             : 0;
     return {
+        sandbox: "docker",
         platform: platform(),
         architecture: arch(),
         osMajor,
@@ -74,10 +78,8 @@ export async function testCapabilities(
     };
     check(
         "platform",
-        host.platform === "darwin" &&
-            host.architecture === "arm64" &&
-            host.osMajor >= 14,
-        "Requires macOS14+ on Apple Silicon",
+        host.platform === "linux" && host.architecture === "arm64",
+        "Requires an ARM64 Linux Docker sandbox launched from the Mac",
     );
     check(
         "memory",
@@ -99,6 +101,11 @@ export async function testCapabilities(
     try {
         await runtime.start();
         const info = await runtime.info();
+        check(
+            "sandbox",
+            host.sandbox === "docker" && info.sandbox === "docker-worker",
+            "Docker gateway confinement and isolated, network-disabled worker required; no native fallback",
+        );
         report.model.digest = /^(sha256:)?[a-f0-9]{64}$/.test(info.digest)
             ? info.digest
             : null;

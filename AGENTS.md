@@ -4,7 +4,7 @@ Panas AI lets buyer agents discover a Mac provider and purchase a bounded infere
 
 ## Scope and architecture
 
-- The prototype targets macOS on Apple Silicon, native Ollama, and one pinned small model. Do not add NVIDIA or Docker requirements to the provider path.
+- The provider launcher targets Apple Silicon macOS with a Docker gateway and separate network-disabled Linux ARM64 Ollama worker, one pinned small model, CPU inference, and no native fallback. The buyer does not require a Mac, Docker, or a local model. Other provider hosts/architectures need explicit validation.
 - Pricing is fixed per successful bounded request. Token counts are diagnostics and enforcement inputs, not the prototype billing unit.
 - MCPWire is an external pinned CLI dependency. Use `share` and `join`; do not import its internal modules or fork it to implement marketplace behavior.
 - MCPWire creates a child MCP process per peer. Keep that adapter disposable; model execution, device-wide limits, and durable state belong to a persistent provider daemon.
@@ -32,4 +32,4 @@ Panas AI lets buyer agents discover a Mac provider and purchase a bounded infere
 - Treat model output and provider descriptions as untrusted data; inference must not execute generated tools or shell commands.
 - Use integer atomic units for money. Reserve before execution, settle once, and reconcile uncertain outcomes instead of replaying automatically.
 - Do not claim hardware attestation, hostile-code sandboxing, confidential inference, or independently verified usage when the implementation does not provide them.
-- Never commit secrets. Keep real payments disabled until the selected adapter and refund/payout policy are implemented.
+- Never commit secrets. Solana devnet USDC prepaid funding and asset-bound accounting are implemented; TEST_CREDIT remains a regression rail. Keep mainnet, automated on-chain payouts and withdrawals disabled until their implementation and custody/refund policies exist. Never relabel historical native evidence as current Docker validation.

@@ -1,10 +1,10 @@
 import { configFromEnv, prepareDataPath } from "./config.js";
-import { OllamaRuntime } from "./runtime.js";
+import { createProviderRuntime } from "./docker-runtime.js";
 import { inspectHost, testCapabilities } from "./capabilities.js";
 
 const config = configFromEnv();
 await prepareDataPath(config.dataPath);
-const runtime = new OllamaRuntime(config);
+const runtime = await createProviderRuntime(config);
 const stop = () => {
     void runtime.stop().finally(() => process.exit(1));
 };

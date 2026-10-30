@@ -1,3 +1,4 @@
+import type { PeerAddress } from "@panas/contracts";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -205,9 +206,16 @@ function manage(args: string[], options: SessionOptions) {
 }
 
 export function superviseShare(
-    options: SessionOptions & { command: string; args?: string[] },
+    options: SessionOptions & {
+        command: string;
+        args?: string[];
+        port?: number;
+    },
 ) {
-    const session = manage(shareArgs(options.command, options.args), options);
+    const session = manage(
+        shareArgs(options.command, options.args, options.port),
+        options,
+    );
     const parser = new PrivateShareParser();
     let privateTicket: string | undefined;
     session.child.stderr.on("data", (chunk: Buffer) => {
@@ -234,8 +242,13 @@ export function superviseShare(
     };
 }
 
-export function superviseJoin(options: SessionOptions & { ticket: string }) {
-    const session = manage(joinArgs(options.ticket), options);
+export function superviseJoin(
+    options: SessionOptions & { ticket: string; peerAddresses?: PeerAddress[] },
+) {
+    const session = manage(
+        joinArgs(options.ticket, options.peerAddresses),
+        options,
+    );
     session.child.stderr.resume(); // Deliberately discard upstream diagnostics and private material.
     const rpc = new JsonRpcClient(session.child, () =>
         session.fail("protocol_failed"),

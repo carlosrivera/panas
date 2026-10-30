@@ -12,28 +12,34 @@ const ownerTemplate = `{
   "sessionId": "OWNER_SELECTED_SESSION_UUID",
   "privateKeyPath": "/absolute/private/buyer-ed25519.pem",
   "dataDir": "/absolute/private/panas-buyer-data",
-  "accountingUrl": "https://ACCOUNTING_HOST",
-  "registryUrl": "https://REGISTRY_HOST",
+  "accountingUrl": "https://panas.mcpwire.co/accounting",
+  "registryUrl": "https://panas.mcpwire.co/registry",
   "discoveryTokenPath": "/absolute/private/discovery-token",
   "platformPublicKeyPath": "/absolute/private/platform-public.pem",
   "limits": {
-    "maxRequestAtomic": "100",
-    "maxSessionAtomic": "1000",
-    "maxDailyAtomic": "2000"
+    "maxRequestAtomic": "0",
+    "maxSessionAtomic": "0",
+    "maxDailyAtomic": "0"
   }
 }`;
-const mcpTemplate = `{
-  "mcpServers": {
-    "panas": {
-      "command": "/absolute/path/to/panas/node_modules/.bin/tsx",
-      "args": ["/absolute/path/to/panas/apps/buyer-mcp/src/cli.ts"],
-      "env": {
-        "PANAS_BUYER_CONFIG": "/absolute/private/buyer-config.json"
-      }
-    }
-  }
-}`;
+const mcpTemplate = `# Generate Codex TOML with absolute installed paths
+~/.local/bin/panas codex-config
+
+# Copy the free-only setup and test prompt
+~/.local/bin/panas demo-prompt | pbcopy`;
 const tools = [
+    [
+        "get_balance",
+        "Inspect prepaid funds, asset and remaining spending authority.",
+    ],
+    [
+        "create_funding_intent",
+        "Create a buyer-bound devnet USDC deposit intent; does not send tokens.",
+    ],
+    [
+        "confirm_funding",
+        "Verify a finalized public transaction signature and credit it once.",
+    ],
     [
         "discover_providers",
         "Find current providers with suitable limits and prices.",
@@ -70,7 +76,7 @@ export default function BuyerGuide() {
                 { id: "prepare", label: "Prepare your client" },
                 { id: "owner", label: "Set owner authority" },
                 { id: "connect", label: "Connect the facade" },
-                { id: "use", label: "Use the seven tools" },
+                { id: "use", label: "Use the ten tools" },
                 { id: "recover", label: "Recover safely" },
             ]}
         >
@@ -80,18 +86,16 @@ export default function BuyerGuide() {
                 title="Prepare the local tools."
             >
                 <p>
-                    Use a Panas repository checkout with Node.js 24 and the
-                    repository-pinned pnpm version, currently 12.16.1. Your MCP
-                    client must support local stdio servers. Ollama is required
-                    on the provider’s Mac, not on the buyer.
+                    Install the compiled alpha.5 CLI with Node.js 24. Codex
+                    connects to the local stdio facade; the buyer does not need
+                    Docker or Ollama. The provider runs the sandboxed worker on
+                    its own Mac.
                 </p>
-                <CodeSample label="Run from the Panas checkout">{`node --version
-pnpm --version
-pnpm install --frozen-lockfile`}</CodeSample>
+                <CodeSample label="Install without cloning">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.5/install.sh -o /tmp/panas-install.sh
+sh /tmp/panas-install.sh`}</CodeSample>
                 <p>
-                    The checked-out source is the supported setup path.
-                    Repository access may require an invitation from the
-                    prototype operator.
+                    No repository checkout or pnpm installation is needed by
+                    demo participants.
                 </p>
             </GuideSection>
             <GuideSection
@@ -101,18 +105,22 @@ pnpm install --frozen-lockfile`}</CodeSample>
             >
                 <p>
                     An operator enrolls your Ed25519 public key, creates the
-                    buyer session, and funds test credits separately. Ask for
-                    the registry/accounting addresses, pinned platform public
-                    key, and a read-only discovery credential through a private
+                    buyer session. Free providers work with zero balance and
+                    zero money caps. Paid providers use a separate Solana devnet
+                    test-USDC account and verified prepaid deposits. Ask for the
+                    registry/accounting addresses, pinned platform public key,
+                    and a read-only discovery credential through a private
                     channel. There is no self-serve enrollment or real-money
                     purchase flow on this site.
                 </p>
-                <GuideNotice title="One integer unit is one test credit.">
+                <GuideNotice title="Free access or fixed devnet USDC quotes.">
                     <p>
                         Quotes are fixed per successful bounded request. Token
-                        counts are diagnostic, not the billing unit. The example
-                        caps below are owner configuration—not a price offer or
-                        a credit balance. Local and cloud limits both apply.
+                        counts are diagnostic, not the billing unit. Devnet USDC
+                        uses six decimal places; test tokens have no real
+                        monetary value. The example caps below are owner
+                        configuration—not a price offer or a credit balance.
+                        Local and cloud limits both apply.
                     </p>
                 </GuideNotice>
                 <p>
@@ -139,17 +147,25 @@ pnpm install --frozen-lockfile`}</CodeSample>
                 title="Add one MCP server to your client."
             >
                 <p>
-                    Point the client at the installed workspace <code>tsx</code>{" "}
-                    executable and the buyer facade entry point. Use real
-                    absolute paths on the buyer’s computer. The environment
-                    contains the private configuration path, not a pasted key or
-                    provider ticket.
+                    Save PANAS_BUYER_CONFIG in your owner-only buyer.env file.
+                    Generate the Codex configuration below and merge only its
+                    panas table into ~/.codex/config.toml, preserving your other
+                    settings. Private credentials remain in local files;
+                    configuration contains paths, not keys.
                 </p>
-                <CodeSample label="MCP client configuration template — absolute paths required">
+                <p>
+                    <a
+                        className="text-link"
+                        href="https://learn.chatgpt.com/docs/extend/mcp"
+                    >
+                        Official Codex MCP configuration ↗
+                    </a>
+                </p>
+                <CodeSample label="Generate the Codex configuration and free demo prompt">
                     {mcpTemplate}
                 </CodeSample>
                 <p>
-                    Reload your client’s MCP configuration. You should see seven
+                    Reload your client’s MCP configuration. You should see ten
                     Panas tools. Provider discovery and handoff happen behind
                     this stable interface; you do not install a new MCP server
                     for each provider.
@@ -171,7 +187,7 @@ pnpm install --frozen-lockfile`}</CodeSample>
                     className="guide-table"
                     tabIndex={0}
                     role="region"
-                    aria-label="Seven buyer MCP tools"
+                    aria-label="Ten buyer MCP tools"
                 >
                     <table>
                         <thead>

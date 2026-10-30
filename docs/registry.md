@@ -1,12 +1,14 @@
 # Live provider registry
 
-The registry uses PostgreSQL for enrolled provider keys, immutable capability-report versions, current provider state, and replay nonces. API and MCP discovery use one `RegistryService` and the same readiness/filtering logic. Provider execution and paid accounting are separate issues.
+The registry uses PostgreSQL for enrolled provider keys, immutable capability-report versions, current provider state, and replay nonces. API and MCP discovery use one `RegistryService` and the same readiness/filtering logic. Provider execution and paid accounting are separate components; the [buyer facade](../apps/buyer-mcp/README.md) combines them with registry discovery.
+
+Providers publish free or asset-bound prices. Discovery accepts `currency`; a nonzero price filter without currency retains TEST_CREDIT semantics. Free providers can match any currency. Public listings show Free or an exact devnet-USDC amount; see [payment modes](payments.md).
 
 ## Provider protocol and trust
 
 An operator enrolls an Ed25519 **public** key for each prototype provider. The registry never receives its private key. A signed report attributes claims to an enrolled provider; it is not hardware attestation or proof that inference occurred.
 
-`POST /providers/register` accepts `{ report, price }` using `@panas/contracts/provider` and `@panas/contracts/registry`. A ready report requires all required local checks exactly once, approved macOS/Apple Silicon identity, model/runtime revisions, a benchmark, and a dated verified separate-peer probe. A testing/unhealthy report may have missing model/benchmark metadata but cannot appear ready. Reports must be no older than five minutes at registration, with five seconds of tolerated clock skew.
+`POST /providers/register` accepts `{ report, price }` using `@panas/contracts/provider` and `@panas/contracts/registry`. A ready report requires all required local checks exactly once, Linux ARM64 gateway identity and Docker sandbox check (the launcher currently runs on Apple Silicon macOS), model/runtime revisions, a benchmark, and a dated verified separate-peer probe. A testing/unhealthy report may have missing model/benchmark metadata but cannot appear ready. Reports must be no older than five minutes at registration, with five seconds of tolerated clock skew.
 
 `POST /providers/heartbeat` accepts `{ providerId, startupId, sequence, reportDigest, state }`. Use the digest returned by registration. Events have a per-startup monotonically increasing **safe integer** sequence. A duplicate identical heartbeat succeeds but does not extend liveness. Old startup IDs, changed duplicate payloads, replayed authentication, and lower sequences are rejected. A newer startup requires sequence zero and a newer test timestamp. New reports are stored before replacing the current view.
 
@@ -65,7 +67,7 @@ The bundle includes shared contracts, registry logic, pg, and the MCP SDK. Gener
 
 ## Validation
 
-`pnpm check` runs deterministic authentication, evidence, TTL, projection, filtering/cursor, error-redaction, and official MCP-client tests. Real PostgreSQL tests are explicit opt-in and skipped in ordinary CI:
+`pnpm check` runs deterministic authentication, evidence, TTL, projection, filtering/cursor, error-redaction, and official MCP-client tests. Real PostgreSQL tests require an explicitly configured isolated database. The accounting-database CI job supplies PostgreSQL and runs the registry suite; ordinary local tests skip it without that environment:
 
 ```sh
 # Supply PANAS_REGISTRY_TEST_DATABASE_URL from a private environment; do not paste it in commands/history.
@@ -87,8 +89,8 @@ node --env-file=/private/path/registry-deploy.env --env-file=/private/path/regis
   --import tsx packages/registry/scripts/cloud-smoke.ts
 ```
 
-Cloud endpoint and invocation evidence are recorded in the registry PR after verification. An `active` status alone is not proof that an actual MCP request succeeds. Full hardware readiness, per-request paid authorization, and the two-Mac product demo remain integration work.
+Cloud endpoint and invocation evidence are recorded in the registry PR after verification. An `active` status alone is not proof that an actual MCP request succeeds. These registry observations do not establish Docker hardware readiness, paid inference or the two-Mac product demo; those have separate [integration evidence](integration/README.md).
 
 ## Deployed verification
 
-The test endpoint is `https://cdb5c197-93ad-4c13-8dca-45e1d18140f5.functions.volcano.run/mcp`. A real official MCP client successfully initialized, listed tools, discovered providers, and fetched the ephemeral test provider. Signed HTTP registration and heartbeat succeeded, missing discovery credentials returned 401, and the unverified fixture was excluded from ready-only discovery. Fixture rows were removed afterward. This verifies registry protocol/storage behavior, not a real provider's hardware or the paid product flow.
+The test endpoint is `https://panas.mcpwire.co/registry/mcp`. A real official MCP client successfully initialized, listed tools, discovered providers, and fetched the ephemeral test provider. Signed HTTP registration and heartbeat succeeded, missing discovery credentials returned 401, and the unverified fixture was excluded from ready-only discovery. Fixture rows were removed afterward. This verifies registry protocol/storage behavior, not a real provider's hardware or the paid product flow.
