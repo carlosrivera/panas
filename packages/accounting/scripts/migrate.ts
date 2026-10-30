@@ -12,7 +12,7 @@ await client.connect();
 try {
     const dir = new URL("../../../volcano/migrations/", import.meta.url);
     for (const name of (await readdir(dir))
-        .filter((v) => /^0[2-4]\d_.*\.sql$/.test(v))
+        .filter((v) => /^0[2-9]\d_.*\.sql$/.test(v))
         .sort()) {
         await client.query(await readFile(new URL(name, dir), "utf8"));
         console.log(`Applied ${name}`);

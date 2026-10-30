@@ -1,3 +1,13 @@
+import { receiptSchema } from "./types";
+import {
+    SolanaDevnetVerifier,
+    DEVNET_GENESIS,
+    type FundingIntent,
+} from "./solana-devnet";
+import {
+    devnetFixtureTransaction,
+    devnetFixtureIntent,
+} from "./devnet-test-fixtures";
 import { generateKeyPairSync, randomBytes, randomUUID } from "node:crypto";
 import { beforeAll, beforeEach, afterAll, describe, it, expect } from "vitest";
 import pg from "pg";
@@ -127,11 +137,16 @@ describe.skipIf(!databaseUrl)(
         async function terminal(signed: SignedDocument<TerminalEvent>) {
             const path = `/provider/requests/${signed.payload.requestId}/terminal`,
                 body = { event: signed };
-            return service.terminal(
+            const result = await service.terminal(
                 await actor("provider", path, body),
                 signed.payload.requestId,
                 body,
             );
+            return result as {
+                requestId: string;
+                status: string;
+                receipt: unknown;
+            };
         }
         async function status(id: string) {
             const path = `/requests/${id}`;
@@ -144,6 +159,295 @@ describe.skipIf(!databaseUrl)(
                 signedGrant: SignedDocument<Grant>;
             }>;
         }
+        async function unfundedBuyer(
+            currency: "TEST_CREDIT" | "SOLANA_DEVNET_USDC",
+            cap = "0",
+        ) {
+            buyerId = randomUUID();
+            sessionId = randomUUID();
+            await service.operatorEnrollBuyer({
+                buyerId,
+                publicKeyPem: buyerPem,
+                maxRequestAtomic: cap,
+                maxSessionAtomic: cap,
+                maxDailyAtomic: cap,
+                policyVersion: "unfunded-fixture",
+                currency,
+            });
+            await service.operatorOpenSession({
+                buyerId,
+                sessionId,
+                capAtomic: cap,
+                expiresAt: new Date(now.getTime() + 3600000).toISOString(),
+            });
+        }
+        it("serves a zero-balance zero-budget buyer for free, waives a nonzero platform fee and issues one zero-charge receipt", async () => {
+            await unfundedBuyer("TEST_CREDIT");
+            const balanceInput = { sessionId };
+            expect(
+                await service.balance(
+                    await actor("buyer", "/balance", balanceInput),
+                    balanceInput,
+                ),
+            ).toMatchObject({
+                currency: "TEST_CREDIT",
+                availableAtomic: "0",
+                sessionRemainingAtomic: "0",
+                dailyRemainingAtomic: "0",
+            });
+            await pool.query(
+                "UPDATE panas_registry_current SET price=jsonb_set(price,'{totalAtomic}','\"0\"'::jsonb) WHERE provider_id=$1",
+                [providerId],
+            );
+            const q = await quote();
+            expect(q).toMatchObject({
+                totalAtomic: "0",
+                providerAtomic: "0",
+                feeAtomic: "0",
+            });
+            const p = await purchase(q);
+            await authorize(p.signedGrant.payload);
+            const done = event(p.signedGrant.payload, "completed");
+            const receipt = receiptSchema.parse((await terminal(done)).receipt);
+            expect(receipt).toMatchObject({
+                buyerDebitAtomic: "0",
+                providerEarningsAtomic: "0",
+                feeAtomic: "0",
+            });
+            expect(
+                receiptSchema.parse((await terminal(done)).receipt).receiptId,
+            ).toBe(receipt.receiptId);
+            expect(
+                (
+                    await pool.query(
+                        "SELECT balance::text,held::text FROM panas_accounting_buyers WHERE buyer_id=$1",
+                        [buyerId],
+                    )
+                ).rows[0],
+            ).toEqual({ balance: "0", held: "0" });
+            expect(
+                (
+                    await pool.query(
+                        "SELECT count(*)::integer AS count FROM panas_accounting_ledger WHERE request_id=$1",
+                        [q.requestId],
+                    )
+                ).rows[0].count,
+            ).toBe(0);
+        });
+        it("never lets a free quote execute after the provider changes to a paid price", async () => {
+            await unfundedBuyer("TEST_CREDIT");
+            await pool.query(
+                "UPDATE panas_registry_current SET price=jsonb_set(price,'{totalAtomic}','\"0\"'::jsonb) WHERE provider_id=$1",
+                [providerId],
+            );
+            const q = await quote();
+            await pool.query(
+                "UPDATE panas_registry_current SET price=jsonb_set(price,'{totalAtomic}','\"8\"'::jsonb) WHERE provider_id=$1",
+                [providerId],
+            );
+            await expect(purchase(q)).rejects.toMatchObject({
+                code: "PROVIDER_UNAVAILABLE",
+            });
+        });
+        it("credits a verified devnet deposit once, rejects fabricated funding/cross-asset pricing, and settles/refunds the correct asset", async () => {
+            const alphabet =
+                "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+            const paymentSignature = Array.from(
+                randomBytes(88),
+                (v) => alphabet[v % 58],
+            ).join("");
+            await unfundedBuyer("SOLANA_DEVNET_USDC", "100000");
+            const verifier = new SolanaDevnetVerifier(
+                {
+                    rpcUrl: "https://api.devnet.solana.com",
+                    treasuryOwner: devnetFixtureIntent.treasuryOwner,
+                    treasuryTokenAccount:
+                        devnetFixtureIntent.treasuryTokenAccount,
+                },
+                async (_url, options) => {
+                    const body = JSON.parse(String(options?.body));
+                    const row = (
+                        await pool.query(
+                            "SELECT * FROM panas_accounting_devnet_funding WHERE buyer_id=$1 ORDER BY created_at DESC LIMIT 1",
+                            [buyerId],
+                        )
+                    ).rows[0];
+                    const intent: FundingIntent = {
+                        intentId: row.intent_id,
+                        buyerId,
+                        amountAtomic: row.amount.toString(),
+                        memo: row.memo,
+                        treasuryOwner: row.treasury_owner,
+                        treasuryTokenAccount: row.treasury_token_account,
+                        createdAt: row.created_at.toISOString(),
+                        expiresAt: row.expires_at.toISOString(),
+                    };
+                    return Response.json({
+                        jsonrpc: "2.0",
+                        id: 1,
+                        result:
+                            body.method === "getGenesisHash"
+                                ? DEVNET_GENESIS
+                                : devnetFixtureTransaction(
+                                      intent,
+                                      paymentSignature,
+                                  ),
+                    });
+                },
+            );
+            const chainService = new AccountingService(pool, {
+                platformPrivateKey: platform.privateKey,
+                descriptorEncryptionKey: randomBytes(32),
+                feeAtomic: "2",
+                clock: () => now,
+                solanaDevnet: verifier,
+            });
+            await expect(
+                service.operatorFund({
+                    buyerId,
+                    amountAtomic: "10000",
+                    idempotencyKey: randomUUID(),
+                }),
+            ).rejects.toMatchObject({ code: "CONFLICT" });
+            await expect(quote()).rejects.toMatchObject({
+                code: "SPENDING_LIMIT",
+            });
+            await pool.query(
+                "UPDATE panas_registry_current SET price=jsonb_set(price,'{currency}','\"SOLANA_DEVNET_USDC\"'::jsonb) WHERE provider_id=$1",
+                [providerId],
+            );
+            await expect(purchase(await quote())).rejects.toMatchObject({
+                code: "SPENDING_LIMIT",
+            });
+            const input = { intentId: randomUUID(), amountAtomic: "10000" };
+            const path = "/funding/solana-devnet/intents";
+            await chainService.createFundingIntent(
+                await actor("buyer", path, input),
+                input,
+            );
+            const confirmation = {
+                intentId: input.intentId,
+                signature: paymentSignature,
+            };
+            const firstActor = await actor(
+                "buyer",
+                "/funding/solana-devnet/confirm",
+                confirmation,
+            );
+            const secondActor = await actor(
+                "buyer",
+                "/funding/solana-devnet/confirm",
+                confirmation,
+            );
+            const confirmations = await Promise.all([
+                chainService.confirmFunding(firstActor, confirmation),
+                chainService.confirmFunding(secondActor, confirmation),
+            ]);
+            expect(confirmations.every((result) => result.funded)).toBe(true);
+            const balanceInput = { sessionId };
+            expect(
+                await chainService.balance(
+                    await actor("buyer", "/balance", balanceInput),
+                    balanceInput,
+                ),
+            ).toMatchObject({
+                currency: "SOLANA_DEVNET_USDC",
+                availableAtomic: "10000",
+                sessionRemainingAtomic: "100000",
+                dailyRemainingAtomic: "100000",
+            });
+            const foreign = { sessionId: randomUUID() };
+            await expect(
+                chainService.balance(
+                    await actor("buyer", "/balance", foreign),
+                    foreign,
+                ),
+            ).rejects.toMatchObject({ code: "SPENDING_LIMIT" });
+            const changed = { ...confirmation, signature: "5".repeat(88) };
+            await expect(
+                chainService.confirmFunding(
+                    await actor(
+                        "buyer",
+                        "/funding/solana-devnet/confirm",
+                        changed,
+                    ),
+                    changed,
+                ),
+            ).rejects.toMatchObject({ code: "CONFLICT" });
+            expect(
+                (
+                    await pool.query(
+                        "SELECT balance::text FROM panas_accounting_buyers WHERE buyer_id=$1",
+                        [buyerId],
+                    )
+                ).rows[0].balance,
+            ).toBe("10000");
+            await expect(
+                pool.query(
+                    "INSERT INTO panas_accounting_ledger(ledger_id,idempotency_key,kind,currency,entries,created_at) VALUES($1,$2,'fund','TEST_CREDIT',$3,$4)",
+                    [
+                        randomUUID(),
+                        `wrong-asset:${randomUUID()}`,
+                        JSON.stringify([
+                            {
+                                account: "issuer:test-credit",
+                                amountAtomic: "-1",
+                            },
+                            { account: `buyer:${buyerId}`, amountAtomic: "1" },
+                        ]),
+                        now,
+                    ],
+                ),
+            ).rejects.toThrow("Ledger asset");
+            await expect(
+                service.operatorEnrollBuyer({
+                    buyerId,
+                    publicKeyPem: buyerPem,
+                    maxRequestAtomic: "100000",
+                    maxSessionAtomic: "100000",
+                    maxDailyAtomic: "100000",
+                    policyVersion: "cannot-convert",
+                    currency: "TEST_CREDIT",
+                }),
+            ).rejects.toMatchObject({ code: "CONFLICT" });
+            await pool.query(
+                "UPDATE panas_registry_current SET price=jsonb_set(price,'{currency}','\"SOLANA_DEVNET_USDC\"'::jsonb) WHERE provider_id=$1",
+                [providerId],
+            );
+            const q = await quote();
+            expect(q.currency).toBe("SOLANA_DEVNET_USDC");
+            const p = await purchase(q);
+            await authorize(p.signedGrant.payload);
+            const result = await terminal(
+                event(p.signedGrant.payload, "completed"),
+            );
+            expect(receiptSchema.parse(result.receipt).currency).toBe(
+                "SOLANA_DEVNET_USDC",
+            );
+            await service.operatorResolve({
+                requestId: q.requestId,
+                action: "refund",
+                reason: "Devnet fixture confirms result loss; restores prepaid test-USDC balance",
+            });
+            expect(
+                (
+                    await pool.query(
+                        "SELECT balance::text,held::text FROM panas_accounting_buyers WHERE buyer_id=$1",
+                        [buyerId],
+                    )
+                ).rows[0],
+            ).toEqual({ balance: "10000", held: "0" });
+            const rows = (
+                await pool.query(
+                    "SELECT currency FROM panas_accounting_ledger WHERE entries @> $1::jsonb",
+                    [JSON.stringify([{ account: `buyer:${buyerId}` }])],
+                )
+            ).rows;
+            expect(rows.length).toBe(3);
+            expect(rows.every((r) => r.currency === "SOLANA_DEVNET_USDC")).toBe(
+                true,
+            );
+        });
         beforeAll(async () => {
             await pool.query("SELECT 1");
             await pool.query(

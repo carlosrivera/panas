@@ -67,7 +67,7 @@ it("starts the actual private-config stdio facade and closes its owner store cle
     const client = new Client({ name: "buyer-stdio-test", version: "1" });
     try {
         await client.connect(transport);
-        expect((await client.listTools()).tools).toHaveLength(7);
+        expect((await client.listTools()).tools).toHaveLength(10);
         expect(existsSync(join(dataDir, "writer.lock"))).toBe(true);
     } finally {
         await client.close();

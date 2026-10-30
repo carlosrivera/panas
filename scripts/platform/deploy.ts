@@ -52,6 +52,42 @@ try {
             }),
         },
     );
+    // Only public devnet settings are defaulted. Preserve explicit operator values.
+    // No treasury signing key is read, uploaded or passed to an inference process.
+    const devnet = JSON.parse(
+        await readFile(resolve(root, "volcano/devnet-payments.json"), "utf8"),
+    ) as {
+        network: string;
+        rpcUrl: string;
+        mint: string;
+        treasuryOwner: string;
+        treasuryTokenAccount: string;
+        mainnetEnabled: boolean;
+    };
+    if (
+        devnet.network !== "solana-devnet" ||
+        devnet.mainnetEnabled ||
+        devnet.mint !== "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
+    )
+        throw new Error(
+            "Only pinned devnet payment configuration is supported",
+        );
+    for (const [name, value] of Object.entries({
+        PANAS_SOLANA_DEVNET_RPC_URL: devnet.rpcUrl,
+        PANAS_SOLANA_DEVNET_TREASURY_OWNER: devnet.treasuryOwner,
+        PANAS_SOLANA_DEVNET_TREASURY_TOKEN_ACCOUNT: devnet.treasuryTokenAccount,
+    })) {
+        try {
+            await variable(name);
+            continue;
+        } catch {
+            /* Missing public setting; POST cannot overwrite an existing variable. */
+        }
+        await management(`/projects/${PLATFORM.projectId}/variables`, {
+            method: "POST",
+            body: JSON.stringify({ name, value, shared: false }),
+        });
+    }
     const keys = await management<{
         data: { name: string; project_id: string }[];
     }>(`/projects/${PLATFORM.projectId}/service-keys`);

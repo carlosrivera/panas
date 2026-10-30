@@ -25,14 +25,14 @@ jobs:
             - name: Check clean provenance and prepare assets
               run: |
                   node --input-type=module -e 'import fs from "node:fs"; const p=JSON.parse(fs.readFileSync("dist/panas-cli/release.json")); if(p.sourceDirty || p.sourceCommit !== process.env.GITHUB_SHA) process.exit(1)'
-                  cp dist/panas-cli/release.json dist/panas-cli/provider.env.example dist/panas-cli/demo-prompt.md artifacts/
+                  cp dist/panas-cli/release.json dist/panas-cli/provider.env.example dist/panas-cli/demo-prompt.md dist/panas-cli/demo-paid-prompt.md artifacts/
                   cd artifacts
-                  sha256sum *.tgz install.sh release.json provider.env.example demo-prompt.md > SHA256SUMS
+                  sha256sum *.tgz install.sh release.json provider.env.example demo-prompt.md demo-paid-prompt.md > SHA256SUMS
             - name: Publish prototype prerelease
               env:
                   GH_TOKEN: ${{ github.token }}
               run: >-
                   gh release create "$GITHUB_REF_NAME"
-                  artifacts/*.tgz artifacts/install.sh artifacts/SHA256SUMS artifacts/release.json artifacts/provider.env.example artifacts/demo-prompt.md
+                  artifacts/*.tgz artifacts/install.sh artifacts/SHA256SUMS artifacts/release.json artifacts/provider.env.example artifacts/demo-prompt.md artifacts/demo-paid-prompt.md
                   --verify-tag --prerelease --title "Panas $GITHUB_REF_NAME"
                   --notes-file docs/releases/cli-alpha.md

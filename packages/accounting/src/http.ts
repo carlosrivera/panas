@@ -69,6 +69,18 @@ export function createHttpHandler(service: AccountingService) {
                 url.pathname,
                 body,
             );
+            if (request.method === "POST" && url.pathname === "/balance")
+                return json(await service.balance(actor, body));
+            if (
+                request.method === "POST" &&
+                url.pathname === "/funding/solana-devnet/intents"
+            )
+                return json(await service.createFundingIntent(actor, body));
+            if (
+                request.method === "POST" &&
+                url.pathname === "/funding/solana-devnet/confirm"
+            )
+                return json(await service.confirmFunding(actor, body));
             if (request.method === "POST" && url.pathname === "/quotes")
                 return json(await service.quote(actor, body));
             if (request.method === "POST" && url.pathname === "/purchases")

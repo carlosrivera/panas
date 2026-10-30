@@ -72,7 +72,12 @@ function ProviderCard({
             </h2>
             <p className="provider-model">{provider.model.name}</p>
             <div className="provider-price">
-                <strong>{formatCredits(provider.price.totalAtomic)}</strong>
+                <strong>
+                    {formatCredits(
+                        provider.price.totalAtomic,
+                        provider.price.currency,
+                    )}
+                </strong>
                 <span>per successful bounded request</span>
             </div>
             <dl className="provider-facts">

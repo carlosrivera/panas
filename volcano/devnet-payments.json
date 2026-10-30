@@ -1,0 +1,8 @@
+{
+    "network": "solana-devnet",
+    "rpcUrl": "https://api.devnet.solana.com",
+    "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+    "treasuryOwner": "Eu3ZFr9Hdxm2d5KYnVq7myJ1E3QTyHCB8WACf2pFyVr3",
+    "treasuryTokenAccount": "7twvqJ162WigpAG8CAsRMK9sYm1ZsKuZhEzCykqCzoJe",
+    "mainnetEnabled": false
+}

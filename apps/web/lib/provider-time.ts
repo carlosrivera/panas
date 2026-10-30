@@ -72,10 +72,22 @@ export function displayedReadiness(
         return { label: "Readiness expired", tone: "warning", ready: false };
     return { label: "Ready as observed", tone: "ready", ready: true };
 }
-export function formatCredits(value: string): string {
+export function formatCredits(
+    value: string,
+    currency: "TEST_CREDIT" | "SOLANA_DEVNET_USDC" = "TEST_CREDIT",
+): string {
     if (TEST_CREDIT_SCALE !== 0 || !/^(0|[1-9][0-9]{0,29})$/.test(value))
         throw new Error("Invalid public test-credit amount");
     const integer = BigInt(value);
+    if (integer === 0n) return "Free";
+    if (currency === "SOLANA_DEVNET_USDC") {
+        const whole = new Intl.NumberFormat("en-US").format(integer / 1000000n);
+        const fraction = (integer % 1000000n)
+            .toString()
+            .padStart(6, "0")
+            .replace(/0+$/, "");
+        return `${whole}${fraction ? "." + fraction : ""} devnet USDC`;
+    }
     return `${new Intl.NumberFormat("en-US").format(integer)} ${integer === 1n ? "test credit" : "test credits"}`;
 }
 export function formatPublicDate(value: string): string {

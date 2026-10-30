@@ -10,10 +10,11 @@ const help = `Panas — share bounded inference from an Apple Silicon Mac
 
 panas --version
 panas identity init --dir /absolute/private/directory
-panas provider
+panas provider --free
+panas provider --solana-devnet --price-atomic 10000
 panas mcp-config
 panas codex-config
-panas demo-prompt
+panas demo-prompt [--paid]
 panas doctor
 panas buyer
 
@@ -35,6 +36,10 @@ async function main() {
             version: { type: "boolean" },
             "env-file": { type: "string" },
             dir: { type: "string" },
+            free: { type: "boolean" },
+            paid: { type: "boolean" },
+            "solana-devnet": { type: "boolean" },
+            "price-atomic": { type: "string" },
         },
     });
     if (values.help || process.argv.length === 2) {
@@ -48,6 +53,17 @@ async function main() {
         return;
     }
     const [command, action, ...extra] = positionals;
+    if (values.paid && command !== "demo-prompt")
+        throw new Error("--paid selects the paid demo prompt");
+    if (
+        (values.free || values["solana-devnet"] || values["price-atomic"]) &&
+        (command !== "provider" ||
+            (values.free &&
+                (values["solana-devnet"] || values["price-atomic"])))
+    )
+        throw new Error(
+            "Pricing flags are provider-only and mutually exclusive",
+        );
     if (
         command === "demo-prompt" &&
         !action &&
@@ -56,7 +72,12 @@ async function main() {
     ) {
         process.stdout.write(
             await readFile(
-                new URL("../demo-prompt.md", import.meta.url),
+                new URL(
+                    values.paid
+                        ? "../demo-paid-prompt.md"
+                        : "../demo-prompt.md",
+                    import.meta.url,
+                ),
                 "utf8",
             ),
         );
@@ -167,9 +188,23 @@ async function main() {
         doctor: "../apps/provider/src/doctor.js",
         buyer: "../apps/buyer-mcp/src/cli.js",
     };
+    if (command === "provider" && values.free) {
+        process.env.PANAS_PRICE_ATOMIC = "0";
+        process.env.PANAS_PRICE_CURRENCY = "TEST_CREDIT";
+        process.env.PANAS_PRICE_VERSION = "free-v1";
+    }
+    if (command === "provider" && values["solana-devnet"]) {
+        const amount = values["price-atomic"];
+        if (!amount || !/^[1-9][0-9]{0,29}$/.test(amount))
+            throw new Error("Set a positive atomic devnet-USDC price");
+        process.env.PANAS_PRICE_ATOMIC = amount;
+        process.env.PANAS_PRICE_CURRENCY = "SOLANA_DEVNET_USDC";
+        process.env.PANAS_PRICE_VERSION = `devnet-usdc-${amount}`;
+    } else if (values["price-atomic"])
+        throw new Error("Choose --solana-devnet for this price");
     if (command === "provider")
         process.stderr.write(
-            "Panas provider: native supervised inference; no OS sandbox. Access requires an enrolled buyer and a valid TEST_CREDIT grant.\n",
+            "Panas provider: native supervised inference; no OS sandbox. Free and paid requests require an enrolled buyer and a valid signed grant.\n",
         );
     await import(new URL(modules[command]!, import.meta.url).href);
 }

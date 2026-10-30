@@ -8,18 +8,18 @@ Let buyer agents discover available providers, purchase a bounded inference requ
 
 The prototype proves the complete transaction, rather than model quality or marketplace breadth: **discover → quote → authorize → connect → infer → receipt**.
 
-| Area                    | Prototype decision                                                   |
-| ----------------------- | -------------------------------------------------------------------- |
-| Provider device         | macOS on Apple Silicon                                               |
-| Inference               | Native Ollama with one small approved model                          |
-| Initial model           | Proposed default: `qwen2.5:0.5b`, pinned to a tested artifact digest |
-| Pricing                 | Fixed price per successful bounded request                           |
-| Capability verification | Run at every provider-agent launch before becoming discoverable      |
-| Main buyer interface    | MCP discovery and purchase tools for buyer agents                    |
-| Public website          | Informational view of providers and platform behavior                |
-| Cloud deployment        | Volcano.dev for the control plane, discovery interface, and website  |
-| Payments                | Adapter-based; test credits first, optional blockchain paywall       |
-| Token counts            | Diagnostics and limit enforcement; no per-token billing in prototype |
+| Area                    | Prototype decision                                                            |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| Provider device         | macOS on Apple Silicon                                                        |
+| Inference               | Native Ollama with one small approved model                                   |
+| Initial model           | Proposed default: `qwen2.5:0.5b`, pinned to a tested artifact digest          |
+| Pricing                 | Provider-selected free access or a fixed price per successful bounded request |
+| Capability verification | Run at every provider-agent launch before becoming discoverable               |
+| Main buyer interface    | MCP discovery and purchase tools for buyer agents                             |
+| Public website          | Informational view of providers and platform behavior                         |
+| Cloud deployment        | Volcano.dev for the control plane, discovery interface, and website           |
+| Payments                | Adapter-based; test credits first, optional blockchain paywall                |
+| Token counts            | Diagnostics and limit enforcement; no per-token billing in prototype          |
 
 The model and runtime are a proposed implementation default. The provider OS, fixed pricing, startup tests, Volcano deployment, and agent-led discovery are product requirements.
 
@@ -185,7 +185,9 @@ Exclude tickets, peer connection secrets, wallet secrets, precise location, devi
 
 ## 11. Optional blockchain paywall
 
-Keep blockchain optional behind the payment adapter. Fixed pricing makes [x402’s exact scheme](https://github.com/x402-foundation/x402/blob/main/docs/schemes/exact.mdx) a plausible fit; its [MCP transport](https://github.com/x402-foundation/x402/blob/main/specs/transports-v2/mcp.md) requires compatibility testing with the buyer adapter and MCPWire handoff.
+Providers may offer free access (including zero platform fee) or fixed-price paid access. Free requests retain identity, signed execution grants, resource/rate caps and zero-charge receipts without requiring wallet funding. The first blockchain payment rail is prepaid Solana devnet test USDC; TEST_CREDIT remains an internal regression rail, never a token conversion. See [payment implementation and rollout](payments.md). Mainnet and automated on-chain payouts remain disabled.
+
+Keep blockchain behind the payment adapter. Fixed pricing makes [x402’s exact scheme](https://github.com/x402-foundation/x402/blob/main/docs/schemes/exact.mdx) a plausible fit; its [MCP transport](https://github.com/x402-foundation/x402/blob/main/specs/transports-v2/mcp.md) requires compatibility testing with the buyer adapter and MCPWire handoff.
 
 Prototype accounting uses test credits. If real blockchain payments are enabled, choose one stablecoin and network. Prepaid funding plus the reservation ledger is the simplest initial refund-compatible path. Direct exact payment per request is an alternative experiment and requires explicit handling of payment success followed by inference failure.
 

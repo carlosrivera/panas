@@ -315,6 +315,7 @@ export class PostgresRegistryRepository implements RegistryRepository {
             AND ($6::numeric IS NULL OR (p.price->>'totalAtomic')::numeric <= $6)
             AND ($7::numeric IS NULL OR (p.report->'benchmark'->>'warmLatencyMs')::numeric <= $7)
             AND ($8::boolean=false OR (p.state='ready' AND p.eligible=true AND p.received_at>$9 AND (p.report->>'testedAt')::timestamptz>$10))
+            AND ($12::text IS NULL OR p.price->>'currency'=$12 OR (p.price->>'totalAtomic')::numeric=0)
             ORDER BY p.provider_id LIMIT $11`,
             [
                 after,
@@ -328,6 +329,10 @@ export class PostgresRegistryRepository implements RegistryRepository {
                 new Date(now.getTime() - HEARTBEAT_TTL_MS),
                 new Date(now.getTime() - REPORT_TTL_MS),
                 query.limit + 1,
+                query.currency ??
+                    (query.maxPriceAtomic && query.maxPriceAtomic !== "0"
+                        ? "TEST_CREDIT"
+                        : null),
             ],
         );
         return rows.map((row) => fromRow(row as Record<string, unknown>));
