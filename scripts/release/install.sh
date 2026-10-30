@@ -46,5 +46,5 @@ if [ -e "$bin/panas" ] || [ -L "$bin/panas" ]; then
 fi
 ln -s "$release/panas" "$work/panas"
 mv -f "$work/panas" "$bin/panas"
-printf '\nInstalled Panas %s\nProvider: %s/panas provider\nBuyer MCP config: %s/panas mcp-config\nDemo prompt: %s/panas demo-prompt\n' "$version" "$bin" "$bin" "$bin"
-printf '%s\n' 'Configure owner files under ~/.config/panas first. Provider requires Docker Desktop and the matching release image. Set provider PANAS_REGISTRY_URL and PANAS_ACCOUNTING_URL, and buyer registryUrl and accountingUrl, to https://panas.mcpwire.co/registry and https://panas.mcpwire.co/accounting. Preserve existing keys and state.'
+printf '\nInstalled Panas %s\nBuyer demo: %s/panas demo\nHello world: %s/panas hello\nMCP setup: %s/panas setup --client codex (or antigravity)\nProvider: %s/panas provider --free\n' "$version" "$bin" "$bin" "$bin" "$bin"
+printf '%s\n' 'Free buyer demos enroll automatically and need no owner files, wallet, Docker or local model. Providers still require an enrolled identity, Docker Desktop, the matching release image and the pinned model. Preserve existing keys and durable state.'

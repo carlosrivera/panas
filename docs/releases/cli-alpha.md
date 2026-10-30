@@ -18,3 +18,5 @@ MCP setup preserves unrelated settings and creates local backups. Codex uses its
 Validation includes repository lint/typecheck/tests/build, isolated PostgreSQL enrollment/authority/settlement tests, fresh-cache installer and packaged MCP checks, and a real fresh-buyer → existing Docker provider request through Cloudflare with an authoritative zero-charge receipt. This is one-machine native buyer/Docker provider evidence; independent physical hosts and other NAT paths remain manual acceptance checks. The release workflow validates and packages the matching Linux ARM64 sandbox image from the same clean source commit.
 
 Mainnet and automatic on-chain payouts remain disabled. Private identities, keys, sessions and durable state are preserved during installation.
+
+Installer wording hotfix: the alpha.7 installer and its checksum were updated to show the automatic free buyer commands and remove obsolete manual buyer setup instructions. The CLI tarball, matching Docker image and their source metadata/checksums are unchanged.

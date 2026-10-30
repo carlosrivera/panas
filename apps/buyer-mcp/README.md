@@ -1,5 +1,21 @@
 # Panas buyer MCP facade
 
+## Automatic free demo
+
+Install the public CLI with Node.js 24 and run `panas demo`. Choose Codex or
+Antigravity, copy its prompt and paste it into the agent. `panas setup --client
+codex` or `--client antigravity` automatically enrolls a personal free-only buyer,
+writes the MCP entry and preserves other settings. Keys and zero-budget demo
+stores remain private on the local computer. No operator handoff or wallet is
+needed for this path. The existing PostgreSQL backend enforces zero authority.
+
+`panas hello` runs one bounded free request immediately. After an uncertain
+outcome use `panas request REQUEST_UUID` to retrieve the original request instead
+of sending inference again. A ready free device must be available. A client may
+need to reload MCP for future tools; the direct command can run in the current
+chat. The advanced owner configuration below remains available for paid buyers
+and operator-managed identities.
+
 One local MCP server exposes `discover_providers`, `get_provider`, `quote_inference`, `purchase_access`, `run_inference`, `get_request`, and `cancel_request`, plus `get_balance`, `create_funding_intent` and `confirm_funding`. Provider handoff happens inside the facade through the external MCPWire transport. A buyer agent does not install a new server for each purchase.
 
 The buyer requires Node.js 24 and a compatible MCP agent client, not macOS, Docker or a local model. macOS/Linux process supervision is supported; Windows process-tree supervision is not currently supported. Provider serving uses a separate [Docker gateway/worker](../../docs/docker-sandbox.md).
