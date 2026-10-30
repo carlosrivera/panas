@@ -14,7 +14,7 @@ import { resolve, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createServer } from "node:net";
 import { createRequire } from "node:module";
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID, generateKeyPairSync } from "node:crypto";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
@@ -28,7 +28,7 @@ const files = execFileSync("tar", ["-tzf", tarball], { encoding: "utf8" })
     .split("\n");
 assert(
     files.every((name) =>
-        /^package\/(?:bin\/|apps\/|scripts\/|package.json$|release.json$|provider.env.example$|LICENSE$|README.md$)/.test(
+        /^package\/(?:bin\/|apps\/|scripts\/|package.json$|release.json$|demo-prompt.md$|provider.env.example$|LICENSE$|README.md$)/.test(
             name,
         ),
     ),
@@ -85,10 +85,10 @@ try {
         "node_modules/@panas/cli",
     );
     const bin = join(installed, "bin/panas.js");
-    const run = (args: string[]) =>
+    const run = (args: string[], extraEnv: Record<string, string> = {}) =>
         execFileSync(process.execPath, [bin, ...args], {
             cwd: scratch,
-            env,
+            env: { ...env, ...extraEnv },
             encoding: "utf8",
             timeout: 15000,
             stdio: ["ignore", "pipe", "pipe"],
@@ -119,7 +119,7 @@ try {
         version: string;
         bin: { mcpwire: string };
     };
-    assert.equal(wire.version, "1.1.0");
+    assert.equal(wire.version, "1.1.1");
     // --help alone does not load the real share/join native dependency graph.
     const wireRequire = createRequire(wirePath);
     assert.equal(typeof wireRequire("hyperdht"), "function");
@@ -150,6 +150,93 @@ try {
         arguments: {},
     });
     assert.deepEqual(result.structuredContent, { fixture: "packaged-ipc" });
+    await client.close();
+    client = undefined;
+    const buyerDir = join(scratch, "buyer");
+    await mkdir(buyerDir, { mode: 0o700 });
+    const buyerKeys = generateKeyPairSync("ed25519");
+    const privateKeyPath = join(buyerDir, "buyer.pem");
+    const platformPublicKeyPath = join(buyerDir, "platform.pem");
+    const discoveryTokenPath = join(buyerDir, "discovery-token");
+    await writeFile(
+        privateKeyPath,
+        buyerKeys.privateKey.export({ type: "pkcs8", format: "pem" }),
+        { mode: 0o600 },
+    );
+    await writeFile(
+        platformPublicKeyPath,
+        buyerKeys.publicKey.export({ type: "spki", format: "pem" }),
+        { mode: 0o600 },
+    );
+    await writeFile(discoveryTokenPath, "private-demo-fixture-token", {
+        mode: 0o600,
+    });
+    const ownerPath = join(buyerDir, "owner.json");
+    await writeFile(
+        ownerPath,
+        JSON.stringify({
+            buyerId: randomUUID(),
+            sessionId: randomUUID(),
+            privateKeyPath,
+            platformPublicKeyPath,
+            discoveryTokenPath,
+            dataDir: join(buyerDir, "state"),
+            accountingUrl: "https://accounting.example.invalid",
+            registryUrl: "https://registry.example.invalid",
+            limits: {
+                maxRequestAtomic: "2",
+                maxSessionAtomic: "2",
+                maxDailyAtomic: "2",
+            },
+        }),
+        { mode: 0o600 },
+    );
+    const envPath = join(buyerDir, "buyer.env");
+    await writeFile(envPath, `PANAS_BUYER_CONFIG=${ownerPath}\n`, {
+        mode: 0o600,
+    });
+    const defaultDir = join(scratch, ".config/panas");
+    await mkdir(defaultDir, { recursive: true, mode: 0o700 });
+    const defaultEnv = join(defaultDir, "buyer.env");
+    await writeFile(defaultEnv, `PANAS_BUYER_CONFIG=${ownerPath}\n`, {
+        mode: 0o600,
+    });
+    const defaults = JSON.parse(run(["mcp-config"], { HOME: scratch })) as {
+        mcpServers: { panas: { args: string[] } };
+    };
+    assert.equal(defaults.mcpServers.panas.args.at(-1), defaultEnv);
+    const configOutput = run(["mcp-config", "--env-file", envPath]);
+    assert(!configOutput.includes("private-demo-fixture-token"));
+    const config = JSON.parse(configOutput) as {
+        mcpServers: { panas: { command: string; args: string[] } };
+    };
+    const codex = run(["codex-config", "--env-file", envPath]);
+    assert(codex.includes("[mcp_servers.panas]"));
+    assert(codex.includes("tool_timeout_sec = 120"));
+    assert(codex.includes(JSON.stringify(process.execPath)));
+    assert(!codex.includes("private-demo-fixture-token"));
+    assert(
+        run(["demo-prompt"]).includes("at most ONE new test-credit purchase"),
+    );
+    const buyerTransport = new StdioClientTransport({
+        ...config.mcpServers.panas,
+        cwd: scratch,
+        env,
+    });
+    client = new Client({ name: "demo-buyer-package-smoke", version: "1" });
+    await client.connect(buyerTransport);
+    const tools = await client.listTools();
+    assert.equal(tools.tools.length, 7);
+    assert(tools.tools.some((tool) => tool.name === "discover_providers"));
+    assert(tools.tools.some((tool) => tool.name === "run_inference"));
+    await client.close();
+    client = undefined;
+    await writeFile(envPath, `PANAS_BUYER_CONFIG=${ownerPath}\n`, {
+        mode: 0o600,
+    });
+    const { chmod } = await import("node:fs/promises");
+    await chmod(envPath, 0o644);
+    assert.throws(() => run(["codex-config", "--env-file", envPath]));
     console.log(
         `Fresh npx cache outside checkout: CLI, immutable identity, external MCPWire and bundled MCP adapter/IPC passed (${version}).`,
     );

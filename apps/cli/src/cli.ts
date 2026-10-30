@@ -2,15 +2,24 @@
 import { readFile, mkdir, lstat, writeFile } from "node:fs/promises";
 import { generateKeyPairSync, randomUUID } from "node:crypto";
 import { resolve, join, dirname } from "node:path";
+import { homedir } from "node:os";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 const help = `Panas — share bounded inference from an Apple Silicon Mac
 
 panas --version
 panas identity init --dir /absolute/private/directory
-panas provider --env-file /absolute/private/provider.env
-panas doctor --env-file /absolute/private/provider.env
-panas buyer --env-file /absolute/private/buyer.env
+panas provider
+panas mcp-config
+panas codex-config
+panas demo-prompt
+panas doctor
+panas buyer
+
+Default config: ~/.config/panas/provider.env or buyer.env.
+Override with --env-file /absolute/private/config.env.
+Provider isolation: native supervision; no OS sandbox.
 
 Requires Node 24. Provider requires macOS 14+ on Apple Silicon and
 explicitly installed pinned Ollama/model. Enrollment is operator-managed.
@@ -39,6 +48,20 @@ async function main() {
         return;
     }
     const [command, action, ...extra] = positionals;
+    if (
+        command === "demo-prompt" &&
+        !action &&
+        !values.dir &&
+        !values["env-file"]
+    ) {
+        process.stdout.write(
+            await readFile(
+                new URL("../demo-prompt.md", import.meta.url),
+                "utf8",
+            ),
+        );
+        return;
+    }
     if (
         command === "identity" &&
         action === "init" &&
@@ -82,15 +105,57 @@ async function main() {
         action ||
         extra.length ||
         values.dir ||
-        !["provider", "doctor", "buyer"].includes(command)
+        !["provider", "doctor", "buyer", "mcp-config", "codex-config"].includes(
+            command,
+        )
     )
         throw new Error("Invalid command");
-    if (values["env-file"]) {
-        const path = resolve(values["env-file"]);
+    const envPath = resolve(
+        values["env-file"] ??
+            join(
+                homedir(),
+                ".config/panas",
+                command === "buyer" ||
+                    command === "mcp-config" ||
+                    command === "codex-config"
+                    ? "buyer.env"
+                    : "provider.env",
+            ),
+    );
+    {
+        const path = envPath;
         const info = await lstat(path);
         if (!info.isFile() || info.isSymbolicLink() || info.mode & 0o077)
             throw new Error("Private env file required");
         process.loadEnvFile(path);
+    }
+    if (command === "codex-config") {
+        process.stdout.write(
+            `[mcp_servers.panas]\ncommand = ${JSON.stringify(process.execPath)}\nargs = ${JSON.stringify([fileURLToPath(import.meta.url), "buyer", "--env-file", envPath])}\nstartup_timeout_sec = 20\ntool_timeout_sec = 120\n`,
+        );
+        return;
+    }
+    if (command === "mcp-config") {
+        process.stdout.write(
+            JSON.stringify(
+                {
+                    mcpServers: {
+                        panas: {
+                            command: process.execPath,
+                            args: [
+                                fileURLToPath(import.meta.url),
+                                "buyer",
+                                "--env-file",
+                                envPath,
+                            ],
+                        },
+                    },
+                },
+                null,
+                2,
+            ) + "\n",
+        );
+        return;
     }
     if (
         command !== "buyer" &&
@@ -102,6 +167,10 @@ async function main() {
         doctor: "../apps/provider/src/doctor.js",
         buyer: "../apps/buyer-mcp/src/cli.js",
     };
+    if (command === "provider")
+        process.stderr.write(
+            "Panas provider: native supervised inference; no OS sandbox. Access requires an enrolled buyer and a valid TEST_CREDIT grant.\n",
+        );
     await import(new URL(modules[command]!, import.meta.url).href);
 }
 void main().catch(() => {

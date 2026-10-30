@@ -53,6 +53,10 @@ await cp(
     resolve(root, "apps/cli/provider.env.example"),
     resolve(destination, "provider.env.example"),
 );
+await cp(
+    resolve(root, "docs/demo-prompt.md"),
+    resolve(destination, "demo-prompt.md"),
+);
 await writeFile(
     resolve(destination, "release.json"),
     JSON.stringify(
@@ -63,7 +67,8 @@ await writeFile(
             sourceDirty: Boolean(run(["status", "--porcelain"])),
             deployedControlPlane: "281033a964c98a9a173d440030586dd64fb7135b",
             node: process.versions.node,
-            mcpwire: "1.1.0",
+            isolation: "native-supervised-no-os-sandbox",
+            mcpwire: "1.1.1",
             ollama: "0.40.12",
             model: "qwen2.5:0.5b",
             modelDigest:
@@ -90,15 +95,14 @@ await writeFile(
                 "scripts/",
                 "release.json",
                 "provider.env.example",
+                "demo-prompt.md",
             ],
             engines: { node: ">=24 <25" },
             repository: {
                 type: "git",
                 url: "https://github.com/carlosrivera/panas.git",
             },
-            // bogon 1.3.0 (via hyperdht) imports b4a without declaring it.
-            // npm can nest hyperdht's copy; provide the runtime dependency explicitly.
-            dependencies: { "@mcpwire/cli": "1.1.0", b4a: "1.9.0" },
+            dependencies: { "@mcpwire/cli": "1.1.1" },
         },
         null,
         2,

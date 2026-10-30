@@ -24,7 +24,7 @@
         "platform:typecheck": "tsc -p scripts/platform/tsconfig.json --noEmit",
         "release:bundle": "tsx scripts/release/bundle.ts",
         "release:pack": "tsx scripts/release/pack.ts",
-        "release:smoke": "tsx scripts/release/smoke.ts"
+        "release:smoke": "tsx scripts/release/smoke.ts && tsx scripts/release/install-smoke.ts"
     },
     "devDependencies": {
         "@panas/eslint-config": "workspace:*",
