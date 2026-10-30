@@ -10,7 +10,7 @@
     "scripts": {
         "dev": "pnpm --filter @panas/web dev",
         "build": "turbo run build",
-        "typecheck": "turbo run typecheck && pnpm platform:typecheck",
+        "typecheck": "turbo run typecheck && pnpm platform:typecheck && tsc -p scripts/release/tsconfig.json --noEmit",
         "lint": "eslint . --max-warnings 0",
         "test": "vitest run",
         "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
@@ -21,7 +21,10 @@
         "platform:bundle": "tsx scripts/platform/bundle.ts",
         "platform:deploy": "tsx scripts/platform/deploy.ts",
         "platform:verify": "tsx scripts/platform/verify.ts",
-        "platform:typecheck": "tsc -p scripts/platform/tsconfig.json --noEmit"
+        "platform:typecheck": "tsc -p scripts/platform/tsconfig.json --noEmit",
+        "release:bundle": "tsx scripts/release/bundle.ts",
+        "release:pack": "tsx scripts/release/pack.ts",
+        "release:smoke": "tsx scripts/release/smoke.ts"
     },
     "devDependencies": {
         "@panas/eslint-config": "workspace:*",
