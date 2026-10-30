@@ -333,6 +333,9 @@ it("official MCP client uses one facade for discovery, purchase and execution wi
         expect(
             (await client.listTools()).tools.map((tool) => tool.name),
         ).toEqual([
+            "get_balance",
+            "create_funding_intent",
+            "confirm_funding",
             "discover_providers",
             "get_provider",
             "quote_inference",

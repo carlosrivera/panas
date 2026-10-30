@@ -1,3 +1,4 @@
+import { SolanaDevnetVerifier } from "./solana-devnet.js";
 import pg from "pg";
 import { AccountingService } from "./service.js";
 import { createHttpHandler } from "./http.js";
@@ -51,6 +52,21 @@ export async function handler(event: HttpEvent) {
         service = new AccountingService(pool, {
             platformPrivateKey: Buffer.from(key, "base64").toString("utf8"),
             descriptorEncryptionKey: Buffer.from(ticketKey, "base64"),
+            ...(process.env.PANAS_SOLANA_DEVNET_TREASURY_OWNER &&
+            process.env.PANAS_SOLANA_DEVNET_TREASURY_TOKEN_ACCOUNT
+                ? {
+                      solanaDevnet: new SolanaDevnetVerifier({
+                          rpcUrl:
+                              process.env.PANAS_SOLANA_DEVNET_RPC_URL ??
+                              "https://api.devnet.solana.com",
+                          treasuryOwner:
+                              process.env.PANAS_SOLANA_DEVNET_TREASURY_OWNER,
+                          treasuryTokenAccount:
+                              process.env
+                                  .PANAS_SOLANA_DEVNET_TREASURY_TOKEN_ACCOUNT,
+                      }),
+                  }
+                : {}),
         });
     }
     const headers = new Headers();

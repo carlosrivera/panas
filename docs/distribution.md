@@ -1,6 +1,6 @@
 # Hackathon demo: provider and Codex buyer
 
-Install the compiled release once. Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.2/install.sh) and run:
+Install the compiled release once. Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.3/install.sh) and run:
 
 ```sh
 sh ~/Downloads/install.sh
@@ -30,7 +30,7 @@ The owner-selected session must still be valid and have sufficient TEST_CREDIT a
 ## Command 1: start sharing the provider
 
 ```sh
-~/.local/bin/panas provider
+~/.local/bin/panas provider --free
 ```
 
 Require `state: ready` and `peerProbe: verified`, then leave it running. Ctrl-C stops its owned processes. Use the same command to restart with retained key/state. A local separate-peer probe does not establish cross-Mac/NAT reachability. `panas doctor` runs local capability tests and exits; stop the host first because it must own its dedicated runtime port. Override default configuration with `--env-file /absolute/private/provider.env`.
@@ -41,7 +41,7 @@ Require `state: ready` and `peerProbe: verified`, then leave it running. Ctrl-C 
 ~/.local/bin/panas demo-prompt | pbcopy
 ```
 
-Paste into a new Codex chat. The prompt asks Codex to merge the output of `panas codex-config` into its MCP configuration, discover a ready provider and make at most one purchase capped at **2 atomic TEST_CREDIT**. It requires original-request retrieval after uncertainty and a real receipt; it must stop rather than simulate an absent provider. This prompt gives bounded spending authorization when you submit it. Remove the purchase step if you want discovery only.
+Paste into a new Codex chat. The prompt asks Codex to merge the output of `panas codex-config` into its MCP configuration, discover a ready provider and make at most one free request with all quote/receipt amounts zero. It requires original-request retrieval after uncertainty and a real receipt; it must stop rather than simulate an absent provider. The default prompt authorizes no spending. Use `panas demo-prompt --paid` with a separately enrolled devnet-USDC buyer for the blockchain path; see [payment setup](payments.md).
 
 You may inspect the generated configuration first:
 
@@ -61,6 +61,6 @@ Missing isolation: containment of a compromised Ollama/Node process from account
 
 ## Release and provenance
 
-This release pins external **MCPWire 1.1.1**, including its upstream b4a fix; Panas's temporary direct b4a dependency is removed. `panas --version` reports source commit/dirty flag, native pins and `isolation: native-supervised-no-os-sandbox`. The immutable alpha.1 release remains available. No Volcano deployment accompanies a CLI release.
+This release pins external **MCPWire 1.1.1**, including its upstream b4a fix; Panas's temporary direct b4a dependency is removed. `panas --version` reports source commit/dirty flag, native pins and `isolation: native-supervised-no-os-sandbox`. The immutable alpha.1/alpha.2 releases remain available. No Volcano deployment accompanies a CLI release.
 
 Maintainers use pinned pnpm: `pnpm format:check`, `pnpm check`, `pnpm release:pack`, `pnpm release:smoke`. Tag publication repeats checks, installs via a fresh npx cache, tests the compiled adapter/IPC and buyer configuration, checks clean provenance, then uploads the tarball, installer, checksum file, public release metadata, prompt and environment example. No private keys, credentials, TypeScript source, source maps or model weights ship. Compiled JavaScript remains readable.

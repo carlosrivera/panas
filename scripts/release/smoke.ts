@@ -28,7 +28,7 @@ const files = execFileSync("tar", ["-tzf", tarball], { encoding: "utf8" })
     .split("\n");
 assert(
     files.every((name) =>
-        /^package\/(?:bin\/|apps\/|scripts\/|package.json$|release.json$|demo-prompt.md$|provider.env.example$|LICENSE$|README.md$)/.test(
+        /^package\/(?:bin\/|apps\/|scripts\/|package.json$|release.json$|demo-prompt.md$|demo-paid-prompt.md$|provider.env.example$|LICENSE$|README.md$)/.test(
             name,
         ),
     ),
@@ -215,9 +215,8 @@ try {
     assert(codex.includes("tool_timeout_sec = 120"));
     assert(codex.includes(JSON.stringify(process.execPath)));
     assert(!codex.includes("private-demo-fixture-token"));
-    assert(
-        run(["demo-prompt"]).includes("at most ONE new test-credit purchase"),
-    );
+    assert(run(["demo-prompt"]).includes("Use FREE access only"));
+    assert(run(["demo-prompt", "--paid"]).includes("SOLANA_DEVNET_USDC"));
     const buyerTransport = new StdioClientTransport({
         ...config.mcpServers.panas,
         cwd: scratch,
@@ -226,7 +225,7 @@ try {
     client = new Client({ name: "demo-buyer-package-smoke", version: "1" });
     await client.connect(buyerTransport);
     const tools = await client.listTools();
-    assert.equal(tools.tools.length, 7);
+    assert.equal(tools.tools.length, 10);
     assert(tools.tools.some((tool) => tool.name === "discover_providers"));
     assert(tools.tools.some((tool) => tool.name === "run_inference"));
     await client.close();

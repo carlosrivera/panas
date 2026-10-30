@@ -20,3 +20,31 @@ jobs:
             - run: pnpm format:check
             - run: pnpm check
             - run: pnpm release:pack && pnpm release:smoke
+    accounting-database:
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        services:
+            postgres:
+                image: postgres:18
+                env:
+                    POSTGRES_USER: panas
+                    POSTGRES_PASSWORD: local-ci-only
+                    POSTGRES_DB: panas_test
+                ports: ["5432:5432"]
+                options: >-
+                    --health-cmd "pg_isready -U panas -d panas_test"
+                    --health-interval 5s --health-timeout 5s --health-retries 10
+        env:
+            PANAS_ACCOUNTING_TEST_DATABASE_URL: postgres://panas:local-ci-only@127.0.0.1:5432/panas_test
+        steps:
+            - uses: actions/checkout@v7.0.1
+            - uses: pnpm/action-setup@v6.1.0
+            - uses: actions/setup-node@v7.1.0
+              with:
+                  node-version: 24
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm test:accounting-db
+            - run: pnpm exec vitest run packages/registry/src/postgres.test.ts
+              env:
+                  PANAS_REGISTRY_TEST_DATABASE_URL: postgres://panas:local-ci-only@127.0.0.1:5432/panas_test

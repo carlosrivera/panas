@@ -6,14 +6,14 @@ The prototype includes agent discovery, fixed TEST_CREDIT purchases, signed enti
 
 ## Hackathon demo without cloning
 
-Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.2/install.sh), run `sh ~/Downloads/install.sh` with Node 24, and complete the [one-time operator setup](docs/distribution.md). Then:
+Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.3/install.sh), run `sh ~/Downloads/install.sh` with Node 24, and complete the [one-time operator setup](docs/distribution.md). Then:
 
 ```sh
-~/.local/bin/panas provider
+~/.local/bin/panas provider --free
 ~/.local/bin/panas demo-prompt | pbcopy
 ```
 
-Paste the prompt into Codex to configure the buyer MCP, discover a provider and test one bounded TEST_CREDIT request. The provider runs natively with process supervision; **it is not OS-sandboxed**. See [the isolation limits](docs/distribution.md#isolation-what-this-demo-actually-provides).
+Paste the prompt into Codex to configure the buyer MCP, discover a provider and test one free bounded request. Providers may also charge Solana devnet test USDC through the [prepaid payment rail](docs/payments.md). The provider runs natively with process supervision; **it is not OS-sandboxed**. See [the isolation limits](docs/distribution.md#isolation-what-this-demo-actually-provides).
 
 ## Development requirements and setup
 

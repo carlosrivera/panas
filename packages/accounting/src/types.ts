@@ -1,3 +1,4 @@
+import { paymentCurrencySchema } from "@panas/contracts";
 import { z } from "zod";
 import { atomicAmountSchema } from "@panas/contracts";
 import {
@@ -47,7 +48,7 @@ export const receiptSchema = z
         receiptId: z.uuid(),
         requestId: z.uuid(),
         status: z.enum(["completed", "failed", "cancelled", "refunded"]),
-        currency: z.literal("TEST_CREDIT"),
+        currency: paymentCurrencySchema,
         buyerDebitAtomic: atomicAmountSchema,
         providerEarningsAtomic: atomicAmountSchema,
         feeAtomic: atomicAmountSchema,

@@ -71,7 +71,7 @@ const controller = new ProviderController(
         price: registryPriceSchema.parse({
             version: process.env.PANAS_PRICE_VERSION ?? "1",
             totalAtomic: required("PANAS_PRICE_ATOMIC"),
-            currency: "TEST_CREDIT",
+            currency: process.env.PANAS_PRICE_CURRENCY ?? "TEST_CREDIT",
         }),
     },
     daemon,
@@ -127,6 +127,13 @@ try {
             providerId: config.providerId,
             state: daemon.status?.state,
             peerProbe: daemon.status?.peerProbe.status,
+            access:
+                process.env.PANAS_PRICE_ATOMIC === "0"
+                    ? "free"
+                    : process.env.PANAS_PRICE_CURRENCY === "SOLANA_DEVNET_USDC"
+                      ? "solana-devnet-usdc"
+                      : "test-credit",
+            priceAtomic: process.env.PANAS_PRICE_ATOMIC,
         }),
     );
 } catch (error) {
