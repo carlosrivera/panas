@@ -1,5 +1,6 @@
 import "./pr27.css";
 import { LandingRuntime } from "../components/landing-runtime";
+import { TopPanas } from "../components/top-panas";
 export default function Home() {
     return (
         <>
@@ -242,6 +243,7 @@ export default function Home() {
                         reconciliation; definitive failed work settles zero.
                     </p>
                 </section>
+                <TopPanas />
 
                 {/*  sticky call to action: a dark arch that rises over the page  */}
                 <aside className="dock" aria-label="Get started with Panas">
