@@ -6,4 +6,4 @@ allowBuilds:
     "@volcano.dev/cli": true
 minimumReleaseAgeExclude:
     - "@volcano.dev/cli@0.55.0"
-    - "@mcpwire/cli@1.1.1"
+    - "@mcpwire/cli@1.1.2"

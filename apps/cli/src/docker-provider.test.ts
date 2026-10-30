@@ -1,5 +1,9 @@
 import { it, expect } from "vitest";
-import { sandboxArgs, verifySandboxInspect } from "./docker-provider";
+import {
+    advertisedPeerAddresses,
+    sandboxArgs,
+    verifySandboxInspect,
+} from "./docker-provider";
 import { containerLimits } from "../../provider/src/container-profile";
 function fixture(role: "worker" | "gateway") {
     const limits = containerLimits[role],
@@ -14,6 +18,9 @@ function fixture(role: "worker" | "gateway") {
             Labels: { "io.panas.provider": id, "io.panas.role": role },
         },
         HostConfig: {
+            PortBindings: (role === "gateway"
+                ? { "49737/udp": [{ HostIp: "0.0.0.0", HostPort: "" }] }
+                : {}) as Record<string, unknown>,
             Privileged: false,
             ReadonlyRootfs: true,
             Memory: Number(limits.memory),
@@ -113,6 +120,57 @@ it.each(["worker", "gateway"] as const)(
             "/models-source",
         );
         expect(args).not.toContain("--privileged");
-        expect(args).not.toContain("--publish");
+        if (role === "worker") expect(args).not.toContain("--publish");
     },
 );
+
+it("publishes exactly one gateway UDP socket and rejects additional host access", () => {
+    const gateway = fixture("gateway");
+    const args = sandboxArgs("gateway", "fixture", "sha256:image", "/models");
+    expect(args[args.indexOf("--publish") + 1]).toBe("0.0.0.0::49737/udp");
+    expect(
+        sandboxArgs("worker", "fixture", "sha256:image", "/models"),
+    ).not.toContain("--publish");
+    for (const bindings of [
+        {},
+        { "49737/tcp": [{ HostIp: "0.0.0.0", HostPort: "" }] },
+        {
+            "49737/udp": [{ HostIp: "0.0.0.0", HostPort: "" }],
+            "22/tcp": [{ HostIp: "0.0.0.0", HostPort: "" }],
+        },
+    ]) {
+        gateway.HostConfig.PortBindings = bindings;
+        expect(() =>
+            verifySandboxInspect(gateway, "gateway", "fixture", "sha256:image"),
+        ).toThrow();
+    }
+});
+
+it("advertises owner host interfaces rather than a container address", () => {
+    const routes = advertisedPeerAddresses(52000, {
+        en0: [
+            {
+                address: "192.168.1.20",
+                family: "IPv4",
+                internal: false,
+                netmask: "255.255.255.0",
+                mac: "00:00:00:00:00:01",
+                cidr: "192.168.1.20/24",
+            },
+        ],
+        lo0: [
+            {
+                address: "127.0.0.1",
+                family: "IPv4",
+                internal: true,
+                netmask: "255.0.0.0",
+                mac: "00:00:00:00:00:00",
+                cidr: "127.0.0.1/8",
+            },
+        ],
+    });
+    expect(routes).toEqual([
+        { host: "192.168.1.20", port: 52000 },
+        { host: "127.0.0.1", port: 52000 },
+    ]);
+});

@@ -1,3 +1,4 @@
+import { peerAddressesSchema } from "@panas/contracts";
 import { readFile, writeFile, chmod, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { createPublicKey, randomBytes } from "node:crypto";
@@ -64,6 +65,9 @@ const daemon = new ProviderDaemon(
 service.bind(daemon);
 const controller = new ProviderController(
     {
+        peerAddresses: peerAddressesSchema.parse(
+            JSON.parse(process.env.PANAS_PEER_ADDRESSES ?? "[]"),
+        ),
         registryUrl: required("PANAS_REGISTRY_URL"),
         providerId: config.providerId,
         providerPublicKeyPem: publicKeyPem,

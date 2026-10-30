@@ -25,6 +25,7 @@ process.stdin.on("data", (chunk: string) => {
         };
         const allowed = [
             "PANAS_PROVIDER_ID",
+            "PANAS_PEER_ADDRESSES",
             "PANAS_MODEL_DIGEST",
             "PANAS_OLLAMA_VERSION",
             "PANAS_REGISTRY_URL",

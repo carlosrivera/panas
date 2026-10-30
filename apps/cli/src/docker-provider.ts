@@ -1,3 +1,9 @@
+import { networkInterfaces } from "node:os";
+import {
+    gatewayDhtPort,
+    peerAddressesSchema,
+    type PeerAddress,
+} from "@panas/contracts";
 import { withReleaseImage } from "./sandbox-image.js";
 import { stageApprovedModel } from "./model-stage.js";
 import { execFile, spawn } from "node:child_process";
@@ -35,6 +41,9 @@ interface DockerInfo {
         RW: boolean;
     }[];
     State?: { Running: boolean };
+    NetworkSettings?: {
+        Ports?: Record<string, { HostIp: string; HostPort: string }[] | null>;
+    };
 }
 const exec = promisify(execFile);
 const docker = async (args: string[], timeout = 20000) =>
@@ -87,6 +96,8 @@ export function sandboxArgs(
         "--network",
         role === "worker" ? "none" : "bridge",
     ];
+    if (role === "gateway")
+        args.push("--publish", `0.0.0.0::${gatewayDhtPort}/udp`);
     args.push(
         "--mount",
         `type=volume,source=${prefix}-ipc,target=/ipc${role === "gateway" ? ",readonly" : ""}`,
@@ -146,7 +157,7 @@ export function verifySandboxInspect(
         h.CapDrop[0]?.toUpperCase() !== "ALL" ||
         !h.SecurityOpt?.includes("no-new-privileges=true") ||
         h.SecurityOpt.some((v: string) => v !== "no-new-privileges=true") ||
-        Object.keys(h.PortBindings ?? {}).length ||
+        !validPortBindings(h.PortBindings, role) ||
         h.Devices?.length ||
         h.DeviceRequests?.length ||
         h.VolumesFrom?.length ||
@@ -191,6 +202,57 @@ export function verifySandboxInspect(
     )
         throw new Error("Bounded temporary filesystems required");
 }
+
+export function validPortBindings(
+    bindings: Record<string, unknown> | undefined,
+    role: "gateway" | "worker",
+) {
+    const entries = Object.entries(bindings ?? {});
+    if (role === "worker") return entries.length === 0;
+    if (entries.length !== 1 || entries[0]![0] !== `${gatewayDhtPort}/udp`)
+        return false;
+    const value = entries[0]![1];
+    return (
+        Array.isArray(value) &&
+        value.length === 1 &&
+        value[0]?.HostIp === "0.0.0.0" &&
+        value[0]?.HostPort === ""
+    );
+}
+export function advertisedPeerAddresses(
+    port: number,
+    interfaces = networkInterfaces(),
+): PeerAddress[] {
+    // IPv4 hints bypass Docker Desktop's extra NAT only when reachable. Public
+    // DHT routes remain available for other networks; no ticket is stored here.
+    const hosts = [
+        ...new Set(
+            Object.entries(interfaces)
+                .sort(
+                    ([a], [b]) =>
+                        Number(!a.startsWith("en")) -
+                        Number(!b.startsWith("en")),
+                )
+                .flatMap(([, rows]) =>
+                    (rows ?? [])
+                        .filter((row) => row.family === "IPv4" && !row.internal)
+                        .map((row) => row.address),
+                ),
+        ),
+    ];
+    const configured = process.env.PANAS_PEER_HOSTS?.split(",").map((host) =>
+        host.trim(),
+    );
+    if (configured && configured.length > 7)
+        throw new Error("At most seven advertised peer hosts allowed");
+    return peerAddressesSchema.parse(
+        [...(configured ?? hosts.slice(0, 7)), "127.0.0.1"].map((host) => ({
+            host,
+            port,
+        })),
+    );
+}
+
 export async function prepareIpcVolume(providerId: string) {
     const name = `panas-${providerId}-ipc`;
     await docker([
@@ -387,27 +449,51 @@ export async function launchDockerProvider(
             ),
         };
         process.stderr.write(
-            "Panas Docker sandbox: isolated gateway + offline CPU inference worker; no host ports, Docker socket or treasury mounts.\n",
+            "Panas Docker sandbox: isolated gateway with one UDP peer port + offline CPU inference worker; no Docker socket or treasury mounts.\n",
         );
         const child = spawn(
             "docker",
             ["start", "--attach", "--interactive", `${prefix}-gateway`],
             { stdio: ["pipe", "inherit", "inherit"] },
         );
+        let attachFailed = false;
+        const attached = new Promise<number | null>((resolve) => {
+            child.once("error", () => {
+                attachFailed = true;
+                resolve(null);
+            });
+            child.once("exit", resolve);
+        });
         child.stdin.on("error", () => {});
+        let hostPort: number | undefined;
+        for (let i = 0; i < 80; i++) {
+            if (attachFailed || child.exitCode !== null)
+                throw new Error("Gateway exited before UDP forwarding");
+            const row: DockerInfo | undefined = await inspect(
+                `${prefix}-gateway`,
+            );
+            const port = Number(
+                row?.NetworkSettings?.Ports?.[`${gatewayDhtPort}/udp`]?.[0]
+                    ?.HostPort,
+            );
+            if (row?.State?.Running && port >= 1 && port <= 65535) {
+                hostPort = port;
+                break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        if (!hostPort) throw new Error("Gateway UDP forwarding unavailable");
+        config.env.PANAS_PEER_ADDRESSES = JSON.stringify(
+            advertisedPeerAddresses(hostPort),
+        );
         child.stdin.write(JSON.stringify(config) + "\n");
         const heartbeat = setInterval(() => {
             if (!closed) child.stdin.write("ping\n");
         }, 5000);
         try {
-            await new Promise<void>((resolve, reject) => {
-                child.once("error", reject);
-                child.once("exit", (code) =>
-                    code === 0 || closed
-                        ? resolve()
-                        : reject(new Error("Provider sandbox exited")),
-                );
-            });
+            const code = await attached;
+            if (attachFailed || (code !== 0 && !closed))
+                throw new Error("Provider sandbox exited");
         } finally {
             clearInterval(heartbeat);
             child.stdin.destroy();

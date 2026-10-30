@@ -1,3 +1,4 @@
+import { gatewayDhtPort, type PeerAddress } from "@panas/contracts";
 import { randomUUID, type KeyLike } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { probePeer, superviseShare } from "@panas/mcpwire";
@@ -15,6 +16,7 @@ export interface ControllerConfig {
     providerPublicKeyPem: string;
     privateKey: KeyLike;
     price: RegistryPrice;
+    peerAddresses?: PeerAddress[];
 }
 class PublicationError extends Error {}
 interface Publication {
@@ -155,6 +157,9 @@ export class ProviderController {
         )
             return;
         const session = superviseShare({
+            ...(this.config.peerAddresses?.length
+                ? { port: gatewayDhtPort }
+                : {}),
             command: process.execPath,
             args: [
                 ...(import.meta.url.endsWith(".ts") ? ["--import", "tsx"] : []),
@@ -219,6 +224,9 @@ export class ProviderController {
             descriptor: {
                 startupId: report.startupId,
                 ticket: ready.ticket,
+                ...(this.config.peerAddresses?.length
+                    ? { peerAddresses: this.config.peerAddresses }
+                    : {}),
                 providerKeyId: keyId(this.config.privateKey),
                 providerPublicKeyPem: this.config.providerPublicKeyPem,
                 expiresAt: new Date(this.descriptorExpires).toISOString(),
