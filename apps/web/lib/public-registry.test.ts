@@ -5,7 +5,7 @@ import {
     publicProviderSchema,
     type PublicProvider,
 } from "@panas/contracts/public-registry";
-import { createPublicRead } from "./public-server";
+import { createPublicRead } from "./public-registry-client";
 import {
     anchorObservation,
     displayedReadiness,
@@ -91,7 +91,7 @@ it("formats integer scale-zero test credits beyond Number precision without roun
         expect(() => formatCredits(value)).toThrow();
 });
 it.each(["", "/registry", "/registry/"])(
-    "the anonymous proxy preserves mount %s and never forwards credentials",
+    "the anonymous client preserves mount %s and never forwards credentials",
     async (mount) => {
         const provider = fixture();
         const upstream = vi.fn(
@@ -125,7 +125,7 @@ it.each(["", "/registry", "/registry/"])(
         );
     },
 );
-it("rejects private nested fields and malformed responses before sending any payload to the browser", async () => {
+it("rejects private nested fields and malformed responses before exposing data to rendering", async () => {
     for (const provider of [
         { ...fixture(), ticket: "must-not-escape" },
         {
@@ -195,6 +195,40 @@ it("preserves a sanitized upstream expired-cursor 400 so the browser can reset p
     const body = await response.text();
     expect(body).toContain("INVALID_FILTERS");
     expect(body).not.toContain("private raw");
+});
+
+it("bounds browser response reads and cancels oversized upstream bodies", async () => {
+    const cancel = vi.fn();
+    const response = await createPublicRead({
+        url: "https://registry.test/registry",
+        fetch: async () =>
+            new Response(
+                new ReadableStream({
+                    start(controller) {
+                        controller.enqueue(new Uint8Array(262145));
+                    },
+                    cancel,
+                }),
+            ),
+    })(new URLSearchParams());
+    expect(response.status).toBe(503);
+    expect(cancel).toHaveBeenCalledOnce();
+});
+
+it("propagates browser cancellation while omitting all credentials", async () => {
+    const controller = new AbortController();
+    const upstream = vi.fn<typeof fetch>(async (_input, init) => {
+        expect(init?.credentials).toBe("omit");
+        expect(init?.mode).toBe("cors");
+        expect(init?.signal?.aborted).toBe(true);
+        throw new DOMException("Aborted", "AbortError");
+    });
+    controller.abort();
+    const response = await createPublicRead({
+        url: "https://registry.test/registry",
+        fetch: upstream,
+    })(new URLSearchParams(), undefined, controller.signal);
+    expect(response.status).toBe(503);
 });
 
 it("repeated stale responses cannot renew readiness when automatic refresh repeats the same observation", () => {

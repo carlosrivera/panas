@@ -1,0 +1,10 @@
+{
+    "name": "panas-web-router",
+    "main": "web-router.mjs",
+    "account_id": "19981030b0f061f36e671289f4170345",
+    "compatibility_date": "2026-10-30",
+    "compatibility_flags": ["nodejs_compat"],
+    "workers_dev": true,
+    "routes": [{ "pattern": "panas.mcpwire.co/*", "zone_name": "mcpwire.co" }],
+    "observability": { "enabled": true, "head_sampling_rate": 1 },
+}

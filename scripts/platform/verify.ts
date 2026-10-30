@@ -321,7 +321,7 @@ async function probeRelease(
     return release;
 }
 export async function verifyRelease(
-    frontend = true,
+    frontend = false,
     migration: Record<string, unknown> = { mode: "tracked" },
 ) {
     let stage: VerificationStage = "release_setup";
@@ -364,4 +364,4 @@ if (
     process.argv[1] &&
     import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 )
-    await verifyRelease(!process.argv.includes("--functions-only"));
+    await verifyRelease(false);

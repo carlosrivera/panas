@@ -13,6 +13,7 @@ import {
 } from "../lib/provider-time";
 import { isFixturePreview } from "../lib/preview-mode";
 import { ProviderCard } from "./pana-card";
+import { readPublicRegistry } from "../lib/public-registry-client";
 import { comparePrices } from "../lib/provider-price";
 import "../app/top-panas.css";
 
@@ -46,14 +47,11 @@ export function TopPanas() {
                 parsed = publicProviderPageSchema.parse(previewProviderPage);
                 setFromFixtures(true);
             } else {
-                const response = await fetch("/api/providers?limit=50", {
-                    cache: "no-store",
-                    credentials: "omit",
-                    signal: AbortSignal.any([
-                        controller.signal,
-                        AbortSignal.timeout(10_000),
-                    ]),
-                });
+                const response = await readPublicRegistry(
+                    new URLSearchParams({ limit: "50" }),
+                    undefined,
+                    controller.signal,
+                );
                 if (!response.ok) throw new Error("registry unavailable");
                 parsed = publicProviderPageSchema.parse(await response.json());
             }

@@ -2,6 +2,13 @@ name: Deploy Panas test
 on:
     push:
         branches: [main, codex/issue-9-platform]
+        paths-ignore:
+            - "apps/web/**"
+            - "packages/ui/**"
+            - "docs/**"
+            - "README.md"
+            - ".github/workflows/pages.yml"
+            - ".github/workflows/platform.yml"
     workflow_dispatch:
 permissions:
     contents: read
@@ -25,7 +32,9 @@ jobs:
                   node-version: 24
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
-            - run: pnpm platform:deploy ${{ github.ref != 'refs/heads/main' && '--functions-only' || '' }}
+            # Keep the existing Volcano frontend/domain for /registry and /accounting.
+            # The public website is independently built and hosted on GitHub Pages.
+            - run: pnpm platform:deploy --functions-only
             - run: node scripts/platform/maintain.mjs
             - uses: actions/upload-artifact@v7.0.0
               if: always()

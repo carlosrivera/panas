@@ -48,6 +48,7 @@ export function createPublicRead(options: {
     return async function read(
         params: URLSearchParams,
         id?: string,
+        signal?: AbortSignal,
     ): Promise<Response> {
         let suffix: string;
         try {
@@ -93,9 +94,12 @@ export function createPublicRead(options: {
                 {
                     cache: "no-store",
                     credentials: "omit",
+                    mode: "cors",
                     redirect: "error",
                     headers: { accept: "application/json" },
-                    signal: AbortSignal.timeout(8000),
+                    signal: signal
+                        ? AbortSignal.any([signal, AbortSignal.timeout(8000)])
+                        : AbortSignal.timeout(8000),
                 },
             );
             if (upstream.status === 404 && id)
@@ -140,10 +144,14 @@ export function createPublicRead(options: {
                     reader.releaseLock();
                 }
             }
-            const data: unknown = JSON.parse(
-                Buffer.concat(chunks).toString("utf8"),
-            );
-            // Strict shared schemas reject private/unknown nested fields before the browser sees bytes.
+            const body = new Uint8Array(bytes);
+            let offset = 0;
+            for (const chunk of chunks) {
+                body.set(chunk, offset);
+                offset += chunk.byteLength;
+            }
+            const data: unknown = JSON.parse(new TextDecoder().decode(body));
+            // Only validated public data reaches rendering; the upstream is anonymous.
             const parsed = id
                 ? publicProviderDetailSchema.parse(data)
                 : publicProviderPageSchema.parse(data);
@@ -153,3 +161,10 @@ export function createPublicRead(options: {
         }
     };
 }
+
+// Public read-only endpoint: no discovery, buyer or operator credentials.
+export const readPublicRegistry = createPublicRead({
+    url:
+        process.env.NEXT_PUBLIC_REGISTRY_URL ??
+        "https://panas.mcpwire.co/registry",
+});

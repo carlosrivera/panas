@@ -6,7 +6,6 @@
     "scripts": {
         "dev": "next dev --webpack --port 3333",
         "build": "next build --webpack",
-        "start": "next start --port 3333",
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {

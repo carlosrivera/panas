@@ -1,0 +1,54 @@
+name: Deploy web to GitHub Pages
+on:
+    push:
+        branches: [main]
+        paths:
+            - "apps/web/**"
+            - "packages/ui/**"
+            - "packages/contracts/**"
+            - "packages/typescript-config/**"
+            - "pnpm-lock.yaml"
+            - "pnpm-workspace.yaml"
+            - "package.json"
+            - ".github/workflows/pages.yml"
+    workflow_dispatch:
+permissions:
+    contents: read
+concurrency:
+    group: github-pages
+    cancel-in-progress: false
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7.0.1
+            - uses: pnpm/action-setup@v6.1.0
+            - uses: actions/setup-node@v7.1.0
+              with:
+                  node-version: 24
+                  cache: pnpm
+            - uses: actions/configure-pages@v5
+              id: pages
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm --filter @panas/web typecheck
+            - run: pnpm --filter @panas/web build
+              env:
+                  NEXT_PUBLIC_BASE_PATH: ""
+                  NEXT_PUBLIC_SITE_URL: https://panas.mcpwire.co
+                  NEXT_PUBLIC_REGISTRY_URL: https://panas.mcpwire.co/registry
+            - run: touch apps/web/out/.nojekyll
+            - uses: actions/upload-pages-artifact@v4
+              with:
+                  path: apps/web/out
+    deploy:
+        needs: build
+        runs-on: ubuntu-latest
+        permissions:
+            pages: write
+            id-token: write
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - uses: actions/deploy-pages@v4
+              id: deployment

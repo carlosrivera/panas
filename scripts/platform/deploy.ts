@@ -122,15 +122,9 @@ try {
         await pool.end();
     }
     run(volcano, ["cloud", "config", "deploy", "--dry-run"]);
-    const frontend = !process.argv.includes("--functions-only");
-    run(volcano, [
-        "cloud",
-        "deploy",
-        "--no-env-file",
-        ...(frontend ? [] : ["--no-frontends"]),
-    ]);
+    run(volcano, ["cloud", "deploy", "--no-env-file", "--no-frontends"]);
     assertClean();
-    await verifyRelease(frontend, migration);
+    await verifyRelease(false, migration);
     // Confirm the manifest itself was part of this clean committed release.
     await readFile(resolve(root, "volcano-config.yaml"), "utf8");
 } catch {
