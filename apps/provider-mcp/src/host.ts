@@ -4,13 +4,12 @@ import { createPublicKey, randomBytes } from "node:crypto";
 import {
     configFromEnv,
     prepareDataPath,
-    OllamaRuntime,
+    createProviderRuntime,
     ProviderDaemon,
     EncryptedStore,
     inspectHost,
     serveLocal,
     claimProviderHost,
-    waitForPreviousRuntime,
 } from "@panas/provider";
 import { registryPriceSchema } from "@panas/contracts/registry";
 import { AccountingHttpClient } from "./accounting-client.js";
@@ -52,7 +51,7 @@ const service = new ProviderHostService(
     new EncryptedStore(join(config.dataPath, "nonces")),
     accounting,
 );
-const runtime = new OllamaRuntime(config);
+const runtime = await createProviderRuntime(config);
 const daemon = new ProviderDaemon(
     config,
     runtime,
@@ -104,7 +103,9 @@ process.once("SIGINT", () => {
     void stop();
 });
 try {
-    if (ownership.recovered) await waitForPreviousRuntime(runtime.url);
+    if (ownership.recovered) {
+        /* Docker worker is owned by this sandbox, never adopt host runtimes. */
+    }
     let initialized = false;
     timer = setInterval(() => {
         controller.observeLiveness();

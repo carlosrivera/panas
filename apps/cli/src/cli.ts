@@ -4,6 +4,7 @@ import { generateKeyPairSync, randomUUID } from "node:crypto";
 import { resolve, join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { launchDockerProvider } from "./docker-provider.js";
 import { parseArgs } from "node:util";
 
 const help = `Panas — share bounded inference from an Apple Silicon Mac
@@ -20,10 +21,10 @@ panas buyer
 
 Default config: ~/.config/panas/provider.env or buyer.env.
 Override with --env-file /absolute/private/config.env.
-Provider isolation: native supervision; no OS sandbox.
+Provider isolation: Docker gateway + offline CPU inference worker. No native fallback.
 
 Requires Node 24. Provider requires macOS 14+ on Apple Silicon and
-explicitly installed pinned Ollama/model. Enrollment is operator-managed.
+Docker Desktop and the explicitly installed pinned model. Enrollment is operator-managed.
 Buyer speaks MCP on stdio; keep that channel free of ordinary logging.
 `;
 async function main() {
@@ -40,6 +41,7 @@ async function main() {
             paid: { type: "boolean" },
             "solana-devnet": { type: "boolean" },
             "price-atomic": { type: "string" },
+            "sandbox-image": { type: "string" },
         },
     });
     if (values.help || process.argv.length === 2) {
@@ -53,6 +55,11 @@ async function main() {
         return;
     }
     const [command, action, ...extra] = positionals;
+    if (
+        values["sandbox-image"] &&
+        !["provider", "doctor"].includes(command ?? "")
+    )
+        throw new Error("Sandbox image is provider-only");
     if (values.paid && command !== "demo-prompt")
         throw new Error("--paid selects the paid demo prompt");
     if (
@@ -202,10 +209,10 @@ async function main() {
         process.env.PANAS_PRICE_VERSION = `devnet-usdc-${amount}`;
     } else if (values["price-atomic"])
         throw new Error("Choose --solana-devnet for this price");
-    if (command === "provider")
-        process.stderr.write(
-            "Panas provider: native supervised inference; no OS sandbox. Free and paid requests require an enrolled buyer and a valid signed grant.\n",
-        );
+    if (command === "provider" || command === "doctor") {
+        await launchDockerProvider(command, values["sandbox-image"]);
+        return;
+    }
     await import(new URL(modules[command]!, import.meta.url).href);
 }
 void main().catch(() => {

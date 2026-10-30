@@ -31,7 +31,8 @@ afterEach(async () => {
     );
 });
 const host: HostInfo = {
-    platform: "darwin",
+    platform: "linux",
+    sandbox: "docker",
     architecture: "arm64",
     osMajor: 14,
     memoryBytes: 8 * 1024 ** 3,
@@ -62,7 +63,11 @@ class FakeRuntime implements InferenceRuntime {
     }
     async info() {
         if (this.fail) throw new Error("offline");
-        return { version: this.version, digest: this.digest };
+        return {
+            version: this.version,
+            digest: this.digest,
+            sandbox: "docker-worker" as const,
+        };
     }
     async cancellationCheck() {
         return true;
@@ -156,7 +161,7 @@ describe("capabilities", () => {
         const runtime = new FakeRuntime();
         const unsupported = await testCapabilities(config, runtime, {
             ...host,
-            platform: "linux",
+            platform: "unsupported",
         });
         expect(unsupported.state).toBe("unhealthy");
         expect(runtime.started).toBe(0);
@@ -347,7 +352,11 @@ describe("deadlines and rate authority", () => {
         ready(daemon);
         runtime.info = async (signal?: AbortSignal) => {
             if (!signal)
-                return { version: runtime.version, digest: runtime.digest };
+                return {
+                    version: runtime.version,
+                    digest: runtime.digest,
+                    sandbox: "docker-worker" as const,
+                };
             return new Promise((_, reject) =>
                 signal.addEventListener("abort", () => reject(signal.reason), {
                     once: true,

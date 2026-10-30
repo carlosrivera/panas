@@ -56,7 +56,7 @@ export function validateReportEvidence(
     if (
         report.state === "ready" &&
         (!isReadyCapabilityReport(report) ||
-            report.platform !== "darwin" ||
+            report.platform !== "linux" ||
             report.architecture !== "arm64")
     )
         throw new RegistryError(

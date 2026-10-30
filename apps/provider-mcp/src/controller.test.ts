@@ -52,6 +52,7 @@ async function fixture() {
         info: vi.fn(async () => ({
             digest: config.expectedDigest,
             version: config.expectedRuntimeVersion,
+            sandbox: "docker-worker" as const,
         })),
         cancellationCheck: vi.fn(async () => true),
         generate: vi.fn(async () => ({
@@ -66,7 +67,8 @@ async function fixture() {
         runtime,
         new EncryptedStore(path),
         async () => ({
-            platform: "darwin",
+            platform: "linux",
+            sandbox: "docker",
             architecture: "arm64",
             osMajor: 14,
             memoryBytes: 8 * 1024 ** 3,
