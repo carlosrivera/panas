@@ -2,18 +2,18 @@
 
 Agent-discovered inference on shared Macs, powered by MCPWire. Repository: `carlosrivera/panas`.
 
-The prototype includes agent discovery, fixed TEST_CREDIT purchases, signed entitlements, durable accounting and native Mac inference through MCPWire. Physical two-Mac and recovery acceptance checks remain tracked in issue #10; real payments are disabled.
+The prototype includes agent discovery, fixed TEST_CREDIT purchases, signed entitlements, durable accounting and Docker-isolated CPU inference on Mac through MCPWire. Physical two-Mac and recovery acceptance checks remain tracked in issue #10; real payments are disabled.
 
 ## Hackathon demo without cloning
 
-Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.3/install.sh), run `sh ~/Downloads/install.sh` with Node 24, and complete the [one-time operator setup](docs/distribution.md). Then:
+Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.4/install.sh), run `sh ~/Downloads/install.sh` with Node 24, and complete the [one-time operator setup](docs/distribution.md). Then:
 
 ```sh
 ~/.local/bin/panas provider --free
 ~/.local/bin/panas demo-prompt | pbcopy
 ```
 
-Paste the prompt into Codex to configure the buyer MCP, discover a provider and test one free bounded request. Providers may also charge Solana devnet test USDC through the [prepaid payment rail](docs/payments.md). The provider runs natively with process supervision; **it is not OS-sandboxed**. See [the isolation limits](docs/distribution.md#isolation-what-this-demo-actually-provides).
+Paste the prompt into Codex to configure the buyer MCP, discover a provider and test one free bounded request. Providers may also charge Solana devnet test USDC through the [prepaid payment rail](docs/payments.md). The provider requires a Docker gateway plus a network-disabled inference container, with no native fallback. See [the isolation limits](docs/distribution.md#isolation-what-this-demo-actually-provides).
 
 ## Development requirements and setup
 
@@ -34,14 +34,14 @@ pnpm check
 pnpm provider:doctor
 ```
 
-`provider:doctor` runs the local capability suite against an explicitly installed, pinned native Ollama/model without publishing a provider. Passing local checks leaves connectivity unverified. The full provider host must also pass its separate-peer probe before readiness publication.
+`provider:doctor` runs the local capability suite inside Docker against the explicitly installed, pinned model without publishing a provider. Passing local checks leaves connectivity unverified. The full provider host must also pass its separate-peer probe before readiness publication.
 
 ## Workspace
 
 | Path                                                   | Responsibility                                                                  |
 | ------------------------------------------------------ | ------------------------------------------------------------------------------- |
 | `apps/web`                                             | Next.js informational frontend and `/api/health`                                |
-| `apps/provider`                                        | Persistent native worker, capability checks and durable state                   |
+| `apps/provider`                                        | Persistent sandboxed worker, capability checks and durable state                |
 | `apps/provider-mcp`                                    | Paid host and disposable per-peer MCP adapter                                   |
 | `apps/buyer-mcp`                                       | Stable buyer MCP facade                                                         |
 | `apps/cli`                                             | Compiled release command entry point                                            |

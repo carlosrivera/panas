@@ -6,8 +6,8 @@ permissions:
     contents: read
 jobs:
     release:
-        runs-on: ubuntu-latest
-        timeout-minutes: 15
+        runs-on: ubuntu-24.04-arm
+        timeout-minutes: 25
         permissions:
             contents: write
         steps:
@@ -28,11 +28,18 @@ jobs:
                   cp dist/panas-cli/release.json dist/panas-cli/provider.env.example dist/panas-cli/demo-prompt.md dist/panas-cli/demo-paid-prompt.md artifacts/
                   cd artifacts
                   sha256sum *.tgz install.sh release.json provider.env.example demo-prompt.md demo-paid-prompt.md > SHA256SUMS
+            - run: ./docker/build.sh
+            - run: pnpm exec tsx scripts/release/sandbox-smoke.ts
+            - name: Package matching sandbox image
+              run: |
+                  docker save "panas-provider:${GITHUB_REF_NAME#v}" | gzip -1 > "artifacts/panas-provider-${GITHUB_REF_NAME#v}-linux-arm64.tar.gz"
+                  cd artifacts
+                  sha256sum *.tgz *.tar.gz install.sh release.json provider.env.example demo-prompt.md demo-paid-prompt.md > SHA256SUMS
             - name: Publish prototype prerelease
               env:
                   GH_TOKEN: ${{ github.token }}
               run: >-
                   gh release create "$GITHUB_REF_NAME"
-                  artifacts/*.tgz artifacts/install.sh artifacts/SHA256SUMS artifacts/release.json artifacts/provider.env.example artifacts/demo-prompt.md artifacts/demo-paid-prompt.md
+                  artifacts/*.tgz artifacts/*.tar.gz artifacts/install.sh artifacts/SHA256SUMS artifacts/release.json artifacts/provider.env.example artifacts/demo-prompt.md artifacts/demo-paid-prompt.md
                   --verify-tag --prerelease --title "Panas $GITHUB_REF_NAME"
                   --notes-file docs/releases/cli-alpha.md
