@@ -5,7 +5,7 @@ export default function Home() {
         <>
             <video
                 id="v"
-                data-src="/video.mp4"
+                src="/video.mp4"
                 muted
                 playsInline
                 preload="auto"
@@ -24,7 +24,7 @@ export default function Home() {
                             <a href="/providers">find a pana</a>
                         </li>
                         <li>
-                            <a href="https://github.com/carlosrivera/mcpwire">
+                            <a href="https://github.com/carlosrivera/panas">
                                 github
                             </a>
                         </li>
@@ -90,8 +90,7 @@ export default function Home() {
                                 my agent needs compute.
                             </span>
                             <span className="pick-detail">
-                                one local mcp server · test credits · caps you
-                                set
+                                one mcp connection · free or paid · caps you set
                             </span>
                             <span className="pick-link">
                                 connect your agent →
@@ -101,8 +100,8 @@ export default function Home() {
                             <span className="pick-verb">expose</span>
                             <span className="pick-line">my mac is bored.</span>
                             <span className="pick-detail">
-                                apple silicon · native ollama · tests itself
-                                every launch
+                                docker inference · your price · your
+                                availability
                             </span>
                             <span className="pick-link">share your mac →</span>
                         </a>
@@ -117,8 +116,9 @@ export default function Home() {
                     aria-labelledby="use-cases-title"
                 >
                     <p className="prototype-annotation">
-                        concept / planned use cases · current prototype: one
-                        bounded model request with fixed test credits
+                        the vision: agents sharing work across a network of
+                        panas. built on discovery, encrypted inference, and
+                        receipts.
                     </p>
                     <div className="use-cases-inner">
                         <h2 id="use-cases-title">
@@ -127,8 +127,8 @@ export default function Home() {
                             is a friend in <span>deed.</span>
                         </h2>
                         <p className="sub">
-                            one small model is a toy. a network of free friends
-                            is a tool.
+                            one shared model is a start. a network of panas is
+                            infrastructure.
                         </p>
                         <table>
                             <thead>
@@ -168,9 +168,8 @@ export default function Home() {
 
                 <section className="paid" aria-labelledby="paid-title">
                     <p className="prototype-annotation">
-                        concept / planned · prototype: qwen2.5:0.5b only; no
-                        real-money payments, bigger models, or multi-provider
-                        fan-out
+                        built today: free sharing and solana devnet usdc. on the
+                        roadmap: bigger models and multi-provider jobs.
                     </p>
                     <div className="paid-inner">
                         <h2 id="paid-title">
@@ -255,7 +254,7 @@ export default function Home() {
                         🤝 become a pana
                     </button>
                     <p className="dock-note">
-                        prototype · fixed test-credit quotes
+                        encrypted p2p · mcp · free or solana devnet usdc
                     </p>
                 </aside>
 
