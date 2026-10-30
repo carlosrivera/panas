@@ -8,7 +8,8 @@
         "./provider": "./src/provider.ts",
         "./registry": "./src/registry.ts",
         "./public-registry": "./src/public-registry.ts",
-        "./payments": "./src/payments.ts"
+        "./payments": "./src/payments.ts",
+        "./service-url": "./src/service-url.ts"
     },
     "scripts": {
         "typecheck": "tsc --noEmit"

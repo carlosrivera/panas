@@ -50,7 +50,7 @@ Deployed acceptance evidence is recorded in deployed-http.json and axe-deployed.
 
 ### Active deployment verified
 
-URL: https://b694dc37-574c-4668-adf0-9371a728f16f.frontends.volcano.run/
+URL: https://panas.mcpwire.co/
 
 Combined release source759c14e8141ed04e4ef8d907f4d79cf5a2ce627e includes final application d494553. Platform lane confirmed active rollout and actual built assets before this frontend smoke. HTTP verification timestamp2026-10-29T05:28:21.469Z.
 

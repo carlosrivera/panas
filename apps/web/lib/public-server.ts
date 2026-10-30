@@ -1,3 +1,4 @@
+import { serviceUrl } from "@panas/contracts/service-url";
 import {
     publicDiscoveryQuerySchema,
     publicProviderPageSchema,
@@ -80,7 +81,6 @@ export function createPublicRead(options: {
                 base.password ||
                 base.search ||
                 base.hash ||
-                base.pathname !== "/" ||
                 !(
                     base.protocol === "https:" ||
                     (base.protocol === "http:" &&
@@ -89,7 +89,7 @@ export function createPublicRead(options: {
             )
                 return response(unavailable, 503);
             const upstream = await (options.fetch ?? fetch)(
-                new URL(suffix, base),
+                serviceUrl(base, suffix),
                 {
                     cache: "no-store",
                     credentials: "omit",

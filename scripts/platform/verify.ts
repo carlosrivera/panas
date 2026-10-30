@@ -1,3 +1,4 @@
+import { serviceUrl } from "@panas/contracts/service-url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { publicProviderPageSchema } from "@panas/contracts/public-registry";
@@ -141,7 +142,7 @@ async function probeRelease(
     try {
         await client.connect(
             new StreamableHTTPClientTransport(
-                new URL("/mcp", PLATFORM.registryUrl),
+                serviceUrl(PLATFORM.registryUrl, "/mcp"),
                 {
                     requestInit: {
                         headers: { authorization: `Bearer ${secret}` },
@@ -213,6 +214,7 @@ async function probeRelease(
         checking("frontend");
         const result = await probeFrontend({
             url: PLATFORM.frontendUrl,
+            frontendId: PLATFORM.frontendId,
             projectId: PLATFORM.projectId,
             onStage: checking,
             deployment: async (signal) => {
@@ -275,7 +277,14 @@ async function probeRelease(
                 name: f.name,
                 id: f.id,
                 deploymentId: f.current_deployment_id,
-                invokeUrl: f.invoke_url,
+                ...(["registry", "accounting"].includes(f.name)
+                    ? {
+                          invokeUrl:
+                              f.name === "registry"
+                                  ? PLATFORM.registryUrl
+                                  : PLATFORM.accountingUrl,
+                      }
+                    : {}),
             })),
         ...(frontendRecord
             ? {
@@ -283,7 +292,7 @@ async function probeRelease(
                       name: frontendRecord.name,
                       id: frontendRecord.id,
                       deploymentId: frontendRecord.current_deployment_id,
-                      url: frontendRecord.site_url,
+                      url: PLATFORM.frontendUrl,
                   },
               }
             : {}),

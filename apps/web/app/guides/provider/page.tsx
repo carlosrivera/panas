@@ -14,8 +14,8 @@ PANAS_PLATFORM_PUBLIC_KEY_PATH=/absolute/private/platform-public.pem
 PANAS_MODELS_PATH=/absolute/path/to/dedicated/models
 PANAS_MODEL_DIGEST=a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67
 PANAS_OLLAMA_VERSION=0.40.12
-PANAS_REGISTRY_URL=<operator-registry-URL>
-PANAS_ACCOUNTING_URL=<operator-accounting-URL>
+PANAS_REGISTRY_URL=https://panas.mcpwire.co/registry
+PANAS_ACCOUNTING_URL=https://panas.mcpwire.co/accounting
 PANAS_PRICE_VERSION=free-v1
 PANAS_PRICE_ATOMIC=0
 
@@ -46,12 +46,12 @@ export default function ProviderGuide() {
             >
                 <p>
                     Use Apple Silicon, macOS 14 or newer, Node.js 24 and running
-                    Docker Desktop. Install the compiled alpha.4 release; no
+                    Docker Desktop. Install the compiled alpha.5 release; no
                     source checkout or container-registry account is required.
                     Enroll the provider UUID and Ed25519 public key with the
                     operator before publication.
                 </p>
-                <CodeSample label="Download and run the release installer">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.4/install.sh -o /tmp/panas-install.sh
+                <CodeSample label="Download and run the release installer">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.5/install.sh -o /tmp/panas-install.sh
 sh /tmp/panas-install.sh`}</CodeSample>
                 <p>
                     Public serving requires a Docker gateway and a separate

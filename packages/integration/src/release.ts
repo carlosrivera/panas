@@ -18,7 +18,9 @@ const proofSchema = z.object({
     verifiedAt: z.iso.datetime(),
     status: z.literal("verified"),
     lockfileSha256: z.string().regex(/^[a-f0-9]{64}$/),
-    functions: z.array(z.object({ name: z.string(), invokeUrl: z.url() })),
+    functions: z.array(
+        z.object({ name: z.string(), invokeUrl: z.url().optional() }),
+    ),
     checks: z.array(z.object({ name: z.string(), passed: z.literal(true) })),
     migration: z.object({
         mode: z.literal("tracked"),
@@ -32,7 +34,9 @@ export function validReleaseReference(input: unknown): boolean {
     if (!result.success) return false;
     const proof = result.data,
         urls = new Set(
-            proof.functions.map((f) => f.invokeUrl.replace(/\/$/, "")),
+            proof.functions.flatMap((f) =>
+                f.invokeUrl ? [f.invokeUrl.replace(/\/$/, "")] : [],
+            ),
         ),
         names = new Set(proof.checks.map((c) => c.name));
     return (

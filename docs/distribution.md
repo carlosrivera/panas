@@ -1,12 +1,25 @@
 # Hackathon demo: provider and Codex buyer
 
-Install the compiled release once. Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.4/install.sh) and run:
+Install the compiled release once. Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.5/install.sh) and run:
 
 ```sh
 sh ~/Downloads/install.sh
 ```
 
 Requires Node.js **24** with its bundled npm. The installer verifies the tarball against the SHA-256 embedded in the versioned script, installs into `~/.local/share/panas/releases/`, and links `~/.local/bin/panas`. No sudo, source clone, pnpm, shell-profile changes or npm account are needed. If `~/.local/bin` is on PATH, use `panas`; otherwise the full short path below always works. HTTPS/source trust still matters: the script is executable code, and a checksum is not an independent signing/attestation claim.
+
+## Upgrade to alpha.5
+
+Stop the existing provider and buyer MCP processes, then rerun the alpha.5 installer. The CLI loads the matching `panas-provider:0.1.0-alpha.5` Docker image from this release when needed and checks its source revision against the installed CLI.
+
+Preserve enrolled identities, keys, sessions, model data and durable state. Update only these endpoint fields in existing private configuration; the installer does not rewrite owner files:
+
+| Configuration           | Registry base                                          | Accounting base                                            |
+| ----------------------- | ------------------------------------------------------ | ---------------------------------------------------------- |
+| Provider `provider.env` | `PANAS_REGISTRY_URL=https://panas.mcpwire.co/registry` | `PANAS_ACCOUNTING_URL=https://panas.mcpwire.co/accounting` |
+| Buyer owner JSON        | `"registryUrl": "https://panas.mcpwire.co/registry"`   | `"accountingUrl": "https://panas.mcpwire.co/accounting"`   |
+
+Restart the provider and reconnect the buyer MCP after updating. Alpha.5 preserves mounted base paths while signing service-relative backend paths. Earlier CLI/Docker builds do not support these mounted URLs.
 
 ## One-time operator handoff
 
