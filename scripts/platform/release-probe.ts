@@ -111,6 +111,7 @@ export interface FrontendDeployment {
 }
 export async function probeFrontend(options: {
     url: string;
+    frontendId?: string;
     projectId: string;
     deployment: (
         signal: AbortSignal,
@@ -220,7 +221,9 @@ export async function probeFrontend(options: {
                 !record ||
                 record.project_id !== options.projectId ||
                 record.name !== "panas" ||
-                new URL(record.site_url).origin !== origin
+                (options.frontendId
+                    ? record.id !== options.frontendId
+                    : new URL(record.site_url).origin !== origin)
             )
                 throw new VerificationError(stage, "CHECK_FAILED");
             if (record.status !== "active" || !record.current_deployment_id)

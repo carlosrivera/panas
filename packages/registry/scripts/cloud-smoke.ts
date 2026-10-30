@@ -1,3 +1,4 @@
+import { serviceUrl } from "@panas/contracts/service-url";
 import { generateKeyPairSync, randomUUID } from "node:crypto";
 import pg from "pg";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -5,7 +6,8 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { signProviderRequest } from "../src/auth.js";
 import { fixtureReport } from "../src/fixtures.js";
 
-const url = process.env.PANAS_REGISTRY_URL;
+const url =
+    process.env.PANAS_REGISTRY_URL ?? "https://panas.mcpwire.co/registry";
 const token = process.env.PANAS_DISCOVERY_TOKEN;
 const connectionString = process.env.PANAS_REGISTRY_DATABASE_URL;
 if (!url || !token || !connectionString)
@@ -30,7 +32,7 @@ async function signedPost(path: string, value: unknown) {
         String(Date.now()),
         randomUUID(),
     );
-    const response = await fetch(new URL(path, url), {
+    const response = await fetch(serviceUrl(url, path), {
         method: "POST",
         headers: {
             "content-type": "application/json",
@@ -51,7 +53,7 @@ try {
         "INSERT INTO panas_provider_keys(provider_id,public_key_pem) VALUES($1,$2)",
         [id, keys.publicKey.export({ type: "spki", format: "pem" }).toString()],
     );
-    const unauthorized = await fetch(new URL("/providers", url));
+    const unauthorized = await fetch(serviceUrl(url, "/providers"));
     if (unauthorized.status !== 401)
         throw new Error(`Expected401, received ${unauthorized.status}`);
     const report = fixtureReport(new Date(), id);
@@ -81,7 +83,7 @@ try {
         state: "testing",
     });
     await client.connect(
-        new StreamableHTTPClientTransport(new URL("/mcp", url), {
+        new StreamableHTTPClientTransport(serviceUrl(url, "/mcp"), {
             requestInit: { headers: { authorization: `Bearer ${token}` } },
         }),
     );

@@ -32,8 +32,8 @@ On the buyer host, create a manual configuration using the schema below. The hos
     "mode": "manual-two-machine",
     "physicalMachineCount": 2,
     "privateDir": "/private/path/manual-evidence",
-    "registryUrl": "https://cdb5c197-93ad-4c13-8dca-45e1d18140f5.functions.volcano.run",
-    "accountingUrl": "https://e32b4a0e-51a7-4d7e-acab-b64501184f2a.functions.volcano.run",
+    "registryUrl": "https://panas.mcpwire.co/registry",
+    "accountingUrl": "https://panas.mcpwire.co/accounting",
     "buyerConfigPath": "/private/path/buyer.json",
     "physicalHosts": [
         { "alias": "mac-a", "providerId": "OWNER-SUPPLIED-FIRST-UUID" },

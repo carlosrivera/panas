@@ -42,4 +42,4 @@ fi
 ln -s "$release/panas" "$work/panas"
 mv -f "$work/panas" "$bin/panas"
 printf '\nInstalled Panas %s\nProvider: %s/panas provider\nBuyer MCP config: %s/panas mcp-config\nDemo prompt: %s/panas demo-prompt\n' "$version" "$bin" "$bin" "$bin"
-printf '%s\n' 'Configure owner files under ~/.config/panas first. Provider runs natively with process supervision, without an OS sandbox.'
+printf '%s\n' 'Configure owner files under ~/.config/panas first. Provider requires Docker Desktop and the matching release image. Set provider PANAS_REGISTRY_URL and PANAS_ACCOUNTING_URL, and buyer registryUrl and accountingUrl, to https://panas.mcpwire.co/registry and https://panas.mcpwire.co/accounting. Preserve existing keys and state.'

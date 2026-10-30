@@ -1,3 +1,7 @@
+Panas alpha.5 moves public client configuration to `https://panas.mcpwire.co/registry` (MCP at `/registry/mcp`) and `https://panas.mcpwire.co/accounting`. The CLI and matching Linux ARM64 Docker image preserve these base paths for discovery, provider publication and signed accounting requests. Both artifacts are built from the same clean source commit.
+
+Upgrading from alpha.4: stop provider and buyer MCP processes, rerun this release's installer, update `PANAS_REGISTRY_URL` / `PANAS_ACCOUNTING_URL` in provider configuration and `registryUrl` / `accountingUrl` in buyer owner JSON to the URLs above, then restart/reconnect. Keep all identities, keys, model data, sessions and durable state. The installer preserves private owner files, and the provider loads the matching alpha.5 image from this release when required. Earlier binaries cannot use mounted base paths.
+
 Panas hackathon demo CLI. The provider launcher requires macOS 14+ on Apple Silicon and Docker Desktop; gateway/worker execution is Linux ARM64. The buyer requires Node.js 24 and an MCP client, not a Mac, Docker or a local model. Buyer process supervision supports macOS/Linux; Windows supervision is outside the current matrix.
 
 Download `install.sh` from this release, then run `sh ~/Downloads/install.sh`. It installs the checksum-verified compiled CLI under your home directory. With operator-provided configuration in `~/.config/panas`:

@@ -90,34 +90,41 @@ it("formats integer scale-zero test credits beyond Number precision without roun
     for (const value of ["1.5", "1e3", "-1", "01"])
         expect(() => formatCredits(value)).toThrow();
 });
-it("the anonymous proxy uses only the approved public path and never forwards credentials", async () => {
-    const provider = fixture();
-    const upstream = vi.fn(
-        async (input: URL | RequestInfo, init?: RequestInit) => {
-            const url = new URL(String(input));
-            expect(url.pathname).toBe("/public/providers");
-            expect(url.searchParams.get("maxPriceAtomic")).toBe(
-                "9007199254740993",
-            );
-            expect(init?.cache).toBe("no-store");
-            expect(new Headers(init?.headers).has("authorization")).toBe(false);
-            return Response.json({
-                providers: [provider],
-                observedAt,
-                nextCursor: null,
-            });
-        },
-    );
-    const response = await createPublicRead({
-        url: "https://public-registry.test",
-        fetch: upstream,
-    })(new URLSearchParams({ maxPriceAtomic: "9007199254740993" }));
-    expect(response.status).toBe(200);
-    expect(response.headers.get("cache-control")).toBe("no-store");
-    expect((await response.json()).providers[0].providerId).toBe(
-        provider.providerId,
-    );
-});
+it.each(["", "/registry", "/registry/"])(
+    "the anonymous proxy preserves mount %s and never forwards credentials",
+    async (mount) => {
+        const provider = fixture();
+        const upstream = vi.fn(
+            async (input: URL | RequestInfo, init?: RequestInit) => {
+                const url = new URL(String(input));
+                expect(url.pathname).toBe(
+                    `${mount.replace(/\/$/, "")}/public/providers`,
+                );
+                expect(url.searchParams.get("maxPriceAtomic")).toBe(
+                    "9007199254740993",
+                );
+                expect(init?.cache).toBe("no-store");
+                expect(new Headers(init?.headers).has("authorization")).toBe(
+                    false,
+                );
+                return Response.json({
+                    providers: [provider],
+                    observedAt,
+                    nextCursor: null,
+                });
+            },
+        );
+        const response = await createPublicRead({
+            url: `https://public-registry.test${mount}`,
+            fetch: upstream,
+        })(new URLSearchParams({ maxPriceAtomic: "9007199254740993" }));
+        expect(response.status).toBe(200);
+        expect(response.headers.get("cache-control")).toBe("no-store");
+        expect((await response.json()).providers[0].providerId).toBe(
+            provider.providerId,
+        );
+    },
+);
 it("rejects private nested fields and malformed responses before sending any payload to the browser", async () => {
     for (const provider of [
         { ...fixture(), ticket: "must-not-escape" },

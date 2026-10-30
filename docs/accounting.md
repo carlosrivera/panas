@@ -84,7 +84,7 @@ pnpm platform:deploy
 
 For the devnet rail, the accounting runtime additionally requires `PANAS_SOLANA_DEVNET_RPC_URL`, `PANAS_SOLANA_DEVNET_TREASURY_OWNER` and `PANAS_SOLANA_DEVNET_TREASURY_TOKEN_ACCOUNT`. Only public treasury information is configured; the verifier has no treasury signing key. The legacy local `serve.ts` utility constructs the test-credit service without the Solana verifier; use the current cloud bundle/deployment for funding-route validation.
 
-The cloud endpoint is `https://e32b4a0e-51a7-4d7e-acab-b64501184f2a.functions.volcano.run/`. It uses HTTP mode with application authentication, not public unauthenticated mutations. Only accounting receives the platform signing key and descriptor key; neither is scoped to the frontend or registry. Generated dependency-bundled code/manifests/deployment lockfiles are ignored by Git; the platform flow bundles and applies explicit variable scopes. Avoid old standalone variable/migration upload commands that bypass those release checks.
+The cloud endpoint is `https://panas.mcpwire.co/accounting/`. It uses HTTP mode with application authentication, not public unauthenticated mutations. Only accounting receives the platform signing key and descriptor key; neither is scoped to the frontend or registry. Generated dependency-bundled code/manifests/deployment lockfiles are ignored by Git; the platform flow bundles and applies explicit variable scopes. Avoid old standalone variable/migration upload commands that bypass those release checks.
 
 ## Evidence and limits
 
