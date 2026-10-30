@@ -27,6 +27,7 @@ it.each([
         fetch: async (input, options) => {
             calls++;
             const request = new Request(input, options);
+            expect(request.headers.get("x-panas-peer-addresses")).toBe("1");
             const raw = request.headers.get("x-panas-proof")!;
             const signed = signedCloudRequestSchema.parse(
                 JSON.parse(Buffer.from(raw, "base64url").toString()),
@@ -95,6 +96,7 @@ it("does not disclose remote diagnostics or infrastructure failures", async () =
 it("returns useful bounded provider information while excluding private connection fields", () => {
     const date = new Date().toISOString();
     const value = {
+        peerAddresses: [{ host: "192.168.1.50", port: 52000 }],
         providerId: randomUUID(),
         startupId: randomUUID(),
         model: {
@@ -121,6 +123,7 @@ it("returns useful bounded provider information while excluding private connecti
         "private connection material",
     );
     expect(JSON.stringify(projected)).not.toContain("private authorization");
+    expect(JSON.stringify(projected)).not.toContain("192.168.1.50");
 });
 
 it("preserves the registry mount and bearer credential for discovery", async () => {

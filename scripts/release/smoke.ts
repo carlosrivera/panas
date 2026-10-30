@@ -119,7 +119,7 @@ try {
         version: string;
         bin: { mcpwire: string };
     };
-    assert.equal(wire.version, "1.1.1");
+    assert.equal(wire.version, "1.1.3");
     // --help alone does not load the real share/join native dependency graph.
     const wireRequire = createRequire(wirePath);
     assert.equal(typeof wireRequire("hyperdht"), "function");

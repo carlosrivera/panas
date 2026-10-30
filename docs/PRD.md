@@ -49,16 +49,16 @@ Exclude arbitrary code execution, buyer-supplied containers/models, training, mu
 
 Every provider-agent launch enters `testing`; no launch may reuse an old passing report as proof of present readiness. A model/runtime change or critical health failure also requires a new test.
 
-| Check        | Required evidence or action                                                                                  |
-| ------------ | ------------------------------------------------------------------------------------------------------------ |
-| Device       | Launcher checks the Mac/Docker host; gateway checks Linux ARM64 confinement, memory/disk, and worker profile |
-| Runtime      | Verify approved Ollama version, dedicated local endpoint, and configured model digest                        |
-| Model load   | Load the small model successfully; record cold-load duration and memory pressure                             |
-| Inference    | Run a short bounded smoke prompt; require a nonempty response and valid completion metadata                  |
-| Benchmark    | Record warm latency, total generation duration, and observed output throughput using a versioned fixture     |
-| Limits       | Verify output cap, timeout/cancellation behavior, and one-request concurrency enforcement                    |
-| Connectivity | Confirm outbound registration, entitlement verification, and a separate-peer MCPWire test call               |
-| Exposure     | Require offline worker, private Unix-socket IPC, internal loopback runtime, and no published host ports      |
+| Check        | Required evidence or action                                                                                                     |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| Device       | Launcher checks the Mac/Docker host; gateway checks Linux ARM64 confinement, memory/disk, and worker profile                    |
+| Runtime      | Verify approved Ollama version, dedicated local endpoint, and configured model digest                                           |
+| Model load   | Load the small model successfully; record cold-load duration and memory pressure                                                |
+| Inference    | Run a short bounded smoke prompt; require a nonempty response and valid completion metadata                                     |
+| Benchmark    | Record warm latency, total generation duration, and observed output throughput using a versioned fixture                        |
+| Limits       | Verify output cap, timeout/cancellation behavior, and one-request concurrency enforcement                                       |
+| Connectivity | Confirm outbound registration, entitlement verification, and a separate-peer MCPWire test call                                  |
+| Exposure     | Require offline worker, private Unix-socket IPC, internal loopback runtime, and only one gateway UDP peer port; no worker ports |
 
 A local self-test is insufficient proof that another peer can connect. Use a test peer where available; otherwise mark connectivity `unverified` and keep the provider out of ready-only discovery until a separate-peer probe passes.
 

@@ -74,6 +74,6 @@ Docker Desktop must be running, the matching release image must be available, an
 
 ## Release and provenance
 
-This release pins external **MCPWire 1.1.1**, including its upstream b4a fix; Panas's temporary direct b4a dependency is removed. `panas --version` reports source commit/dirty flag, runtime/model pins and `isolation: docker-gateway-offline-worker-cpu`. The immutable alpha.1/alpha.2 releases remain available. No Volcano deployment accompanies a CLI release.
+Current source pins external **MCPWire 1.1.3**, including its upstream b4a fix and explicit UDP peer routes for native-to-Docker connectivity (published alpha.4/alpha.5 pin 1.1.1 and does not include that routing fix); Panas's temporary direct b4a dependency is removed. `panas --version` reports source commit/dirty flag, runtime/model pins and `isolation: docker-gateway-offline-worker-cpu`. The immutable alpha.1/alpha.2 releases remain available. No Volcano deployment accompanies a CLI release.
 
 Maintainers use pinned pnpm: `pnpm format:check`, `pnpm check`, `pnpm release:pack`, `pnpm release:smoke`. Tag publication repeats checks, installs via a fresh npx cache, tests the compiled adapter/IPC and buyer configuration, checks clean provenance, then uploads the tarball, installer, checksum file, public release metadata, prompt and environment example. No private keys, credentials, TypeScript source, source maps or model weights ship. Compiled JavaScript remains readable.

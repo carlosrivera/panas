@@ -51,3 +51,21 @@ it("can launch the pinned external CLI through its public binary", async () => {
     });
     expect(output).toContain("share");
 }, 10000);
+
+it("passes bounded private route hints as literal public CLI arguments", () => {
+    expect(
+        joinArgs(`wire://${"a".repeat(64)}`, [
+            { host: "127.0.0.1", port: 52000 },
+        ]),
+    ).toEqual([
+        "join",
+        `wire://${"a".repeat(64)}`,
+        "--peer-address",
+        "127.0.0.1:52000",
+    ]);
+    expect(() =>
+        joinArgs(`wire://${"a".repeat(64)}`, [
+            { host: "127.0.0.1;touch /tmp/bad", port: 80 },
+        ]),
+    ).toThrow();
+});

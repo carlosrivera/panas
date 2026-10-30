@@ -78,7 +78,7 @@ await writeFile(
             ],
             node: process.versions.node,
             isolation: "docker-gateway-offline-worker-cpu",
-            mcpwire: "1.1.1",
+            mcpwire: "1.1.3",
             ollama: "0.40.12",
             model: "qwen2.5:0.5b",
             modelDigest:
@@ -113,7 +113,7 @@ await writeFile(
                 type: "git",
                 url: "https://github.com/carlosrivera/panas.git",
             },
-            dependencies: { "@mcpwire/cli": "1.1.1" },
+            dependencies: { "@mcpwire/cli": "1.1.3" },
         },
         null,
         2,
