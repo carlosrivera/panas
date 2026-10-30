@@ -126,11 +126,11 @@ Record input/output token counts from the approved runtime, model revision, elap
 
 Enforce request rate, maximum input bytes, context, output, queue depth, concurrency, duration, and monetary authority separately. Proposed request rate default: six accepted requests per minute per buyer/provider pair, configurable downward by the provider. Return typed limit errors with retry guidance.
 
-Run inference natively on macOS. [Ollama documents](https://docs.ollama.com/macos) Apple M-series CPU/GPU support; [qwen2.5:0.5b](https://ollama.com/library/qwen2.5:0.5b) is a small candidate for the proof of concept.
+Run the internet-facing gateway and inference in separate Docker containers on macOS, with no native fallback. The worker has no network and runs the small model on CPU. [Ollama documents](https://docs.ollama.com/macos) Apple M-series CPU/GPU support; [qwen2.5:0.5b](https://ollama.com/library/qwen2.5:0.5b) is a small candidate for the proof of concept.
 
 Use a dedicated runtime instance, minimal environment, dedicated application data directory, loopback-only runtime endpoint, approved model artifacts, argument validation, process supervision, and an emergency stop. An inference prompt must never become a shell command or trigger model-generated tools. Do not expose arbitrary MCP resources, prompts, filesystem tools, or runtime management endpoints.
 
-A dedicated native process is not a complete hostile-code sandbox. The prototype runs only a trusted inference runtime, accepts data rather than executable workloads, and relies on bounded generation, concurrency, deadlines, health monitoring, and provider controls. Hard per-request unified-memory or GPU partitions are not promised. Docker is not the prototype isolation or resource-enforcement dependency; stronger OS isolation is a separate validation task before broader workloads.
+Require read-only roots, non-root users, dropped capabilities, no-new-privileges, bounded CPU/memory/PIDs and temporary storage. Mount only approved read-only model data and dedicated application/IPC volumes; never mount the Docker socket, host home or treasury keys. The worker must not receive gateway credentials. Keep authorization, request bounds and cancellation inside the Docker boundary. See [the Docker sandbox contract](docker-sandbox.md) and its actual validation requirements. Docker does not provide hardware attestation or confidential inference.
 
 ## 8. Paid authorization and transport
 

@@ -15,7 +15,7 @@ export function fixtureReport(
         startupId: randomUUID(),
         sequence: 0,
         testedAt: now.toISOString(),
-        platform: "darwin",
+        platform: "linux",
         architecture: "arm64",
         memoryBytes: 16 * 1024 ** 3,
         freeDiskBytes: 10 * 1024 ** 3,

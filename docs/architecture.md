@@ -68,3 +68,7 @@ The first complete demo uses two Macs and one buyer agent: discover both, select
 ## Toolchain baseline
 
 The foundation uses pnpm 12.16.1, Node.js 24, Next.js 16.4.3, React 19.3.1, Tailwind CSS 4.3.3, Turborepo 2.11.10, and Vitest 5.0.5. TypeScript is pinned to 6.0.3 because the current typescript-eslint peer range is below 6.1; moving to TypeScript 7 requires supported tooling rather than suppressing peer constraints. MCPWire is pinned to @mcpwire/cli 1.1.1 and invoked through its public binary.
+
+## Required public-provider isolation
+
+The public provider path now requires the two-container [Docker boundary](docker-sandbox.md): gateway with peer/cloud egress, worker with networking disabled, CPU-only small-model inference and no native fallback. Earlier native execution descriptions and validation records are historical. Gateway credentials never enter the worker; treasury keys never enter either container.

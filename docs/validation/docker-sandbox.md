@@ -1,0 +1,9 @@
+# Docker sandbox validation
+
+A development alpha.4 image was built and exercised on the Apple Silicon demo Mac using the real pinned Ollama 0.40.12 and qwen2.5:0.5b model, digest `a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67`.
+
+The two actual containers passed Docker configuration inspection and effective kernel-profile checks: UID 10001, no effective/permitted/bounding capabilities, no-new-privileges, seccomp filtering, read-only root, CPU/memory/PID cgroup bounds and disabled worker networking. The worker denied a real host canary file, provider-key and Docker-socket access, root/model writes and a connection to an external IP. It generated eight actual output tokens on CPU and passed the cancellation/restart check. The packaged `doctor` command passed local capabilities and correctly remained `testing` with its peer probe unverified.
+
+These are actual local Docker observations, not mocked inference. `scripts/release/sandbox-smoke.ts` repeats the confinement and inference tests in the ARM64 CI job. Its default model download happens on the trusted test runner before worker startup, verifies the pinned original manifest and every blob, and does not enable worker networking. Repository tests separately reject weakened configurations, unconfined host startup, modified/symlinked model blobs and image checksum mismatches.
+
+This does **not** establish public peer connectivity, a deployed Docker provider, two physical Macs, Docker crash/sleep/outage recovery or a real blockchain transfer. Those require the matching registry deployment and remaining issue #10 drills. The earlier native-provider free receipt remains historical evidence for that native build; it is not a Docker peer/accounting result. Alpha.4 image and CLI publication remain a separate release step. No treasury key was provided to either container.

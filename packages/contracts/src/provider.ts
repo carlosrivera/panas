@@ -7,6 +7,7 @@ import {
 
 export const requiredCapabilityChecks = [
     "platform",
+    "sandbox",
     "runtime",
     "model",
     "memory",
