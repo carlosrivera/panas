@@ -33,15 +33,15 @@ export function SiteFooter() {
                 <Link href="/guides/buyer">buyer setup</Link>
                 <Link href="/guides/provider">provider setup</Link>
                 <a href="https://github.com/carlosrivera/mcpwire">
-                    MCPWire source ↗
+                    mcpwire source ↗
                 </a>
             </nav>
             <p className="footer-note">
-                Browsing never reserves capacity
+                browsing never books a mac.
                 <br />
-                or authorizes a purchase.
+                free sharing or solana devnet usdc.
                 <br />
-                Test-credit prototype. No real money.
+                your compute. your terms.
             </p>
         </footer>
     );
@@ -52,7 +52,7 @@ export function PageIntro({
     children,
 }: {
     eyebrow: string;
-    title: string;
+    title: React.ReactNode;
     children: React.ReactNode;
 }) {
     return (

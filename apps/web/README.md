@@ -18,6 +18,8 @@ Set only nonsecret server-side `PUBLIC_REGISTRY_URL` to the public registry base
 
 Shared styles/primitives live in `@panas/ui`. The original landing CSS is scoped in app/pr27.css. The original handshake clip is served from `public/video.mp4` and connected to the landing canvas animation via `/video.mp4`. This short visual asset is separate from the product demonstration recording. Original shader/hover/focus/reduced-motion code remains; no substitute artwork or external font service is used.
 
+The homepage combines accessible free/paid tabs with live provider cards. The directory preserves the chip/card design and adds explicit currency selection: devnet USDC accepts up to six decimal places, test credits use integer units, and all-currency views do not compare paid assets without an exchange rate. Development-only fixtures include free, devnet-USDC and TEST_CREDIT examples; production excludes the preview modules.
+
 Evidence and handoff:
 
 - qa/12-landing.md — initial foundation, visually superseded by the chosen port.
