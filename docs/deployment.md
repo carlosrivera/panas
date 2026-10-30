@@ -4,6 +4,20 @@ The dedicated cloud project is `panas` (`7db5f8f4-c378-4ba5-a48f-f435bc4c034b`).
 
 For the current release, use `pnpm platform:deploy` from a clean configured checkout; see [operations](platform/operations.md) for tracked migrations, scopes and verification. The commands in the foundation section below describe the initial scaffold, not the current full-release procedure.
 
+## Public custom domain
+
+The public website uses https://panas.mcpwire.co/ with Volcano-managed TLS, declared in `volcano-config.yaml`. Cloudflare hosts these DNS-only records with automatic TTL:
+
+| Type  | Name                    | Content                                                                                 |
+| ----- | ----------------------- | --------------------------------------------------------------------------------------- |
+| CNAME | `panas`                 | Routing target reported by `volcano cloud frontends domains get panas panas.mcpwire.co` |
+| TXT   | `_volcano`              | `volcano-domain-verification=0ce4c1474c71997bc6c01a91c8c105ac`                          |
+| CNAME | `_acme-challenge.panas` | Certificate validation target reported by the same command                              |
+
+Keep the TXT record for ownership and the ACME CNAME for certificate renewal. The custom hostname serves the frontend directly and stays in the browser address bar. Registry is served under `/registry` (including `/registry/mcp`), and accounting under `/accounting`, using frontend function routes with `strip_prefix: true`. Application signatures bind the service-relative path; clients preserve the public base path when sending requests. The platform origin URLs remain infrastructure metadata and are not used in public configuration.
+
+Check domain activation with `volcano cloud frontends domains get panas panas.mcpwire.co`, then verify HTTPS, `/api/health`, and the page's referenced assets. The default Volcano frontend URL continues to serve the same deployment.
+
 ## Historical foundation setup
 
 The source layout uploads the workspace root and selects `apps/web` as the frontend app root. The root and app pin pnpm 12.16.1 and Node.js 24. Frontend and health-function variable scopes are empty; do not broaden them to all project variables.
@@ -24,7 +38,7 @@ Official references: [frontend deployment](https://docs.volcano.dev/platform/fro
 
 ## Historical foundation deployment
 
-The initial informational frontend is deployed at https://b694dc37-574c-4668-adf0-9371a728f16f.frontends.volcano.run/. The cloud build succeeded with Node.js 24.11.1 and pnpm 12.16.1. The health handler uses ESM exports to match the workspace package type. Provisioned/active status alone does not establish a healthy invocation; verify the actual response.
+The informational frontend is available at https://panas.mcpwire.co/. The cloud build succeeded with Node.js 24.11.1 and pnpm 12.16.1. The health handler uses ESM exports to match the workspace package type. Provisioned/active status alone does not establish a healthy invocation; verify the actual response.
 
 ## Release verification and diagnostics
 

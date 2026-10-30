@@ -1,6 +1,8 @@
+import { serviceUrl } from "@panas/contracts/service-url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-const url = process.env.PANAS_REGISTRY_URL;
+const url =
+    process.env.PANAS_REGISTRY_URL ?? "https://panas.mcpwire.co/registry";
 const token = process.env.PANAS_DISCOVERY_TOKEN;
 if (!url || !token)
     throw new Error(
@@ -11,7 +13,7 @@ const client = new Client({
     version: "0.1.0",
 });
 await client.connect(
-    new StreamableHTTPClientTransport(new URL("/mcp", url), {
+    new StreamableHTTPClientTransport(serviceUrl(url, "/mcp"), {
         requestInit: { headers: { authorization: `Bearer ${token}` } },
     }),
 );

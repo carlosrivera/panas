@@ -1,3 +1,4 @@
+import { serviceUrl } from "@panas/contracts/service-url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { chmod, mkdir, mkdtemp, readFile } from "node:fs/promises";
@@ -128,7 +129,7 @@ export async function startFaultProxy(options: {
                 }
                 counts.forwarded++;
                 const result = await (options.fetch ?? fetch)(
-                    new URL(path, TEST_ACCOUNTING_URL),
+                    serviceUrl(TEST_ACCOUNTING_URL, path),
                     {
                         method,
                         headers,

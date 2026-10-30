@@ -1,3 +1,4 @@
+import { serviceUrl } from "@panas/contracts/service-url";
 import { randomUUID, type KeyLike } from "node:crypto";
 import { z } from "zod";
 import { requestLimitsSchema } from "@panas/contracts";
@@ -161,7 +162,7 @@ export function createCloudClient(options: {
         );
         try {
             return await readResponse(
-                await (options.fetch ?? fetch)(new URL(path, options.url), {
+                await (options.fetch ?? fetch)(serviceUrl(options.url, path), {
                     method,
                     redirect: "error",
                     headers: {
@@ -204,7 +205,7 @@ export function createDiscoveryClient(options: {
     const send = async (path: string) => {
         try {
             return await readResponse(
-                await (options.fetch ?? fetch)(new URL(path, options.url), {
+                await (options.fetch ?? fetch)(serviceUrl(options.url, path), {
                     headers: { authorization: `Bearer ${options.token}` },
                     redirect: "error",
                     signal: AbortSignal.timeout(10_000),

@@ -16,8 +16,8 @@ Create an owner configuration outside the repository with mode `0600`. Reference
     "sessionId": "OWNER_SELECTED_SESSION_UUID",
     "privateKeyPath": "/absolute/private/buyer-ed25519.pem",
     "dataDir": "/absolute/private/panas-buyer-data",
-    "accountingUrl": "https://ACCOUNTING_HOST",
-    "registryUrl": "https://REGISTRY_HOST",
+    "accountingUrl": "https://panas.mcpwire.co/accounting",
+    "registryUrl": "https://panas.mcpwire.co/registry",
     "discoveryTokenPath": "/absolute/private/discovery-token",
     "platformPublicKeyPath": "/absolute/private/platform-ed25519-public.pem",
     "limits": {
