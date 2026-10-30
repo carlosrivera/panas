@@ -24,7 +24,7 @@ export function BecomePana() {
                 >
                     <span aria-hidden="true">🤝</span> become a pana
                 </button>
-                <p>test credits only · Apple Silicon Macs</p>
+                <p>free or devnet USDC · Apple Silicon Macs</p>
             </aside>
             <dialog
                 id="pick-a-side"
@@ -81,7 +81,7 @@ export function BecomePana() {
                             my Mac has room to help.
                         </span>
                         <span className="pick-detail">
-                            Apple Silicon · native Ollama · launch checks
+                            Apple Silicon · Docker isolation · launch checks
                         </span>
                         <span className="pick-link">prepare your Mac →</span>
                     </Link>
