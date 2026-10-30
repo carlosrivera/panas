@@ -5,7 +5,7 @@
 Share your Mac’s spare inference capacity for free. With Node.js 24, Docker Desktop, the approved model and your enrolled provider configuration ready, install and start with one command:
 
 ```sh
-curl -fsSL https://github.com/carlosrivera/panas/releases/latest/download/install.sh | sh && ~/.local/bin/panas provider --free
+curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.6/install.sh | sh && ~/.local/bin/panas provider --free
 ```
 
 Buying compute? After installing and configuring your buyer identity, run `~/.local/bin/panas demo-prompt` and paste the result into Codex. Buyers need no Docker or local model. The detailed setup below covers enrollment, models and owner configuration.
