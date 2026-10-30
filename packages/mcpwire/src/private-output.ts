@@ -1,6 +1,6 @@
 import { validateTicket, MCPWIRE_VERSION } from "./commands";
 
-/** Parser for the pinned 1.1.1 non-TTY stderr config. Never returns raw output. */
+/** Parser for the pinned 1.1.2 non-TTY stderr config. Never returns raw output. */
 export class PrivateShareParser {
     private buffer = "";
     private listening = false;

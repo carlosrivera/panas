@@ -1,3 +1,4 @@
+import { peerAddressesSchema } from "@panas/contracts";
 import { z } from "zod";
 import { atomicAmountSchema } from "@panas/contracts";
 import {
@@ -10,6 +11,7 @@ import {
 import { validateTicket } from "@panas/mcpwire";
 export const descriptorSchema = z
     .object({
+        peerAddresses: peerAddressesSchema.optional(),
         ticket: z.string().refine((value) => {
             try {
                 validateTicket(value);

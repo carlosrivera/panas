@@ -3,7 +3,7 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$root"
 pnpm release:bundle
-node -e 'const fs=require("fs");const p=JSON.parse(fs.readFileSync("dist/panas-cli/package.json"));if(p.dependencies["@mcpwire/cli"]!=="1.1.1")process.exit(1)'
+node -e 'const fs=require("fs");const p=JSON.parse(fs.readFileSync("dist/panas-cli/package.json"));if(p.dependencies["@mcpwire/cli"]!=="1.1.2")process.exit(1)'
 npm install --prefix dist/panas-cli --omit=dev --ignore-scripts --no-audit --no-fund
 revision=$(node -p 'require("./dist/panas-cli/release.json").sourceCommit')
 dirty=$(node -p 'require("./dist/panas-cli/release.json").sourceDirty')
