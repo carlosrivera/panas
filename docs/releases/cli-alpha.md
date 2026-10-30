@@ -1,17 +1,16 @@
-Panas prototype CLI for macOS 14+ on Apple Silicon, using test credits and fixed per-request pricing.
+Panas hackathon demo launcher for macOS 14+ on Apple Silicon. Node.js 24 required.
 
-Run without cloning the repository (Node.js 24 required):
+Download `install.sh` from this release, then run `sh ~/Downloads/install.sh`. It installs the checksum-verified compiled CLI under your home directory. With operator-provided configuration in `~/.config/panas`:
 
 ```sh
-npx --yes --package=https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.1/panas-cli-0.1.0-alpha.1.tgz panas --help
+~/.local/bin/panas provider
+~/.local/bin/panas demo-prompt | pbcopy
 ```
 
-Use `panas identity init --dir /absolute/new/private/directory` to create a fresh provider identity. Operator enrollment, the platform public key and private configuration are still required. Install the dedicated Ollama 0.40.12 runtime and pinned qwen2.5:0.5b model explicitly. Start with `panas provider --env-file /absolute/private/provider.env`; `panas buyer --env-file ...` exposes the buyer MCP facade.
+Paste the prompt into Codex to configure the buyer MCP, discover a ready provider, purchase one request capped at 2 atomic TEST_CREDIT, execute it once and verify its receipt. `panas codex-config` emits Codex TOML with absolute executable paths; `panas mcp-config` emits generic MCP JSON.
 
-The compiled tarball retains pinned external MCPWire 1.1.0, separate disposable peer adapters and the owned-process guardian. `release.json` records the exact clean source commit and runtime/model pins. `SHA256SUMS` covers the tarball. No private keys, credentials, model weights, source maps or TypeScript source ship in it. Built JavaScript remains readable.
+Native Ollama/model installation, enrollment, private configuration and owner spending authority remain required. The provider is process-supervised, **not OS-sandboxed**. Loopback, authorization and inference bounds do not provide filesystem, outbound-network or hostile-process containment. Model output is data and is never executed.
 
-Read [installation and Mac B setup](https://github.com/carlosrivera/panas/blob/v0.1.0-alpha.1/docs/distribution.md). Control-plane compatibility: deployed revision 281033a964c98a9a173d440030586dd64fb7135b. No Volcano deployment accompanies this CLI release.
+Pins: MCPWire 1.1.1 (upstream b4a fix), Ollama 0.40.12, qwen2.5:0.5b. The temporary Panas b4a dependency is removed. Metadata/checksums and the public environment example are attached. No real payments or cloud deployment accompanies this release.
 
-This is an alpha for the #10 manual two-Mac tests. Physical sleep/wake, two-host/NAT connectivity, a deployed Volcano outage and natural 24-hour expiry remain validation gates. Native supervision does not claim hostile-code sandboxing or hardware attestation.
-
-The tarball also pins `b4a 1.9.0`: MCPWire’s `hyperdht` uses `bogon 1.3.0`, which imports it without declaring it. This supplies the required runtime dependency in a fresh npm/npx layout while keeping MCPWire external. Release smoke uses a fresh npx cache and loads that native transport dependency graph.
+[Full setup and isolation limits](https://github.com/carlosrivera/panas/blob/v0.1.0-alpha.2/docs/distribution.md). Physical two-Mac/NAT, sleep/wake, deployed-outage and natural 24-hour expiry gates remain open under #10.
