@@ -33,6 +33,53 @@ function ProviderStatus({
         </span>
     );
 }
+function StatIcon({
+    name,
+}: {
+    name: "context" | "output" | "deadline" | "concurrency";
+}) {
+    const paths = {
+        context: (
+            <>
+                <path d="M4 5h16M4 10h16M4 15h10" />
+                <path d="M4 20h8" />
+            </>
+        ),
+        output: (
+            <>
+                <path d="M5 4h14v16H5z" />
+                <path d="M8 8h8M8 12h8M8 16h5" />
+            </>
+        ),
+        deadline: (
+            <>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+            </>
+        ),
+        concurrency: (
+            <>
+                <circle cx="9" cy="8" r="3" />
+                <path d="M3 20v-1a6 6 0 0 1 12 0v1M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 5v1" />
+            </>
+        ),
+    };
+    return (
+        <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            {paths[name]}
+        </svg>
+    );
+}
 function ProviderCard({
     provider,
     observation,
@@ -50,7 +97,7 @@ function ProviderCard({
         >
             <div className="provider-card-heading">
                 <span className="tiny-label">
-                    Text inference · Provider report
+                    text inference · provider report
                 </span>
                 <ProviderStatus
                     provider={provider}
@@ -61,41 +108,52 @@ function ProviderCard({
             <h2>
                 {detail ? (
                     <>
-                        Provider <span>{provider.providerId.slice(0, 8)}</span>
+                        panas <span>{provider.providerId.slice(0, 8)}</span>
                     </>
                 ) : (
                     <Link href={`/providers/${provider.providerId}`}>
-                        Provider {provider.providerId.slice(0, 8)}{" "}
+                        panas {provider.providerId.slice(0, 8)}{" "}
                         <span aria-hidden="true">↗</span>
                     </Link>
                 )}
             </h2>
             <p className="provider-model">{provider.model.name}</p>
             <div className="provider-price">
-                <strong>{formatCredits(provider.price.totalAtomic)}</strong>
-                <span>per successful bounded request</span>
+                <strong>
+                    {provider.price.totalAtomic === "0"
+                        ? "free"
+                        : formatCredits(provider.price.totalAtomic)}
+                </strong>
+                <span>per successful request · test credits</span>
             </div>
-            <dl className="provider-facts">
+            <dl className="provider-facts provider-card-stats">
                 <div>
-                    <dt>Context limit</dt>
+                    <dt>
+                        <StatIcon name="context" /> context
+                    </dt>
                     <dd>
                         {provider.profile.maxContextTokens.toLocaleString(
                             "en-US",
-                        )}{" "}
-                        tokens
+                        )}
                     </dd>
                 </div>
                 <div>
-                    <dt>Output limit</dt>
-                    <dd>{provider.profile.maxOutputTokens} tokens</dd>
+                    <dt>
+                        <StatIcon name="output" /> output
+                    </dt>
+                    <dd>{provider.profile.maxOutputTokens}</dd>
                 </div>
                 <div>
-                    <dt>Request deadline</dt>
-                    <dd>{provider.profile.timeoutMs / 1000} seconds</dd>
+                    <dt>
+                        <StatIcon name="deadline" /> deadline
+                    </dt>
+                    <dd>{provider.profile.timeoutMs / 1000}s</dd>
                 </div>
                 <div>
-                    <dt>Concurrency</dt>
-                    <dd>{provider.profile.concurrency} request</dd>
+                    <dt>
+                        <StatIcon name="concurrency" /> concurrency
+                    </dt>
+                    <dd>{provider.profile.concurrency}</dd>
                 </div>
             </dl>
             {detail && (
@@ -179,10 +237,6 @@ function ProviderCard({
                     </p>
                 )}
             </div>
-            <p className="small-note">
-                Provider-reported capabilities. Browsing does not reserve
-                capacity or accept a quote.
-            </p>
         </article>
     );
 }
@@ -407,6 +461,59 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                     <span aria-hidden="true">↻</span>
                 </button>
             </div>
+            {!providerId &&
+                page &&
+                (() => {
+                    const ready = page.providers.filter(
+                        (p) => displayedReadiness(p, observation, now).ready,
+                    ).length;
+                    const cheapest =
+                        page.providers.reduce<PublicProvider | null>(
+                            (best, item) =>
+                                !best ||
+                                BigInt(item.price.totalAtomic) <
+                                    BigInt(best.price.totalAtomic)
+                                    ? item
+                                    : best,
+                            null,
+                        );
+                    return (
+                        <section
+                            className="directory-summary"
+                            aria-label="Directory summary"
+                        >
+                            <div>
+                                <span>panas listed</span>
+                                <strong>{page.providers.length}</strong>
+                                <small>this page</small>
+                            </div>
+                            <div>
+                                <span>ready now</span>
+                                <strong>
+                                    {observation.trusted ? ready : "—"}
+                                </strong>
+                                <small>
+                                    {observation.trusted
+                                        ? "as observed"
+                                        : "status unknown"}
+                                </small>
+                            </div>
+                            <div>
+                                <span>cheapest request</span>
+                                <strong>
+                                    {cheapest
+                                        ? cheapest.price.totalAtomic === "0"
+                                            ? "free"
+                                            : formatCredits(
+                                                  cheapest.price.totalAtomic,
+                                              )
+                                        : "—"}
+                                </strong>
+                                <small>on this page</small>
+                            </div>
+                        </section>
+                    );
+                })()}
             {loading && !page && (
                 <div className="directory-message" role="status">
                     <span className="tiny-label">
@@ -462,7 +569,7 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                     <h2>
                         {hasFilters
                             ? "No providers match these filters."
-                            : "No providers are listed yet."}
+                            : "no panas on the porch yet."}
                     </h2>
                     <p>
                         {hasFilters
@@ -529,10 +636,10 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                 </nav>
             )}
             <p className="directory-disclaimer">
-                Readiness expires with the provider’s heartbeat or capability
-                report. Provider claims are not hardware attestation. Providers
-                can inspect inference on their Mac; the connection is encrypted
-                in transit.
+                a listing isn’t a quote or reservation; browsing doesn’t reserve
+                capacity. provider claims aren’t hardware attestation. test
+                credits only, no real money. providers can read prompts on their
+                Mac; connections are encrypted in transit.
             </p>
         </div>
     );

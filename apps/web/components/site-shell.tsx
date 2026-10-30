@@ -52,7 +52,7 @@ export function PageIntro({
     children,
 }: {
     eyebrow: string;
-    title: string;
+    title: React.ReactNode;
     children: React.ReactNode;
 }) {
     return (

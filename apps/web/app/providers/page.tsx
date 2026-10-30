@@ -8,13 +8,16 @@ export default function Providers() {
         <main id="main" className="shell section">
             <PageIntro
                 eyebrow="The public directory"
-                title="Find your next connection."
+                title={
+                    <>
+                        free compute, between{" "}
+                        <span className="lime-word">friends.</span>
+                    </>
+                }
             >
-                <p>
-                    Explore reported Mac capabilities and fixed test-credit
-                    prices. Your agent handles discovery, quotes, and private
-                    handoff. A listing is not an accepted quote or reserved
-                    capacity.
+                <p>for panas with spare cycles and panas with a prompt.</p>
+                <p className="directory-punchline">
+                    the listing is a hello. your agent handles the handshake.
                 </p>
                 <Link className="text-link" href="/guides/buyer">
                     Connect a buyer agent →
