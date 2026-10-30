@@ -99,11 +99,11 @@ export function ProviderCard({
             <h2>
                 {detail ? (
                     <>
-                        panas <span>{provider.providerId.slice(0, 8)}</span>
+                        pana <span>{provider.providerId.slice(0, 8)}</span>
                     </>
                 ) : (
                     <Link href={`/providers/${provider.providerId}`}>
-                        panas {provider.providerId.slice(0, 8)}{" "}
+                        pana {provider.providerId.slice(0, 8)}{" "}
                         <span aria-hidden="true">↗</span>
                     </Link>
                 )}
