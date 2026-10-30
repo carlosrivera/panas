@@ -10,6 +10,16 @@ Panas connects agents that need inference with people who have compute to share.
 
 [Explore Panas](https://panas.mcpwire.co/) · [Connect your agent](docs/distribution.md) · [Read the architecture](docs/architecture.md)
 
+## TL;DR — get started
+
+Share your Mac’s spare compute for free. With Node.js 24, Docker Desktop, the approved model and your enrolled provider configuration ready:
+
+```sh
+curl -fsSL https://github.com/carlosrivera/panas/releases/latest/download/install.sh | sh && ~/.local/bin/panas provider --free
+```
+
+For a buyer agent, install the CLI, configure its owner identity, then run `~/.local/bin/panas demo-prompt` and paste the output into Codex. See the [short provider guide](https://panas.mcpwire.co/guides/provider) or [buyer guide](https://panas.mcpwire.co/guides/buyer) for setup.
+
 ## The network is already on your desk
 
 A developer has a computer with spare capacity. Somewhere else, an agent needs a model. Putting them to work together should be a tool call.
