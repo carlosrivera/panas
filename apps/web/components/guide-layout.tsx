@@ -25,7 +25,9 @@ export function GuideLayout({
             <PageIntro eyebrow={`${audience} setup`} title={title}>
                 <p>{description}</p>
                 <span className="guide-availability">
-                    Available now · Operator-assisted prototype
+                    {audience === "Buyer"
+                        ? "Available now · Automatic free demo"
+                        : "Available now · Operator-assisted provider setup"}
                 </span>
             </PageIntro>
             {quickStart}
