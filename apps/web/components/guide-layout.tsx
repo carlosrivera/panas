@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { PageIntro } from "./site-shell";
+import { CopyCommandButton } from "./copy-command-button";
 export function GuideLayout({
     audience,
     title,
@@ -72,13 +73,18 @@ export function GuideSection({
 export function CodeSample({
     label,
     children,
+    copyable = false,
 }: {
     label: string;
     children: string;
+    copyable?: boolean;
 }) {
     return (
         <div className="code-sample">
-            <p className="code-label">{label}</p>
+            <div className="code-sample-header">
+                <p className="code-label">{label}</p>
+                {copyable ? <CopyCommandButton command={children} /> : null}
+            </div>
             <pre tabIndex={0} role="region" aria-label={label}>
                 <code>{children}</code>
             </pre>
@@ -114,7 +120,9 @@ export function GuideQuickStart({
         >
             <p className="eyebrow">TL;DR</p>
             <h2 id="quick-start-title">Get started.</h2>
-            <CodeSample label="Run in your terminal">{command}</CodeSample>
+            <CodeSample label="Run in your terminal" copyable>
+                {command}
+            </CodeSample>
             <p>{children}</p>
         </section>
     );

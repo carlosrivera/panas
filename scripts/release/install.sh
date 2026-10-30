@@ -23,6 +23,11 @@ if [ ! -d "$release" ]; then
     artifact="panas-cli-$version.tgz"
     curl --fail --silent --show-error --location --retry 3 --proto '=https' --tlsv1.2 "$base/$artifact" --output "$work/$artifact"
     node -e 'const fs=require("node:fs"),c=require("node:crypto");if(c.createHash("sha256").update(fs.readFileSync(process.argv[1])).digest("hex")!==process.argv[2]){console.error("Release checksum mismatch; nothing installed.");process.exit(1)}' "$work/$artifact" "$sha256"
+    # Ink's es-toolkit range selects 1.53.1, whose npm tarball returns 404.
+    # Overrides must live in npm's install root; the CLI artifact stays unchanged.
+    # Seed the exact dependency too: npm 11 can ignore overrides on first install.
+    mkdir -p "$work/package"
+    printf '%s\n' '{"private":true,"dependencies":{"es-toolkit":"1.53.0"},"overrides":{"es-toolkit":"1.53.0"}}' > "$work/package/package.json"
     npm install --prefix "$work/package" --omit=dev --no-audit --no-fund --package-lock=false "$work/$artifact" >&2
     node -e 'const r=require(process.argv[1]);if(r.version!==process.argv[2]||r.sourceCommit!==process.argv[3])process.exit(1)' "$work/package/node_modules/@panas/cli/release.json" "$version" "$commit"
     node - "$work/package" "$release" <<'JS'

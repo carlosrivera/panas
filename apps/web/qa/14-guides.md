@@ -1,6 +1,6 @@
 # Issue 14 — buyer and provider setup guides
 
-The guides use shared server-rendered GuideLayout/GuideSection/CodeSample components and the landing design tokens. No browser credential form, copy-to-clipboard permission, or extra client bundle is needed. Code samples are selectable, keyboard-focusable horizontal scroll regions. The desktop table of contents becomes a normal top-of-page navigation on smaller screens.
+The guides use shared server-rendered GuideLayout/GuideSection/CodeSample components and the landing design tokens. The provider and buyer TL;DR commands include a small client-side copy button with success and clipboard-error feedback. No browser credential form is needed. Code samples remain selectable, keyboard-focusable horizontal scroll regions. The desktop table of contents becomes a normal top-of-page navigation on smaller screens.
 
 ## Source and command verification
 

@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const work = await mkdtemp(join(tmpdir(), "panas-installer-"));
@@ -35,6 +36,7 @@ if [ "\${PANAS_TEST_CORRUPT:-0}" = 1 ]; then printf corrupt >> "$out"; fi
         PANAS_INSTALL_DIR: installRoot,
         PANAS_BIN_DIR: binDir,
         PANAS_TEST_ARTIFACTS: resolve(root, "artifacts"),
+        npm_config_cache: join(work, "fresh-npm-cache"),
     };
     const run = (extra = {}) =>
         execFileSync("sh", [resolve(root, "artifacts/install.sh")], {
@@ -50,6 +52,19 @@ if [ "\${PANAS_TEST_CORRUPT:-0}" = 1 ]; then printf corrupt >> "$out"; fi
         encoding: "utf8",
         env,
     });
+    const installed = join(
+        installRoot,
+        "releases",
+        JSON.parse(first).version,
+        "node_modules/@panas/cli/package.json",
+    );
+    const installedRequire = createRequire(installed);
+    const wireRequire = createRequire(
+        installedRequire.resolve("@mcpwire/cli/package.json"),
+    );
+    const inkRequire = createRequire(wireRequire.resolve("ink"));
+    assert.equal(inkRequire("es-toolkit/package.json").version, "1.53.0");
+    assert.equal(typeof wireRequire("hyperdht"), "function");
     run();
     assert.equal(
         execFileSync(binary, ["--version"], { encoding: "utf8", env }),
@@ -65,7 +80,7 @@ if [ "\${PANAS_TEST_CORRUPT:-0}" = 1 ]; then printf corrupt >> "$out"; fi
     assert.throws(() => run());
     assert.equal(await readFile(binary, "utf8"), "unrelated");
     console.log(
-        "Installer: checksum rejection, real npm install, paths with spaces, repeat install and unrelated executable protection passed.",
+        "Installer: checksum rejection, fresh npm cache, es-toolkit pin, native MCPWire dependency loading, paths with spaces, repeat install and unrelated executable protection passed.",
     );
 } finally {
     await rm(work, { recursive: true, force: true });

@@ -1091,12 +1091,47 @@
     background: #131311;
     color: #edede6;
 }
+.code-sample-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #35352f;
+}
 .code-label {
     font-size: 0.65rem;
     font-family: var(--font-mono);
-    padding: 0.85rem 1rem;
     color: #b4b4aa;
-    border-bottom: 1px solid #35352f;
+}
+.copy-command {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+.copy-command-button {
+    min-height: 2.75rem;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid #68685d;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: #c5f74f;
+    font: inherit;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+.copy-command-button:hover {
+    background: #262622;
+}
+.copy-command-button:focus-visible {
+    outline: 2px solid #c5f74f;
+    outline-offset: 3px;
+}
+.copy-command-status {
+    font-size: 0.7rem;
+    color: #b4b4aa;
 }
 .code-sample pre {
     margin: 0;
