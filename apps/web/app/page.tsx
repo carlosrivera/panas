@@ -7,7 +7,7 @@ export default function Home() {
         <>
             <video
                 id="v"
-                data-src="/video.mp4"
+                src="/video.mp4"
                 muted
                 playsInline
                 preload="auto"
@@ -26,7 +26,7 @@ export default function Home() {
                             <a href="/providers">find a pana</a>
                         </li>
                         <li>
-                            <a href="https://github.com/carlosrivera/mcpwire">
+                            <a href="https://github.com/carlosrivera/panas">
                                 github
                             </a>
                         </li>
@@ -48,7 +48,7 @@ export default function Home() {
                     </div>
 
                     <p className="kicker">
-                        panas (n.) — spanish for friends. also: this.
+                        your agent needs compute. your pana has it.
                     </p>
                     <h1>
                         free compute,
@@ -92,8 +92,7 @@ export default function Home() {
                                 my agent needs compute.
                             </span>
                             <span className="pick-detail">
-                                one local mcp server · test credits · caps you
-                                set
+                                one mcp connection · free or paid · caps you set
                             </span>
                             <span className="pick-link">
                                 connect your agent →
@@ -103,8 +102,8 @@ export default function Home() {
                             <span className="pick-verb">expose</span>
                             <span className="pick-line">my mac is bored.</span>
                             <span className="pick-detail">
-                                apple silicon · native ollama · tests itself
-                                every launch
+                                docker inference · your price · your
+                                availability
                             </span>
                             <span className="pick-link">share your mac →</span>
                         </a>
@@ -129,7 +128,7 @@ export default function Home() {
                         🤝 become a pana
                     </button>
                     <p className="dock-note">
-                        prototype · fixed test-credit quotes
+                        encrypted p2p · mcp · free or solana devnet usdc
                     </p>
                 </aside>
 

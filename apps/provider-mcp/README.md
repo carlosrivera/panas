@@ -4,21 +4,21 @@
 
 ## Owner setup
 
-Use the explicit Ollama/model setup described in `../provider/README.md`. The provider ID and Ed25519 key must be enrolled by the control-plane operator before signed registration or accounting requests will succeed. Cloud buyer enrollment and test credits are owned by accounting. No real money is enabled.
-
-Additional owner configuration:
+Use the enrolled [Docker distribution setup](../../docs/distribution.md). The current CLI launches this controller inside the gateway container and uses a separate network-disabled Linux ARM64 inference worker. The provider ID and Ed25519 key must be operator-enrolled; the provider needs only its own application key, pinned platform public key, approved model and public service URLs. Treasury/database/platform-signing secrets stay outside the provider.
 
 ```sh
-export PANAS_PROVIDER_PRIVATE_KEY_PATH='/absolute/path/to/private-ed25519.pem'
-export PANAS_PLATFORM_PUBLIC_KEY_PATH='/absolute/path/to/pinned-platform-public.pem'
-export PANAS_REGISTRY_URL='https://registry-service.example'
-export PANAS_ACCOUNTING_URL='https://accounting-service.example'
-export PANAS_PRICE_VERSION='1'
-export PANAS_PRICE_ATOMIC='10'
-pnpm --filter @panas/provider-mcp run host
+~/.local/bin/panas provider --free
 ```
 
-Private key files must be mode0600 or more restrictive. Keep keys and runtime state outside version control. Platform and provider key identities are owner configuration, never model-controlled input. The private directory/socket/token are shared only with trusted local adapters belonging to the provider OS account.
+Or publish a fixed 0.01 devnet-USDC price with the configured payment backend:
+
+```sh
+~/.local/bin/panas provider --solana-devnet --price-atomic 10000
+```
+
+The CLI reads private owner configuration, verifies/stages the model, checks the matching Docker image and sends gateway configuration over stdin. Keys are written only to private container tmpfs. Private source entry points (`host` and adapter `start`) are container internals, not a native host serving alternative. No native runtime fallback exists.
+
+Provider setup requires Apple Silicon macOS and Docker; the buyer client does not. [Payments](../../docs/payments.md) covers free, prepaid Solana devnet USDC and internal TEST_CREDIT modes. Mainnet and automated wallet payouts are not implemented.
 
 On a passing local launch, the controller starts the pinned external MCPWire CLI, probes `get_capabilities` through a separate join process, binds evidence to the tested startup, signs provider registration, uploads the private startup-bound ticket descriptor to accounting, and sends signed heartbeats. The current probe establishes a separate local-peer round trip; it does not prove remote NAT reachability. Failed publication or probe invalidates readiness. Registry TTLs expire an unavailable provider. The controller rotates its one-hour share before the 55-minute private descriptor expiry and drains accepted work before retesting.
 
@@ -49,12 +49,14 @@ Tests cover Ed25519 identity/payload/startup/expiry/operation/limit binding, dur
 
 Run `pnpm check` and `pnpm format:check` from the repository root. Complete end-to-end evidence must use the real accounting service and real MCPWire handoff; fixture endpoints do not satisfy that integration gate.
 
-### Verified transport hop
+### Historical native-build transport hop
 
 On October 28, 2026, `PANAS_RUN_P2P_TESTS=1 pnpm exec vitest run apps/provider-mcp/src/service.test.ts` passed the separate-process MCPWire share/probe/join test. It verified the startup, signed run response, and rejection of deliberately malformed private-sentinel arguments while managed transport events exposed neither argument previews, prompts, nor the ticket. This exercised the real external MCPWire CLI with injectable inference/accounting, not the full paid cloud transaction.
 
-### Integrated paid prototype evidence
+### Historical native-build paid prototype evidence
 
 The team subsequently exercised the actual deployed Volcano accounting service and a real Mac/Ollama provider through the buyer MCP SDK: discover, quote, reserve test credit, join through MCPWire, infer, verify the provider signature, retrieve a matching receipt, reject duplicate execution, and retrieve again through a fresh peer without changing the charge. The fixed buyer debit was3atomic TEST_CREDIT units. This is a single-provider prototype smoke, not a claim of a two-Mac or real-money launch.
 
 A valid action grant for a request with no local durable record returns `REQUEST_NOT_FOUND`. The host cannot honestly assert cancellation if its prior state may have been lost; the buyer should inspect cloud pending state and use the bounded reconciliation path. It must not automatically replay inference or assume the hold was released.
+
+Current [Docker validation](../../docs/validation/docker-sandbox.md) is separate from those historical transport/accounting observations. The combined Docker peer/accounting and physical-host recovery gates remain in [integration evidence](../../docs/integration/README.md).

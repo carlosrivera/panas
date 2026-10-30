@@ -1,0 +1,3 @@
+CREATE OR REPLACE FUNCTION panas_accounting_ledger_asset_guard() RETURNS trigger LANGUAGE plpgsql AS $$ DECLARE entry jsonb; expected text; BEGIN FOR entry IN SELECT * FROM jsonb_array_elements(NEW.entries) LOOP IF entry->>'account' LIKE 'buyer:%' THEN SELECT currency INTO expected FROM panas_accounting_buyers WHERE buyer_id=(substring(entry->>'account' from 7))::uuid; IF expected IS NULL OR expected<>NEW.currency THEN RAISE EXCEPTION 'Ledger asset does not match buyer settlement currency'; END IF; END IF; END LOOP; RETURN NEW; END $$;
+DROP TRIGGER IF EXISTS panas_ledger_asset_guard ON panas_accounting_ledger;
+CREATE TRIGGER panas_ledger_asset_guard BEFORE INSERT ON panas_accounting_ledger FOR EACH ROW EXECUTE FUNCTION panas_accounting_ledger_asset_guard();

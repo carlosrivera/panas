@@ -10,7 +10,7 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
-        "@mcpwire/cli": "1.1.0"
+        "@mcpwire/cli": "1.1.1"
     },
     "devDependencies": {
         "@panas/typescript-config": "workspace:*",

@@ -1,5 +1,7 @@
 # Failure evidence matrix
 
+Current serving requires the Docker gateway and offline worker. Native-build observations in this table remain historical; they are not Docker acceptance. Current payment modes include free access and prepaid Solana devnet USDC; most recorded transaction drills below used internal TEST_CREDIT. See [Docker validation](../validation/docker-sandbox.md) and [payment validation](../validation/free-and-devnet.md).
+
 Status belongs to an observed run artifact. This table states what must be checked and which source can establish it; a test name is not evidence that a live two-Mac scenario occurred.
 
 | Case                                                   | Local simulation / fixture                                                                                  | Actual physical follow-up                                                                                | Expected accounting invariant                                                              |

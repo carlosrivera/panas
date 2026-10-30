@@ -1,10 +1,12 @@
 # Provider sleep/wake recovery (#10)
 
-Implementation and component evidence only. Physical sleep, paid native-generation recovery, Postgres transaction validation, full CI and deployment remain deferred for batch finalization. This does not close #10.
+The current provider uses a Docker gateway/offline worker. Physical sleep and paid Docker-generation recovery remain unobserved acceptance gates; component fixtures and earlier native-run evidence do not close #10. See [current setup](../distribution.md) and [Docker validation](../validation/docker-sandbox.md).
 
 ## Recovery boundary
 
-The host samples wall-clock progress every 15 seconds, including during launch tests and an in-flight controller operation. A gap of at least 45 seconds, an expired local heartbeat, or backward clock movement invalidates readiness synchronously at the next pulse or guarded operation. The daemon also checks execution boundaries, so a native completion or authorization callback that resumes before the timer cannot bypass recovery.
+The Mac launcher sends a lease over gateway stdin. If the launcher disappears or its lease stops advancing, the gateway terminates; its retained state is recovered on the next CLI launch. Docker/host sleep may therefore cause gateway shutdown rather than the in-process recovery path below. Record the observed path. After restart, preserve the same provider key and state volume and require new startup/capability/peer/publication evidence.
+
+The host samples wall-clock progress every 15 seconds, including during launch tests and an in-flight controller operation. A gap of at least 45 seconds, an expired local heartbeat, or backward clock movement invalidates readiness synchronously at the next pulse or guarded operation. The daemon also checks execution boundaries, so a worker completion or authorization callback that resumes before the timer cannot bypass recovery.
 
 This is conservative liveness-gap detection, not a native macOS power-event listener. An event-loop stall or clock correction can also invalidate readiness. Sleeps below that threshold need not rotate startup; absolute execution deadlines and grant checks still apply. Tests use an injected clock and mocked runtime/transport, without sleeping this Mac or proving physical power-event behavior.
 
@@ -28,8 +30,8 @@ These fixtures do not demonstrate actual model cancellation, physical two-host c
 
 ## Deferred manual drill
 
-1. After the batch merges and full checks pass, record reviewed source/release identities. Use the pinned real model/MCPWire and isolated TEST_CREDIT fixtures, with the buyer on the other physical Mac.
-2. Observe real native generation before sleeping the provider Mac for more than 45 seconds. Record the actual winner if the small model finishes first; holding a completed HTTP response is not active native generation.
+1. After reviewing the current CLI/image/backend and passing relevant checks, record reviewed source/release identities. Use the pinned real model/MCPWire and isolated TEST_CREDIT fixtures, with the buyer on the other physical Mac.
+2. Observe real Docker worker generation before sleeping the provider Mac for more than 45 seconds. Record the actual winner if the small model finishes first; holding a completed HTTP response is not active worker generation.
 3. From the awake buyer, confirm ready-only discovery excludes the expired provider and purchases fail closed. Preserve the request, grant/startup binding and reservation IDs privately.
 4. Wake the provider. Require a fresh capability suite/startup/share/probe before new work, no automatic replay, and one terminal outcome for each accepted request. Verify old execution grants fail startup binding and authenticated retrieval still accesses previously durable results.
 5. Inspect the real outbox, receipt/debit and ledger/held-reservation invariants. Verify a new bounded request succeeds through agent discovery. Unknown outcomes remain pending under the audited reconciliation policy.

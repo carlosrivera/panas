@@ -6,6 +6,7 @@ export {
     joinArgs,
     shareArgs,
 } from "./commands";
+/** Raw owned-process handle; use superviseShare/Join for logical CLI lifecycle events. */
 export function startMcpwire(args: string[]) {
     return launchCli(args);
 }

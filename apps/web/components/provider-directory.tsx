@@ -10,9 +10,15 @@ import {
     displayedReadiness,
     elapsedSinceMs,
     formatAgo,
+    formatCredits,
     remainingReadyMs,
     type Observation,
 } from "../lib/provider-time";
+import {
+    cheapestPrice,
+    priceLimitToAtomic,
+    type PriceCurrency,
+} from "../lib/provider-price";
 import { Icon } from "./icons";
 import { ProviderCard } from "./pana-card";
 import { isFixturePreview } from "../lib/preview-mode";
@@ -38,6 +44,7 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
     const [query, setQuery] = useState("");
     const [mode, setMode] = useState<FilterMode>("all");
     const [maxPrice, setMaxPrice] = useState("");
+    const [currency, setCurrency] = useState<PriceCurrency | "all">("all");
     const [cursor, setCursor] = useState<string | null>(null);
     const [history, setHistory] = useState<(string | null)[]>([]);
     const request = useRef<AbortController | null>(null);
@@ -184,18 +191,37 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
         const timer = setInterval(() => setNow(performance.now()), 1000);
         return () => clearInterval(timer);
     }, []);
-    const applyFilters = (nextMode: FilterMode, nextMax: string) => {
+    const applyFilters = (
+        nextMode: FilterMode,
+        nextMax: string,
+        nextCurrency = currency,
+    ) => {
         const params = new URLSearchParams();
         params.set("readyOnly", String(nextMode === "awake"));
+        if (nextCurrency !== "all") params.set("currency", nextCurrency);
         if (nextMode === "free") params.set("maxPriceAtomic", "0");
-        else if (nextMax) params.set("maxPriceAtomic", nextMax);
+        else if (nextMax.trim()) {
+            try {
+                if (nextCurrency === "all")
+                    throw new Error("Choose a currency");
+                params.set(
+                    "maxPriceAtomic",
+                    priceLimitToAtomic(nextMax, nextCurrency),
+                );
+            } catch {
+                setError("INVALID_FILTERS");
+                return;
+            }
+        }
+        setError(null);
         setHistory([]);
         setCursor(null);
         setQuery(params.toString());
     };
     const hasFilters =
         new URLSearchParams(query).get("readyOnly") === "true" ||
-        new URLSearchParams(query).has("maxPriceAtomic");
+        new URLSearchParams(query).has("maxPriceAtomic") ||
+        new URLSearchParams(query).has("currency");
     return (
         <div className="directory-content">
             <p className="sr-only" role="status" aria-atomic="true">
@@ -215,13 +241,7 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                     const ready = page.providers.filter(
                         (p) => displayedReadiness(p, observation, now).ready,
                     ).length;
-                    const cheapest = page.providers.reduce<bigint | null>(
-                        (best, item) => {
-                            const price = BigInt(item.price.totalAtomic);
-                            return best === null || price < best ? price : best;
-                        },
-                        null,
-                    );
+                    const cheapest = cheapestPrice(page.providers);
                     return (
                         <section
                             className="directory-summary"
@@ -250,11 +270,15 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                                     <Icon name="tag" /> cheapest ask
                                 </span>
                                 <strong>
-                                    {cheapest === null
+                                    {!observation.trusted ||
+                                    page.providers.length === 0
                                         ? "—"
-                                        : cheapest === 0n
-                                          ? "free"
-                                          : `${new Intl.NumberFormat("en-US").format(cheapest)} credits`}
+                                        : cheapest
+                                          ? formatCredits(
+                                                cheapest.totalAtomic,
+                                                cheapest.currency,
+                                            )
+                                          : "choose currency"}
                                 </strong>
                             </div>
                             <div>
@@ -308,6 +332,28 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                                 {item.label}
                             </button>
                         ))}
+                        <label className="filter-chip filter-currency">
+                            <span className="sr-only">price currency</span>
+                            <select
+                                aria-label="price currency"
+                                value={currency}
+                                onChange={(event) => {
+                                    const next = event.target.value as
+                                        PriceCurrency | "all";
+                                    setCurrency(next);
+                                    setMaxPrice("");
+                                    applyFilters(mode, "", next);
+                                }}
+                            >
+                                <option value="all">all currencies</option>
+                                <option value="SOLANA_DEVNET_USDC">
+                                    devnet USDC
+                                </option>
+                                <option value="TEST_CREDIT">
+                                    test credits
+                                </option>
+                            </select>
+                        </label>
                         <form
                             className="filter-chip filter-price"
                             onSubmit={(event) => {
@@ -318,19 +364,28 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                             <label htmlFor="max-price">max price</label>
                             <input
                                 id="max-price"
-                                inputMode="numeric"
+                                inputMode={
+                                    currency === "SOLANA_DEVNET_USDC"
+                                        ? "decimal"
+                                        : "numeric"
+                                }
+                                maxLength={37}
                                 autoComplete="off"
                                 value={mode === "free" ? "0" : maxPrice}
-                                disabled={mode === "free"}
+                                disabled={mode === "free" || currency === "all"}
                                 onChange={(event) =>
                                     setMaxPrice(event.target.value)
                                 }
                                 onBlur={() => applyFilters(mode, maxPrice)}
                                 placeholder="any"
-                                aria-describedby="credit-unit"
+                                aria-describedby="price-unit"
                             />
-                            <span id="credit-unit" className="sr-only">
-                                in whole test credits
+                            <span id="price-unit" className="sr-only">
+                                {currency === "SOLANA_DEVNET_USDC"
+                                    ? "in devnet USDC, up to six decimal places"
+                                    : currency === "TEST_CREDIT"
+                                      ? "in whole test credits"
+                                      : "choose a currency to set a maximum price"}
                             </span>
                         </form>
                     </div>
@@ -373,7 +428,9 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                         {error === "NOT_FOUND"
                             ? "it’s not in the public registry. the directory has everyone current."
                             : error === "INVALID_FILTERS"
-                              ? "use a whole number of credits, or start the pages over."
+                              ? currency === "SOLANA_DEVNET_USDC"
+                                  ? "use a devnet USDC amount with up to six decimal places, or reset the filters."
+                                  : "choose a currency and use a valid price; test credits use whole numbers."
                               : "the registry didn’t answer cleanly. anything below is last known, status unknown."}
                     </p>
                     <button
@@ -385,6 +442,7 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                                 setHistory([]);
                                 setMode("all");
                                 setMaxPrice("");
+                                setCurrency("all");
                             } else void load(true);
                         }}
                     >
@@ -416,6 +474,7 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                                 setHistory([]);
                                 setMode("all");
                                 setMaxPrice("");
+                                setCurrency("all");
                             }}
                         >
                             clear filters →
@@ -471,7 +530,7 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                 <span>
                     pana-reported, not attested. a listing isn’t a booking.
                     panas can read prompts on their mac; the wire is encrypted.
-                    test credits only, no real money.
+                    free sharing or solana devnet usdc.
                 </span>
             </p>
         </div>

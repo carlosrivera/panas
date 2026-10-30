@@ -4,19 +4,23 @@ The agent cannot access the second Mac. These steps are a handoff for the owner,
 
 ## Prepare both physical hosts
 
-1. On each Apple Silicon Mac, check out the same reviewed release commit, install Node.js 24 and pinned pnpm, and run `pnpm install --frozen-lockfile`.
-2. Explicitly install the approved Ollama binary and small model. Verify Ollama version 0.40.12 and compare the local `/api/tags` digest with `a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67` (the same pin in [setup.example.json](setup.example.json)). Model download is an explicit owner action, not a hidden launch step.
-3. Generate a different Ed25519 provider key on each Mac, storing the private PEM mode 0600. Give only the public PEM and proposed provider ID to the test-project operator. Never move a private provider key or database credentials between machines for this demo.
-4. The authorized operator enrolls each provider public key through the [registry enrollment CLI](../../packages/registry/scripts/enroll.ts), following the operator-only [registry guide](../registry.md). Operator database/platform secrets stay on the operator host. Each Mac needs only its own provider key, pinned platform public key, public service URLs, and its runtime/model paths.
-5. Create a private provider environment per the [paid host README](../../apps/provider-mcp/README.md) and [native runtime setup](../../apps/provider/README.md). Use separate local application state. Both Macs may use the same loopback port on their separate computers. Launch the real controller with Node's environment-file loader:
+1. On each provider Mac, use Apple Silicon macOS 14+, Docker Desktop, Node.js 24, and the same reviewed CLI release with its matching Linux ARM64 image. Use [distribution setup](../distribution.md); source builds use `./docker/build.sh`. A buyer may run on a separate supported macOS/Linux computer without Docker or a local model.
+2. Explicitly install or copy the approved `qwen2.5:0.5b` model cache. The launcher verifies manifest/blob hashes against digest `a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67` and stages it read-only. The matching image supplies Ollama 0.40.12; host Ollama is not used for serving and no model download happens during launch.
+3. Generate a different provider identity on each Mac using `panas identity init`. Give only the public key and provider ID to the operator. Each provider keeps its own private key; operator database/platform secrets never move to the provider.
+4. The operator enrolls both provider public keys using the [registry enrollment procedure](../registry.md). Prepare separate owner-only provider environments using the release example, public service URLs and trusted pinned platform public key.
+5. Launch each provider through the Docker CLI with the appropriate private environment:
 
 ```sh
-node --env-file=/private/path/provider.env --import tsx apps/provider-mcp/src/host.ts
+~/.local/bin/panas provider --free --env-file /private/path/provider.env
 ```
 
-The controller must report fresh passing local checks and obtain its real startup-bound peer probe before ready publication. Its current probe is a separate local peer; it is not itself remote-NAT evidence.
+For a paid drill, configure both providers and a separately enrolled buyer for Solana devnet USDC; use `--solana-devnet --price-atomic 10000` instead of `--free` and follow [payments](../payments.md). The existing `manual-two-machine` harness below is a TEST_CREDIT regression harness; do not treat it as Solana funding validation. For that harness, use explicitly configured TEST_CREDIT provider prices and its matching buyer instead.
+
+The controller must pass container/capability checks and its startup-bound peer probe before readiness publication. Its local probe does not establish remote-NAT reachability. There are no published host runtime ports; preserve the provider-specific Docker state volume across restart.
 
 ## Establish remote buyer proof
+
+For the current free/devnet demo, configure the enrolled buyer via [distribution](../distribution.md), then use `panas demo-prompt` or `panas demo-prompt --paid` and record a real request/receipt on each physical provider. A devnet drill additionally requires an actual finalized funding transfer and matching asset-bound receipt. The TEST_CREDIT harness below remains a separate regression option and its compatibility with the selected Docker build must be verified, not assumed.
 
 The operator enrolls a test-credit buyer/session and supplies a mode 0600 buyer configuration following the [buyer setup guide](../../apps/buyer-mcp/README.md), with owner limits, public service URLs, discovery credential path, private buyer key path, pinned platform key path, and a fresh buyer state directory. Do not paste connection tickets or signed grants into a chat or issue.
 
@@ -55,8 +59,8 @@ The buyer discovers both and executes a separate request on each, verifying resu
 - Follow the [Volcano outage/recovery protocol](volcano-outage.md) for actual deployed registry/accounting interruptions, active work, terminal retry and ledger checks. These service drills remain deferred; client-only transport faults do not complete them.
 - Observe active remote generation before testing an adapter disconnect or owned-provider crash. Record the actual winner if cancellation races completion; do not force the report to say cancelled.
 - Sleep Mac B longer than the heartbeat TTL. Confirm ready-only discovery excludes it. Wake it, confirm a fresh capability suite/startup/probe, and execute another request without manually adding an MCP server. Follow the [sleep/wake recovery drill](provider-sleep-wake.md), including accepted work, old startup grants, paused/queued work and outbox/receipt checks; these physical observations remain deferred.
-- Restart the current host with its original private state and provider key; its owner claim checks the previous PID and stale socket before recovery. Legacy/untracked sockets and incomplete startup claims require explicit owner review. Follow [provider crash recovery](provider-crash.md); preserve encryption keys, requests, nonces and the terminal outbox.
+- Restart the current host with its original private state and provider key; its container-scoped owner claim validates prior ownership and stale socket state before recovery. Legacy/untracked sockets and incomplete startup claims require explicit owner review. Follow [provider crash recovery](provider-crash.md); preserve encryption keys, requests, nonces and the terminal outbox.
 - Retrieve the original request after reconnect/restart. Verify there is no automatic execution replay and the original receipt/debit is unchanged. Unknown work remains pending until the audited reconciliation path decides its outcome.
-- Stop the remote controller on Mac B manually after testing; the buyer harness cannot remotely clean it up. Verify both provider runtime processes are gone and preserve the ledger audit.
+- Stop the remote controller on Mac B manually after testing; the buyer harness cannot remotely clean it up. Verify the owned gateway/worker containers are stopped and preserve the ledger audit.
 
 Attach the reviewed metadata artifact and manual failure observations to issue #10. Keep its physical acceptance criteria pending until these steps really occurred. The harness deliberately never closes the issue automatically.

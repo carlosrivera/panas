@@ -762,6 +762,14 @@
 .filter-chip[aria-pressed="true"] .lime-dot {
     background: #5b7530;
 }
+.filter-currency select {
+    border: 0;
+    background: var(--background);
+    color: inherit;
+    font: inherit;
+    max-width: 100%;
+    min-height: 34px;
+}
 .filter-price {
     border-style: dashed;
     padding-right: 0.4rem;

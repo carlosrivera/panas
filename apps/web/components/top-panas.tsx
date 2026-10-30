@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     publicProviderPageSchema,
     type PublicProvider,
@@ -13,6 +13,7 @@ import {
 } from "../lib/provider-time";
 import { isFixturePreview } from "../lib/preview-mode";
 import { ProviderCard } from "./pana-card";
+import { comparePrices } from "../lib/provider-price";
 import "../app/top-panas.css";
 
 export function TopPanas() {
@@ -27,7 +28,15 @@ export function TopPanas() {
     const [error, setError] = useState(false);
     const [fromFixtures, setFromFixtures] = useState(false);
 
-    const load = useCallback(async () => {
+    const request = useRef<AbortController | null>(null);
+    const sequence = useRef(0);
+    const lastObservation = useRef<Observation | null>(null);
+    const load = useCallback(async (forceUnknown = false) => {
+        request.current?.abort();
+        const controller = new AbortController();
+        request.current = controller;
+        const turn = ++sequence.current;
+        if (forceUnknown) setObservation((old) => ({ ...old, trusted: false }));
         const startedAt = performance.now();
         try {
             let parsed: PublicProviderPage;
@@ -40,25 +49,31 @@ export function TopPanas() {
                 const response = await fetch("/api/providers?limit=50", {
                     cache: "no-store",
                     credentials: "omit",
-                    signal: AbortSignal.timeout(10_000),
+                    signal: AbortSignal.any([
+                        controller.signal,
+                        AbortSignal.timeout(10_000),
+                    ]),
                 });
                 if (!response.ok) throw new Error("registry unavailable");
                 parsed = publicProviderPageSchema.parse(await response.json());
             }
+            if (turn !== sequence.current) return;
             setPage(parsed);
-            setObservation((previous) =>
-                anchorObservation(
-                    previous.trusted ? previous : null,
-                    parsed.observedAt,
-                    startedAt,
-                ),
+            const nextObservation = anchorObservation(
+                lastObservation.current,
+                parsed.observedAt,
+                startedAt,
             );
+            lastObservation.current = nextObservation;
+            setObservation(nextObservation);
             setNow(performance.now());
             setError(false);
         } catch {
+            if (controller.signal.aborted || turn !== sequence.current) return;
+            setObservation((old) => ({ ...old, trusted: false }));
             setError(true);
         } finally {
-            setLoading(false);
+            if (turn === sequence.current) setLoading(false);
         }
     }, []);
 
@@ -68,11 +83,14 @@ export function TopPanas() {
             if (document.visibilityState === "visible") void load();
         }, 15_000);
         const revalidate = () => {
-            if (document.visibilityState === "visible") void load();
+            setObservation((old) => ({ ...old, trusted: false }));
+            if (document.visibilityState === "visible") void load(true);
         };
         document.addEventListener("visibilitychange", revalidate);
         window.addEventListener("focus", revalidate);
         return () => {
+            request.current?.abort();
+            sequence.current++;
             window.clearInterval(timer);
             document.removeEventListener("visibilitychange", revalidate);
             window.removeEventListener("focus", revalidate);
@@ -91,9 +109,10 @@ export function TopPanas() {
                 const aReady = displayedReadiness(a, observation, now).ready;
                 const bReady = displayedReadiness(b, observation, now).ready;
                 if (aReady !== bReady) return aReady ? -1 : 1;
-                const priceOrder =
-                    BigInt(a.price.totalAtomic) - BigInt(b.price.totalAtomic);
-                return priceOrder < 0n ? -1 : priceOrder > 0n ? 1 : 0;
+                return (
+                    comparePrices(a.price, b.price) ||
+                    a.providerId.localeCompare(b.providerId)
+                );
             })
             .slice(0, 3) ?? [];
 
@@ -104,7 +123,7 @@ export function TopPanas() {
                     <h2 id="top-panas-title">
                         panas on <span className="lime">call.</span>
                     </h2>
-                    <p>awake right now. they have lives, so no promises.</p>
+                    <p>discover a provider. put its compute to work.</p>
                 </div>
                 <Link className="top-panas-cta" href="/providers">
                     view all panas <span aria-hidden="true">→</span>
@@ -128,7 +147,7 @@ export function TopPanas() {
             )}
             {!loading && !error && providers.length === 0 && (
                 <div className="top-panas-message" role="status">
-                    <p>no panas awake yet. all good, naps are important.</p>
+                    <p>no panas listed yet. bring the first one online.</p>
                     <Link href="/guides/provider">wake your mac →</Link>
                 </div>
             )}

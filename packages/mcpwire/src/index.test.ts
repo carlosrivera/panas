@@ -22,6 +22,18 @@ it("keeps executable arguments separate and exposes only the provider tools", ()
 
 it("can launch the pinned external CLI through its public binary", async () => {
     const child = startMcpwire(["--help"]);
+    let nativeExit: { code: number | null; signal: string | null } | undefined;
+    child.on("message", (message: unknown) => {
+        if (
+            message &&
+            typeof message === "object" &&
+            "kind" in message &&
+            message.kind === "child_exit" &&
+            "code" in message &&
+            "signal" in message
+        )
+            nativeExit = message as typeof nativeExit;
+    });
     let output = "";
     child.stdout.on("data", (chunk: Buffer) => {
         output += chunk.toString();
@@ -30,6 +42,12 @@ it("can launch the pinned external CLI through its public binary", async () => {
         child.on("error", reject);
         child.on("close", resolve);
     });
-    expect(result).toBe(0);
+    // POSIX returns the owner guardian, which kills its group after reporting the CLI exit.
+    expect(
+        nativeExit ?? { code: result, signal: child.signalCode },
+    ).toMatchObject({
+        code: 0,
+        signal: null,
+    });
     expect(output).toContain("share");
 }, 10000);
