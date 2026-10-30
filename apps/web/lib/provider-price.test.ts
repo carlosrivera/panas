@@ -11,7 +11,7 @@ import {
     cheapestPrice,
     type ProviderPrice,
 } from "./provider-price";
-import { createPublicRead } from "./public-server";
+import { createPublicRead } from "./public-registry-client";
 
 const price = (
     totalAtomic: string,

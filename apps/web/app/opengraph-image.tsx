@@ -1,4 +1,7 @@
 import { ImageResponse } from "next/og";
+import { siteUrl } from "../lib/site-metadata";
+
+export const dynamic = "force-static";
 
 export const alt = "Panas — Your agent needs compute. Your pana has it.";
 export const size = { width: 1200, height: 630 };
@@ -59,7 +62,9 @@ export default function OpenGraphImage() {
                 }}
             >
                 <span>encrypted p2p · agent-native MCP · free or paid</span>
-                <span style={{ color: "#c5f74f" }}>panas.mcpwire.co</span>
+                <span style={{ color: "#c5f74f" }}>
+                    {new URL(siteUrl).host}
+                </span>
             </div>
         </div>,
         size,

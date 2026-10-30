@@ -2,7 +2,7 @@
 
 ## Boundary and deployment handoff
 
-Routes: `/providers`, `/providers/{providerId}`, same-origin `/api/providers` and `/api/providers/{providerId}`. The server proxy reads the nonsecret `PUBLIC_REGISTRY_URL` base and appends `/public/providers`; it never forwards browser credentials. Strict schemas from `@panas/contracts/public-registry` reject extra/private nested fields before any data is sent to the browser. Missing config, malformed data, outages, and invalid cursors have sanitized retry/reset states.
+Routes: `/providers/` and `/providers/detail/?id=<uuid>`. Static GitHub Pages views read the anonymous Volcano `/registry/public/providers` endpoint directly without credentials. Strict shared schemas reject malformed or extra/private nested fields before rendering. Fetches are bounded to256KiB with sanitized retry/reset states. Readiness remains live and expires conservatively; it is never baked into the static build.
 
 Actual public base verified anonymously: `https://panas.mcpwire.co/registry`. Local browser integration observed three real reported records, expired heartbeat states, then two ready observations as independent provider controllers returned. These observations are provider assertions; they do not prove two physical devices.
 

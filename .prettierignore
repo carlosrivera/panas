@@ -1,5 +1,7 @@
 pnpm-lock.yaml
 .next
+out
+.wrangler
 node_modules
 dist
 .turbo

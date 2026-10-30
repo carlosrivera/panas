@@ -23,6 +23,8 @@ import { Icon } from "./icons";
 import { ProviderCard } from "./pana-card";
 import { isFixturePreview } from "../lib/preview-mode";
 
+import { readPublicRegistry } from "../lib/public-registry-client";
+
 type FilterMode = "all" | "awake" | "free";
 const filterModes: { mode: FilterMode; label: string }[] = [
     { mode: "all", label: "all panas" },
@@ -87,18 +89,10 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                 const params = new URLSearchParams(query);
                 params.set("limit", "12");
                 if (cursor) params.set("cursor", cursor);
-                const result = await fetch(
-                    providerId
-                        ? `/api/providers/${providerId}`
-                        : `/api/providers?${params}`,
-                    {
-                        cache: "no-store",
-                        credentials: "omit",
-                        signal: AbortSignal.any([
-                            controller.signal,
-                            AbortSignal.timeout(10_000),
-                        ]),
-                    },
+                const result = await readPublicRegistry(
+                    params,
+                    providerId,
+                    controller.signal,
                 );
                 if (!result.ok) {
                     if (result.status === 404) throw new Error("NOT_FOUND");

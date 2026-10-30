@@ -1,5 +1,7 @@
 # Panas test platform
 
+The website is now a static GitHub Pages artifact served through Cloudflare at `https://panas.mcpwire.co/`. Volcano deployments and command-line verification are functions-only by default. Preserve the existing Volcano frontend, custom-domain binding, function routes and DNS origin because they still serve `/registry` and `/accounting`. See [hosting and routing](../deployment.md) for the split deployment and rollback procedure.
+
 The platform supports free access, prepaid Solana devnet USDC and internal TEST_CREDIT regression accounting. Devnet funding requires the matching migrations/services and configured public treasury values. Inference and MCPWire share/join processes run in separate worker/gateway Docker containers on provider Macs; the buyer does not require a Mac. The cloud is discovery, authorization, accounting and an informational website; it provides no device sandbox or hardware attestation.
 
 The committed `.volcano/project.json` binds every release to project `panas`, `7db5f8f4-c378-4ba5-a48f-f435bc4c034b`. Deployment refuses another project override, an account-wide token, a dirty checkout, or a different CLI/runtime family. Node 24, pnpm 12.16.1 and Volcano CLI 0.55.0 are checked; exact framework/dependency versions come from the committed pnpm lockfile. The frontend source layout uploads the workspace root with app root `apps/web`. Generated bundles use function-local Git ignores; root ignores also affect Volcano upload and must not hide a function entrypoint or its isolated manifest. The runtime supports Next 16; the actual built version and runtime patch are recorded in release evidence.
@@ -36,7 +38,7 @@ pnpm install --frozen-lockfile
 node --env-file=.env.platform.local --import tsx scripts/platform/deploy.ts --functions-only
 ```
 
-The command checks versions and cleanliness, runs formatting and repository checks/builds, bundles Node 24 ESM functions with isolated dependency manifests, applies tracked migrations, validates manifest actions, deploys and waits, then verifies remote behavior. Omit `--functions-only` to include the frontend after its changes are ready. No raw environment file is uploaded. Do not use `volcano cloud deploy --with-migrations`: that built-in path reruns every SQL file without tracking.
+The command checks versions and cleanliness, runs formatting and repository checks/builds, bundles Node 24 ESM functions with isolated dependency manifests, applies tracked migrations, validates manifest actions, deploys and waits, then verifies remote behavior. The frontend is published independently by `pages.yml`; do not deploy this static app as a Volcano frontend. No raw environment file is uploaded. Do not use `volcano cloud deploy --with-migrations`: that built-in path reruns every SQL file without tracking.
 
 `.github/workflows/platform.yml` performs the same operation on main/manual runs. The explicitly controlled `codex/issue-9-platform` push branch runs backend-only deployment while website PRs are pending. It never runs with deployment secrets for pull-request events. GitHub concurrency prevents overlapping workflow deployments. Coordinate local operator deployments with CI.
 

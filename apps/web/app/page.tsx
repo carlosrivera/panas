@@ -1,4 +1,6 @@
 import "./pr27.css";
+import Link from "next/link";
+import { sitePath } from "../lib/site-metadata";
 import { LandingRuntime } from "../components/landing-runtime";
 import { NeedTabs } from "../components/need-tabs";
 import { TopPanas } from "../components/top-panas";
@@ -7,7 +9,7 @@ export default function Home() {
         <>
             <video
                 id="v"
-                src="/video.mp4"
+                src={sitePath("/video.mp4")}
                 muted
                 playsInline
                 preload="auto"
@@ -15,15 +17,15 @@ export default function Home() {
 
             <div className="pr27-page page">
                 <nav aria-label="Main">
-                    <a className="logo" href="/">
+                    <Link className="logo" href="/">
                         🤝 panas<span>_</span>
-                    </a>
+                    </Link>
                     <ul>
                         <li>
-                            <a href="/guides/buyer">docs</a>
+                            <Link href="/guides/buyer">docs</Link>
                         </li>
                         <li>
-                            <a href="/providers">find a pana</a>
+                            <Link href="/providers">find a pana</Link>
                         </li>
                         <li>
                             <a href="https://github.com/carlosrivera/panas">
@@ -86,7 +88,7 @@ export default function Home() {
                     </div>
                     <h2 id="pick-title">what kind of pana are you?</h2>
                     <div className="pick-options">
-                        <a className="pick-option" href="/guides/buyer">
+                        <Link className="pick-option" href="/guides/buyer">
                             <span className="pick-verb">seek</span>
                             <span className="pick-line">
                                 my agent needs compute.
@@ -97,8 +99,8 @@ export default function Home() {
                             <span className="pick-link">
                                 connect your agent →
                             </span>
-                        </a>
-                        <a className="pick-option" href="/guides/provider">
+                        </Link>
+                        <Link className="pick-option" href="/guides/provider">
                             <span className="pick-verb">expose</span>
                             <span className="pick-line">my mac is bored.</span>
                             <span className="pick-detail">
@@ -106,7 +108,7 @@ export default function Home() {
                                 availability
                             </span>
                             <span className="pick-link">share your mac →</span>
-                        </a>
+                        </Link>
                     </div>
                     <div className="pick-footer">
                         you can be both. most panas are.

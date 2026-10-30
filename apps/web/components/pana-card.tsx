@@ -170,7 +170,7 @@ function CompactCard({
                         elapsedSinceMs(provider.lastSeenAt, observation, now),
                     )}
                 </time>
-                <Link href={`/providers/${provider.providerId}`}>
+                <Link href={`/providers/detail/?id=${provider.providerId}`}>
                     details<span className="sr-only"> for {name}</span>{" "}
                     <span aria-hidden="true">↗</span>
                 </Link>
