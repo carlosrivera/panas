@@ -9,6 +9,8 @@ import { createPublicRead } from "./public-server";
 import {
     anchorObservation,
     displayedReadiness,
+    elapsedSinceMs,
+    formatAgo,
     formatCredits,
     remainingReadyMs,
 } from "./provider-time";
@@ -196,4 +198,22 @@ it("repeated stale responses cannot renew readiness when automatic refresh repea
     expect(displayedReadiness(provider, replay, 46000).ready).toBe(false);
     const newer = anchorObservation(first, "2026-10-29T03:00:15.000Z", 16000);
     expect(newer.startedAt).toBe(16000);
+});
+
+it("measures seen-ago on the observation clock and formats compact ages", () => {
+    const observation = anchorObservation(
+        null,
+        "2026-01-01T00:01:00.000Z",
+        1_000,
+    );
+    expect(elapsedSinceMs("2026-01-01T00:00:48.000Z", observation, 4_000)).toBe(
+        15_000,
+    );
+    expect(elapsedSinceMs("2026-01-01T00:02:00.000Z", observation, 1_000)).toBe(
+        0,
+    );
+    expect(formatAgo(12_999)).toBe("12s ago");
+    expect(formatAgo(41 * 60_000)).toBe("41m ago");
+    expect(formatAgo(5 * 3_600_000)).toBe("5h ago");
+    expect(formatAgo(3 * 86_400_000)).toBe("3d ago");
 });

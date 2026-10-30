@@ -1,5 +1,7 @@
 import "./pr27.css";
 import { LandingRuntime } from "../components/landing-runtime";
+import { NeedTabs } from "../components/need-tabs";
+import { TopPanas } from "../components/top-panas";
 export default function Home() {
     return (
         <>
@@ -46,7 +48,7 @@ export default function Home() {
                     </div>
 
                     <p className="kicker">
-                        panas (n.) — spanish for friends. also: this.
+                        your agent needs compute. your pana has it.
                     </p>
                     <h1>
                         free compute,
@@ -111,136 +113,8 @@ export default function Home() {
                     </div>
                 </dialog>
 
-                <section
-                    className="use-cases"
-                    aria-labelledby="use-cases-title"
-                >
-                    <p className="prototype-annotation">
-                        the vision: agents sharing work across a network of
-                        panas. built on discovery, encrypted inference, and
-                        receipts.
-                    </p>
-                    <div className="use-cases-inner">
-                        <h2 id="use-cases-title">
-                            a friend in need
-                            <br />
-                            is a friend in <span>deed.</span>
-                        </h2>
-                        <p className="sub">
-                            one shared model is a start. a network of panas is
-                            infrastructure.
-                        </p>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th scope="col">the need</th>
-                                    <th scope="col">the deed</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        your agent hit its rate limit at 3am.
-                                    </td>
-                                    <td>
-                                        a pana is awake. one bounded request,
-                                        free.
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>500 tiny jobs. zero budget.</td>
-                                    <td>
-                                        split them across every pana online.
-                                        map-reduce among friends.
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>"is this pana lying to me?"</td>
-                                    <td>
-                                        ask a second pana. same pinned model,
-                                        temperature 0, compare answers.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-
-                <section className="paid" aria-labelledby="paid-title">
-                    <p className="prototype-annotation">
-                        built today: free sharing and solana devnet usdc. on the
-                        roadmap: bigger models and multi-provider jobs.
-                    </p>
-                    <div className="paid-inner">
-                        <h2 id="paid-title">
-                            panas don't let panas
-                            <br />
-                            spend gpu without <span className="lime">pay.</span>
-                        </h2>
-                        <p className="sub">
-                            free is for friends. paid is for friends with an m4
-                            max.
-                        </p>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th scope="col">the situation</th>
-                                    <th scope="col">the move</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        bought a mac mini to run open claw for
-                                        one week. it's been a paperweight since.
-                                    </td>
-                                    <td>
-                                        list it. set a price. it pays itself off
-                                        one request at a time.
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        your 128gb m4 max spends the night
-                                        rendering a screensaver.
-                                    </td>
-                                    <td>
-                                        paid panas run bigger models. your ram
-                                        finally has a job.
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        your agent needs 10,000 jobs done by
-                                        morning.
-                                    </td>
-                                    <td>
-                                        fan out to every paid pana. pay per
-                                        request, not per hour.
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>"what if the pana flakes halfway?"</td>
-                                    <td>
-                                        reserved up front. charged once, only on
-                                        success. refunded otherwise.
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>"my agent will spend my rent."</td>
-                                    <td>
-                                        owner-set caps per request, session and
-                                        day. the agent can't raise them.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <p className="prototype-annotation prototype-policy">
-                        prototype settlement: uncertain work stays held for
-                        reconciliation; definitive failed work settles zero.
-                    </p>
-                </section>
+                <NeedTabs />
+                <TopPanas />
 
                 {/*  sticky call to action: a dark arch that rises over the page  */}
                 <aside className="dock" aria-label="Get started with Panas">
