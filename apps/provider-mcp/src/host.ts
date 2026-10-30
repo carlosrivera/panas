@@ -10,6 +10,7 @@ import {
     inspectHost,
     serveLocal,
     claimProviderHost,
+    gatewayOwnershipScope,
 } from "@panas/provider";
 import { registryPriceSchema } from "@panas/contracts/registry";
 import { AccountingHttpClient } from "./accounting-client.js";
@@ -23,7 +24,7 @@ function required(name: string): string {
 }
 const config = configFromEnv(),
     paths = await prepareDataPath(config.dataPath);
-const ownership = await claimProviderHost(config.dataPath);
+await claimProviderHost(config.dataPath, await gatewayOwnershipScope());
 const keyPath = required("PANAS_PROVIDER_PRIVATE_KEY_PATH");
 if ((await stat(keyPath)).mode & 0o077)
     throw new Error(
@@ -103,9 +104,6 @@ process.once("SIGINT", () => {
     void stop();
 });
 try {
-    if (ownership.recovered) {
-        /* Docker worker is owned by this sandbox, never adopt host runtimes. */
-    }
     let initialized = false;
     timer = setInterval(() => {
         controller.observeLiveness();

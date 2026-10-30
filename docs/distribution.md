@@ -10,11 +10,11 @@ Requires Node.js **24** with its bundled npm. The installer verifies the tarball
 
 ## One-time operator handoff
 
-An operator enrolls each provider's public identity and a buyer with a fresh funded TEST_CREDIT session. This prototype is an authorized marketplace; a public listing or MCPWire ticket does not grant execution. Keep operator database/signing credentials on the operator's computer.
+An operator enrolls each provider's public identity and a buyer with a fresh owner-approved session (zero balance and zero money caps work for free providers). This prototype is an authorized marketplace; a public listing or MCPWire ticket does not grant execution. Keep operator database/signing credentials on the operator's computer.
 
 On each provider Mac:
 
-- macOS 14+ on Apple Silicon, a dedicated **Ollama 0.40.12** binary bundle, and explicitly installed **qwen2.5:0.5b** model with digest `a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67`. Copy the approved binary/model blobs from the operator Mac if desired. Launch never downloads weights silently.
+- macOS 14+ on Apple Silicon, Docker Desktop, and explicitly installed **qwen2.5:0.5b** model with digest `a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67`. Copy the approved model cache from the operator Mac if desired. The matching Docker image contains the pinned Linux runtime; no host Ollama binary is used for serving. Launch never downloads weights silently.
 - Generate a new identity with `~/.local/bin/panas identity init --dir "$HOME/.config/panas"`. Give only its UUID and `provider-public.pem` to the operator. Keep `provider.pem` local. Never copy a different Mac's provider state/key.
 - Obtain the platform **public** PEM through a trusted channel; current SHA-256 SPKI fingerprint is `804e30700efdee88a0833bab3fc88c1e13d8591e57c600233d7579ef452c7353`.
 - Use the release's `provider.env.example` to create `~/.config/panas/provider.env` with mode0600. Fill the UUID and absolute runtime/model/key/state paths. Keep the fixed price at `2` TEST_CREDIT for this demo. Retain the same state/key for restarts. An existing identity directory is never overwritten.

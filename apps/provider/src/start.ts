@@ -7,10 +7,11 @@ import { EncryptedStore } from "./store.js";
 import { ProviderDaemon } from "./daemon.js";
 import { serveLocal } from "./ipc.js";
 import { claimProviderHost } from "./ownership.js";
+import { gatewayOwnershipScope } from "./container-profile.js";
 
 const config = configFromEnv(),
     paths = await prepareDataPath(config.dataPath);
-const ownership = await claimProviderHost(config.dataPath);
+await claimProviderHost(config.dataPath, await gatewayOwnershipScope());
 const runtime = await createProviderRuntime(config);
 const daemon = new ProviderDaemon(
     config,
@@ -35,9 +36,6 @@ process.once("SIGINT", earlyStop);
 process.once("SIGTERM", earlyStop);
 const token = randomBytes(32).toString("hex");
 // The private parent directory and socket permissions limit access to this local account.
-if (ownership.recovered) {
-    /* Docker worker is owned by this sandbox, never adopt host runtimes. */
-}
 const report = await daemon.launch();
 const server = await serveLocal(daemon, paths.socketPath, token).catch(
     async (error: unknown) => {
