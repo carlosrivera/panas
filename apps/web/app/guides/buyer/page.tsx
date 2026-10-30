@@ -12,26 +12,15 @@ export const metadata = pageMetadata(
     "Connect your agent to Panas through MCP. Discover ready providers, request inference and retrieve a receipt.",
     "/guides/buyer",
 );
-const ownerTemplate = `{
-  "buyerId": "OWNER_ENROLLED_BUYER_UUID",
-  "sessionId": "OWNER_SELECTED_SESSION_UUID",
-  "privateKeyPath": "/absolute/private/buyer-ed25519.pem",
-  "dataDir": "/absolute/private/panas-buyer-data",
-  "accountingUrl": "https://panas.mcpwire.co/accounting",
-  "registryUrl": "https://panas.mcpwire.co/registry",
-  "discoveryTokenPath": "/absolute/private/discovery-token",
-  "platformPublicKeyPath": "/absolute/private/platform-public.pem",
-  "limits": {
-    "maxRequestAtomic": "0",
-    "maxSessionAtomic": "0",
-    "maxDailyAtomic": "0"
-  }
-}`;
-const mcpTemplate = `# Generate Codex TOML with absolute installed paths
-~/.local/bin/panas codex-config
+const mcpTemplate = `# Open the demo dashboard and copy the prompt for your agent
+~/.local/bin/panas demo
 
-# Copy the free-only setup and test prompt
-~/.local/bin/panas demo-prompt | pbcopy`;
+# Your agent configures its own MCP connection automatically
+~/.local/bin/panas setup --client codex
+# Or: ~/.local/bin/panas setup --client antigravity
+
+# Run Hello world directly, including from the current agent chat
+~/.local/bin/panas hello`;
 const tools = [
     [
         "get_balance",
@@ -80,22 +69,21 @@ export default function BuyerGuide() {
             quickStart={
                 <GuideQuickStart
                     command={
-                        "curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.6/install.sh | sh && ~/.local/bin/panas demo-prompt"
+                        "curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh | sh && ~/.local/bin/panas demo-prompt"
                     }
                 >
                     <>
-                        Paste the printed prompt into Codex. You need Node.js 24
-                        and your enrolled buyer configuration; your agent needs
-                        no local model.{" "}
-                        <a href="#owner" className="inline-link">
-                            Owner setup →
-                        </a>
+                        Choose Codex or Antigravity in the dashboard, press c to
+                        copy the prompt, and paste it into your agent. Free
+                        buyer enrollment and MCP setup are automatic. You need
+                        Node.js 24; no account setup, wallet, Docker or local
+                        model.
                     </>
                 </GuideQuickStart>
             }
             sections={[
                 { id: "prepare", label: "Prepare your client" },
-                { id: "owner", label: "Set owner authority" },
+                { id: "owner", label: "Automatic free access" },
                 { id: "connect", label: "Connect the facade" },
                 { id: "use", label: "Use the ten tools" },
                 { id: "recover", label: "Recover safely" },
@@ -112,7 +100,7 @@ export default function BuyerGuide() {
                     Docker or Ollama. The provider runs the sandboxed worker on
                     its own Mac.
                 </p>
-                <CodeSample label="Install without cloning">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.6/install.sh -o /tmp/panas-install.sh
+                <CodeSample label="Install without cloning">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh -o /tmp/panas-install.sh
 sh /tmp/panas-install.sh`}</CodeSample>
                 <p>
                     No repository checkout or pnpm installation is needed by
@@ -122,44 +110,25 @@ sh /tmp/panas-install.sh`}</CodeSample>
             <GuideSection
                 id="owner"
                 number="02"
-                title="Keep spending authority with the owner."
+                title="Start with free access automatically."
             >
                 <p>
-                    An operator enrolls your Ed25519 public key, creates the
-                    buyer session. Free providers work with zero balance and
-                    zero money caps. Paid providers use a separate Solana devnet
-                    test-USDC account and verified prepaid deposits. Ask for the
-                    registry/accounting addresses, pinned platform public key,
-                    and a read-only discovery credential through a private
-                    channel. There is no self-serve enrollment or real-money
-                    purchase flow on this site.
+                    Panas creates your own private identity locally and enrolls
+                    a free-only buyer session automatically. Your keys stay on
+                    your computer. No operator approval, credentials, session
+                    IDs or configuration files need to be supplied by hand.
                 </p>
-                <GuideNotice title="Free access or fixed devnet USDC quotes.">
+                <GuideNotice title="Zero spending authority.">
                     <p>
-                        Quotes are fixed per successful bounded request. Token
-                        counts are diagnostic, not the billing unit. Devnet USDC
-                        uses six decimal places; test tokens have no real
-                        monetary value. The example caps below are owner
-                        configuration—not a price offer or a credit balance.
-                        Local and cloud limits both apply.
+                        Free demos start with zero balance and zero spending
+                        limits, enforced locally and by the API. They can only
+                        discover free providers and accept zero-charge requests.
+                        Paid access remains a separate owner-managed setup.
                     </p>
                 </GuideNotice>
                 <p>
-                    Create the owner configuration outside version control. It
-                    and every referenced key/credential file must be owner-owned
-                    regular files with mode <code>0600</code>. The dedicated
-                    data directory must be mode <code>0700</code>. Replace every
-                    uppercase identity/host placeholder and every example path
-                    before using this template.
-                </p>
-                <CodeSample label="Owner configuration template — replace placeholders">
-                    {ownerTemplate}
-                </CodeSample>
-                <p>
-                    Only the owner edits identities, keys, session IDs, and
-                    spending limits. The agent cannot raise them through MCP
-                    tools. Daily caps use UTC; session and daily authority count
-                    gross completed charges even after refunds.
+                    A free device must be ready for the demo to run. If none is
+                    available, your agent will say so and stop.
                 </p>
             </GuideSection>
             <GuideSection
@@ -168,11 +137,10 @@ sh /tmp/panas-install.sh`}</CodeSample>
                 title="Add one MCP server to your client."
             >
                 <p>
-                    Save PANAS_BUYER_CONFIG in your owner-only buyer.env file.
-                    Generate the Codex configuration below and merge only its
-                    panas table into ~/.codex/config.toml, preserving your other
-                    settings. Private credentials remain in local files;
-                    configuration contains paths, not keys.
+                    Select your agent in the dashboard and copy the complete
+                    prompt. The agent runs the setup command itself, preserving
+                    other MCP servers and settings. Codex and Antigravity each
+                    get a separate local demo store with zero spending limits.
                 </p>
                 <p>
                     <a
@@ -182,14 +150,15 @@ sh /tmp/panas-install.sh`}</CodeSample>
                         Official Codex MCP configuration ↗
                     </a>
                 </p>
-                <CodeSample label="Generate the Codex configuration and free demo prompt">
+                <CodeSample label="Copy the demo prompt or run Hello world">
                     {mcpTemplate}
                 </CodeSample>
                 <p>
-                    Reload your client’s MCP configuration. You should see ten
-                    Panas tools. Provider discovery and handoff happen behind
-                    this stable interface; you do not install a new MCP server
-                    for each provider.
+                    Your client may need to reload its MCP configuration to
+                    expose the ten Panas tools. The agent can run panas hello
+                    immediately from the current chat while that connection is
+                    being loaded. Provider discovery and the private handoff are
+                    automatic.
                 </p>
             </GuideSection>
             <GuideSection

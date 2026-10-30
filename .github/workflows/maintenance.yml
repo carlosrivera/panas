@@ -1,7 +1,5 @@
 name: Panas test maintenance
 on:
-    schedule:
-        - cron: "0 * * * *"
     workflow_dispatch:
 permissions:
     contents: read

@@ -6,6 +6,13 @@ import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { launchDockerProvider } from "./docker-provider.js";
 import { parseArgs } from "node:util";
+import {
+    installMcpClient,
+    ensureDemoSession,
+    prepareDemoConfig,
+    SetupError,
+} from "./client-setup.js";
+import type { DemoClient } from "./console.js";
 
 const help = `Panas — share bounded inference from an Apple Silicon Mac
 
@@ -16,6 +23,10 @@ panas provider --solana-devnet --price-atomic 10000
 panas mcp-config
 panas codex-config
 panas demo-prompt [--paid]
+panas demo [--client codex|antigravity] [--plain]
+panas setup --client codex|antigravity
+panas hello
+panas request REQUEST_UUID
 panas doctor
 panas buyer
 
@@ -24,8 +35,9 @@ Override with --env-file /absolute/private/config.env.
 Provider isolation: Docker gateway + offline CPU inference worker. No native fallback.
 
 Requires Node 24. Provider requires macOS 14+ on Apple Silicon and
-Docker Desktop and the explicitly installed pinned model. Enrollment is operator-managed.
+Docker Desktop and the explicitly installed pinned model. Free buyer demos enroll automatically. Provider and paid enrollment is operator-managed.
 Buyer speaks MCP on stdio; keep that channel free of ordinary logging.
+Interactive provider and demo commands open a dashboard. Use --plain for scripts.
 `;
 async function main() {
     if (Number(process.versions.node.split(".")[0]) !== 24)
@@ -42,9 +54,11 @@ async function main() {
             "solana-devnet": { type: "boolean" },
             "price-atomic": { type: "string" },
             "sandbox-image": { type: "string" },
+            plain: { type: "boolean" },
+            client: { type: "string" },
         },
     });
-    if (values.help || process.argv.length === 2) {
+    if (values.help || (process.argv.length === 2 && !process.stdin.isTTY)) {
         process.stdout.write(help);
         return;
     }
@@ -54,7 +68,17 @@ async function main() {
         );
         return;
     }
-    const [command, action, ...extra] = positionals;
+    const [requestedCommand, action, ...extra] = positionals;
+    const command =
+        requestedCommand === "demo" || !requestedCommand
+            ? "demo-prompt"
+            : requestedCommand;
+    if (values.client && !["codex", "antigravity"].includes(values.client))
+        throw new SetupError("Choose --client codex or --client antigravity.");
+    if (values.client && !["setup", "demo-prompt"].includes(command))
+        throw new SetupError("--client applies to setup and demo commands.");
+    const client: DemoClient =
+        values.client === "antigravity" ? "antigravity" : "codex";
     if (
         values["sandbox-image"] &&
         !["provider", "doctor"].includes(command ?? "")
@@ -77,16 +101,55 @@ async function main() {
         !values.dir &&
         !values["env-file"]
     ) {
-        process.stdout.write(
-            await readFile(
-                new URL(
-                    values.paid
-                        ? "../demo-paid-prompt.md"
-                        : "../demo-prompt.md",
-                    import.meta.url,
-                ),
-                "utf8",
+        const prompt = await readFile(
+            new URL(
+                values.paid ? "../demo-paid-prompt.md" : "../demo-prompt.md",
+                import.meta.url,
             ),
+            "utf8",
+        );
+        const forClient = (selected: DemoClient) =>
+            `This demo is running in ${selected === "codex" ? "Codex" : "Antigravity"}. Use --client ${selected} when configuring Panas.\n\n${prompt}`;
+        if (
+            !values.paid &&
+            !values.plain &&
+            process.stdin.isTTY &&
+            process.stderr.isTTY &&
+            process.env.TERM !== "dumb"
+        ) {
+            const { ConsoleModel, startConsole } = await import("./console.js");
+            const release = JSON.parse(
+                await readFile(
+                    new URL("../release.json", import.meta.url),
+                    "utf8",
+                ),
+            );
+            const model = new ConsoleModel({
+                version: release.version,
+                mode: "demo",
+                prompt: forClient,
+            });
+            model.client = client;
+            await new Promise<void>((resolve) => {
+                const screen = startConsole(model, () => {
+                    screen.stop();
+                    resolve();
+                });
+            });
+        } else
+            process.stdout.write(
+                values.paid || !values.client ? prompt : forClient(client),
+            );
+        return;
+    }
+    if (
+        (command === "hello" && !action && !extra.length) ||
+        (command === "request" && action && !extra.length)
+    ) {
+        const { helloWorld } = await import("./hello.js");
+        await helloWorld(
+            fileURLToPath(import.meta.url),
+            command === "request" ? action : undefined,
         );
         return;
     }
@@ -133,9 +196,14 @@ async function main() {
         action ||
         extra.length ||
         values.dir ||
-        !["provider", "doctor", "buyer", "mcp-config", "codex-config"].includes(
-            command,
-        )
+        ![
+            "provider",
+            "doctor",
+            "buyer",
+            "mcp-config",
+            "codex-config",
+            "setup",
+        ].includes(command)
     )
         throw new Error("Invalid command");
     const envPath = resolve(
@@ -145,17 +213,59 @@ async function main() {
                 ".config/panas",
                 command === "buyer" ||
                     command === "mcp-config" ||
-                    command === "codex-config"
+                    command === "codex-config" ||
+                    command === "setup"
                     ? "buyer.env"
                     : "provider.env",
             ),
     );
-    {
-        const path = envPath;
-        const info = await lstat(path);
+    if (command !== "setup") {
+        const info = await lstat(envPath).catch(() => {
+            throw new SetupError(
+                "Panas configuration is missing. Run panas setup --client codex or antigravity for the free demo.",
+            );
+        });
         if (!info.isFile() || info.isSymbolicLink() || info.mode & 0o077)
             throw new Error("Private env file required");
-        process.loadEnvFile(path);
+        process.loadEnvFile(envPath);
+    }
+    if (command === "buyer" && process.env.PANAS_DEMO_FREE === "1") {
+        const configPath = process.env.PANAS_BUYER_CONFIG;
+        if (!configPath) throw new SetupError("Missing demo configuration.");
+        const directory = dirname(configPath),
+            selected = directory.split(/[\\/]/).at(-1);
+        if (
+            !["codex", "antigravity", "terminal"].includes(selected ?? "") ||
+            resolve(directory) !==
+                resolve(homedir(), ".config/panas/clients", selected!)
+        )
+            throw new SetupError("Invalid demo directory.");
+        await ensureDemoSession({
+            home: homedir(),
+            client: selected as DemoClient | "terminal",
+        });
+    }
+    if (command === "setup") {
+        const { envPath: demoEnv } = await prepareDemoConfig({
+            home: homedir(),
+            client,
+        });
+        const configurationFile = await installMcpClient({
+            home: homedir(),
+            client,
+            envPath: demoEnv,
+            cliPath: fileURLToPath(import.meta.url),
+        });
+        process.stdout.write(
+            JSON.stringify({
+                client,
+                configurationFile,
+                freeOnly: true,
+                mcpServer: "panas",
+                reloadClientIfToolsMissing: true,
+            }) + "\n",
+        );
+        return;
     }
     if (command === "codex-config") {
         process.stdout.write(
@@ -210,15 +320,83 @@ async function main() {
     } else if (values["price-atomic"])
         throw new Error("Choose --solana-devnet for this price");
     if (command === "provider" || command === "doctor") {
-        await launchDockerProvider(command, values["sandbox-image"]);
+        if (
+            command === "provider" &&
+            !values.plain &&
+            process.stdin.isTTY &&
+            process.stderr.isTTY &&
+            process.env.TERM !== "dumb"
+        ) {
+            const { ConsoleModel, startConsole } = await import("./console.js");
+            const { observeProvider } =
+                await import("./provider-observation.js");
+            const release = JSON.parse(
+                await readFile(
+                    new URL("../release.json", import.meta.url),
+                    "utf8",
+                ),
+            );
+            const controller = new AbortController();
+            const model = new ConsoleModel({
+                version: release.version,
+                mode: "provider",
+                providerId: process.env.PANAS_PROVIDER_ID ?? "",
+                price:
+                    process.env.PANAS_PRICE_ATOMIC === "0"
+                        ? "Free · no wallet needed"
+                        : `${process.env.PANAS_PRICE_ATOMIC ?? "?"} atomic ${process.env.PANAS_PRICE_CURRENCY ?? "TEST_CREDIT"} / request`,
+            });
+            let dismiss: (() => void) | undefined;
+            const quit = () => {
+                model.stopping = true;
+                model.ready = false;
+                model.detail =
+                    "Stopping owned containers and preserving your keys and durable state.";
+                model.update();
+                controller.abort();
+                dismiss?.();
+            };
+            const screen = startConsole(model, quit);
+            process.once("SIGINT", quit);
+            process.once("SIGTERM", quit);
+            try {
+                await launchDockerProvider(command, values["sandbox-image"], {
+                    progress: (phase, detail) => model.progress(phase, detail),
+                    status: (value) => {
+                        observeProvider(model, value);
+                    },
+                    signal: controller.signal,
+                });
+            } catch {
+                if (!controller.signal.aborted) {
+                    model.failed = true;
+                    model.ready = false;
+                    model.log(`Stopped during: ${model.phase}`);
+                    model.phase = "Provider could not start";
+                    model.detail =
+                        "Check Docker Desktop, the approved model, and provider enrollment. Press q to return to your shell.";
+                    model.update();
+                    process.exitCode = 1;
+                    await new Promise<void>((resolve) => {
+                        dismiss = resolve;
+                    });
+                }
+            } finally {
+                screen.stop();
+                process.off("SIGINT", quit);
+                process.off("SIGTERM", quit);
+            }
+        } else await launchDockerProvider(command, values["sandbox-image"]);
         return;
     }
     await import(new URL(modules[command]!, import.meta.url).href);
 }
-void main().catch(() => {
+void main().catch((error: unknown) => {
     // Configuration/crypto exceptions can contain private material. Never print them.
     process.stderr.write(
-        "Panas could not start. Use --help; verify Node 24, supported hardware, owner-only configuration, and a new identity directory.\n",
+        error instanceof SetupError
+            ? error.message + "\n"
+            : "Panas could not start. Use --help; verify Node 24, supported hardware, owner-only configuration, and a new identity directory.\n",
     );
     process.exitCode = 1;
 });

@@ -1,15 +1,15 @@
 # Panas AI architecture
 
-Panas is peer-to-peer inference infrastructure for AI agents: **discover → quote → authorize → connect → infer → receipt**. Participating computers supply inference capacity; a dedicated inference data center is not required. Volcano hosts the centralized discovery, authorization, and accounting control plane. Prompts and outputs travel over the encrypted buyer-to-provider MCPWire connection.
+Panas is peer-to-peer inference infrastructure for AI agents: **discover → quote → authorize → connect → infer → receipt**. Participating computers supply inference capacity; a dedicated inference data center is not required. Cloudflare Workers hosts the centralized discovery, authorization, and accounting control plane. Prompts and outputs travel over the encrypted buyer-to-provider MCPWire connection.
 
 ## Platform and deployment boundaries
 
 The current provider launcher targets Apple Silicon macOS 14+ because that is the team's available hardware. Serving runs in two Linux ARM64 Docker containers, not native host Ollama. The small model runs on CPU; the current path does not use Metal acceleration and has no native fallback. Other Docker hosts/architectures require additional launcher/runtime validation before being advertised as supported.
 
-The buyer needs Node.js 24, the buyer MCP facade, enrolled owner configuration, and an MCP-compatible agent client. It needs neither macOS, Docker, nor a local inference model. Transport process supervision supports macOS and Linux; Windows process-tree supervision is outside the current support matrix.
+The buyer needs Node.js 24, the buyer MCP facade, and an MCP-compatible agent client. Free demos automatically generate a private local identity and enroll a zero-authority session; paid buyers retain operator-managed owner configuration. It needs neither macOS, Docker, nor a local inference model. Transport process supervision supports macOS and Linux; Windows process-tree supervision is outside the current support matrix.
 
 ```text
-Buyer agent ── MCP ── Buyer facade ── signed HTTPS ── Volcano
+Buyer agent ── MCP ── Buyer facade ── signed HTTPS ── Cloudflare Workers
                            │                         registry / accounting
                            │ encrypted MCPWire                │
                            ▼                                  │ signed grants,
@@ -31,8 +31,8 @@ Solana devnet ── verified finalized USDC deposit ──► prepaid buyer bal
 | Gateway container / persistent provider controller | Startup tests, registry publication, MCPWire share, disposable peer adapters, signed authorization, one device-wide queue, encrypted durable request state, terminal outbox |
 | Offline worker container                           | Dedicated pinned Ollama process, model info, bounded generation and cancellation; receives no application or treasury private keys                                          |
 | Buyer MCP facade                                   | Stable agent tools, cloud clients, owner budget checks, private connection handoff, signed operations, verified results and receipt retrieval                               |
-| Volcano registry                                   | Enrolled provider public keys, capability reports, fresh readiness, public projection and authenticated discovery                                                           |
-| Volcano accounting                                 | Quotes, owner authority, asset-bound balances, funding intents/confirmation, reservations, signed grants, ledger, receipts, reconciliation                                  |
+| Cloudflare registry                                | Enrolled provider public keys, capability reports, fresh readiness, public projection and authenticated discovery                                                           |
+| Cloudflare accounting                              | Quotes, owner authority, asset-bound balances, funding intents/confirmation, reservations, signed grants, ledger, receipts, reconciliation                                  |
 | Operations and website                             | Private financial/release health and pending-review maintenance; public informational/provider views                                                                        |
 
 See [Docker boundary](docker-sandbox.md), [buyer facade](../apps/buyer-mcp/README.md), and [provider controller](../apps/provider-mcp/README.md).
@@ -86,3 +86,28 @@ Buyer state, provider stored results and cloud private descriptors use AES-256-G
 Volcano hosts registry/accounting HTTP functions, registry MCP discovery, PostgreSQL and a private operations function. The Next.js website is statically exported to GitHub Pages and served at `panas.mcpwire.co` by Cloudflare. More-specific API route exclusions preserve `/registry` and `/accounting` on the existing Volcano origin; provider and buyer configuration does not change. GitHub maintenance marks overdue requests pending; it never invents terminal events, releases holds or pays out automatically. New purchases and execution authorization fail closed during cloud outages; already-authorized bounded work may finish and persist an outbox event for later delivery. See [deployment](deployment.md) and [operations](platform/operations.md).
 
 The [integration evidence](integration/README.md) records earlier native-build cloud/peer transactions separately from [local Docker isolation/inference observations](validation/docker-sandbox.md). A complete current Docker transaction across two physical Macs, physical sleep/crash recovery and an actual deployed-service outage remain acceptance gates until observed. Implementation, fixtures, local probes and historical runs do not silently satisfy those gates.
+
+## Cloudflare API hosting and free enrollment
+
+Registry and accounting run in the `panas-api` Worker at the unchanged
+`https://panas.mcpwire.co/registry` and `/accounting` bases. PostgreSQL remains
+on Volcano with the existing data and keys. Direct per-invocation `pg` connections
+preserve the proxy-required `application_name` and TLS startup options; Hyperdrive
+cannot currently validate that proxy's startup requirements. API responses are not
+cached. A Workers Cron Trigger performs metadata reconciliation every ten minutes.
+
+`POST /accounting/demo/enroll` verifies a short-lived, domain-separated Ed25519
+proof of possession. The public key determines the buyer UUID; callers cannot
+select or overwrite another buyer. Enrollment creates zero request/session/daily
+spending caps, zero credit and a renewable 24-hour session. Retries keep the same
+identity and session, preserve spending state and cannot enable disabled records
+or change operator-owned authority. The endpoint is size-bounded and rate-limited
+per Cloudflare client IP. It does not enroll providers or fund wallets.
+
+The response contains the platform public key and a signed 24-hour token scoped
+to free-provider discovery. Registry verifies that token and forces zero-price
+filters for both HTTP and MCP; paid-provider details are denied. All purchases,
+provider actions and receipts keep their existing signed authorization. The CLI
+stores its private key locally, pins the platform key and renews its demo session
+when launching the buyer facade. Separate client stores isolate demos from paid
+owner configuration. See [Cloudflare deployment](platform/cloudflare.md).

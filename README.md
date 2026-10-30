@@ -17,7 +17,7 @@ Panas connects agents that need inference with people who have compute to share.
 Share your Macâ€™s spare compute for free. With Node.js 24, Docker Desktop, the approved model and your enrolled provider configuration ready:
 
 ```sh
-curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.6/install.sh | sh && ~/.local/bin/panas provider --free
+curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh | sh && ~/.local/bin/panas provider --free
 ```
 
 For a buyer agent, install the CLI, configure its owner identity, then run `~/.local/bin/panas demo-prompt` and paste the output into Codex. See the [short provider guide](https://panas.mcpwire.co/guides/provider) or [buyer guide](https://panas.mcpwire.co/guides/buyer) for setup.
@@ -51,7 +51,7 @@ The agent uses `discover_providers`, `quote_inference`, `purchase_access`, and `
 | **Fixed-price accounting and durable receipts** | Reserve before execution, settle successful work once, and retrieve the original outcome after interruption.                                   |
 | **Solana devnet USDC payments**                 | Providers can charge for inference through verified prepaid deposits and asset-bound settlement. Free sharing is available too.                |
 
-The control plane runs on Volcano with PostgreSQL. Inference runs on participating providers. MCPWire supplies the encrypted peer transport; Panas supplies discovery, authorization, workload control, and accounting.
+The control plane runs on Cloudflare Workers with the existing Volcano PostgreSQL database. Inference runs on participating providers. MCPWire supplies the encrypted peer transport; Panas supplies discovery, authorization, workload control, and accounting.
 
 ## Share it free. Put a price on it.
 
@@ -73,7 +73,7 @@ The hackathon payment rail uses **Solana devnet test USDC**. [Payment protocol â
 
 ## Try Panas
 
-Install Node.js 24, download the [alpha.6 installer](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.6/install.sh), and follow the [provider and buyer setup](docs/distribution.md) for enrollment, keys, model, and Docker image.
+Install Node.js 24, download the [alpha.7 installer](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh), and run `panas demo` for automatic free buyer enrollment and MCP setup. Providers follow the [provider setup](docs/distribution.md) for enrollment, the model and Docker image.
 
 ```sh
 sh ~/Downloads/install.sh

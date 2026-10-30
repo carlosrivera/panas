@@ -1,6 +1,6 @@
 {
     "name": "@panas/cli",
-    "version": "0.1.0-alpha.6",
+    "version": "0.1.0-alpha.7",
     "private": true,
     "type": "module",
     "scripts": {
@@ -9,6 +9,14 @@
     "devDependencies": {
         "@panas/typescript-config": "workspace:*",
         "@types/node": "24.19.2",
+        "@types/react": "18.3.31",
+        "ink-testing-library": "4.0.0",
         "typescript": "6.0.3"
+    },
+    "dependencies": {
+        "@panas/protocol": "workspace:*",
+        "ink": "5.2.1",
+        "react": "18.3.1",
+        "zod": "4.6.7"
     }
 }

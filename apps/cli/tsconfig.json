@@ -1,5 +1,5 @@
 {
     "extends": "@panas/typescript-config/base.json",
-    "include": ["src/**/*.ts"],
-    "compilerOptions": { "types": ["node"] }
+    "include": ["src/**/*.ts", "src/**/*.tsx"],
+    "compilerOptions": { "types": ["node", "react"], "jsx": "react-jsx" }
 }

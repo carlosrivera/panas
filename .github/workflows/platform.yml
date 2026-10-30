@@ -1,14 +1,5 @@
 name: Deploy Panas test
 on:
-    push:
-        branches: [main, codex/issue-9-platform]
-        paths-ignore:
-            - "apps/web/**"
-            - "packages/ui/**"
-            - "docs/**"
-            - "README.md"
-            - ".github/workflows/pages.yml"
-            - ".github/workflows/platform.yml"
     workflow_dispatch:
 permissions:
     contents: read

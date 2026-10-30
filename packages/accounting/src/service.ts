@@ -17,6 +17,8 @@ import {
 } from "@panas/contracts";
 import {
     assertFresh,
+    demoEnrollmentSchema,
+    demoBuyerId,
     DOMAIN,
     digest,
     keyId,
@@ -398,6 +400,12 @@ export class AccountingService {
                     "SPENDING_LIMIT",
                     402,
                     "Buyer account currency does not match provider pricing",
+                );
+            if (buyer!.policy_version === "demo-free-v1" && total !== 0n)
+                fail(
+                    "SPENDING_LIMIT",
+                    402,
+                    "Demo accounts can only quote free requests",
                 );
             const q = quoteSchema.parse({
                 version: 1,
@@ -1032,6 +1040,100 @@ export class AccountingService {
             return { requestId: id, status: value.outcome, receipt };
         });
     }
+    /** Public enrollment is insert-only and never changes operator-owned authority. */
+    async enrollFreeDemo(input: unknown) {
+        const proof = demoEnrollmentSchema.parse(input);
+        let key;
+        try {
+            key = createPublicKey(proof.payload.publicKeyPem);
+            assertFresh(proof.payload, this.now().getTime());
+            if (
+                key.asymmetricKeyType !== "ed25519" ||
+                !verifyDocument(DOMAIN.enrollment, proof, key)
+            )
+                throw new Error("Invalid proof");
+        } catch {
+            fail("UNAUTHORIZED", 401, "Invalid enrollment proof");
+        }
+        const publicKeyPem = key
+            .export({ type: "spki", format: "pem" })
+            .toString();
+        const buyerId = demoBuyerId(key),
+            sessionId = proof.payload.sessionId;
+        const expiresAt = new Date(
+            this.now().getTime() + 86400000,
+        ).toISOString();
+        const client = await this.pool.connect();
+        try {
+            await client.query("BEGIN");
+            await client.query(
+                "INSERT INTO panas_accounting_buyers(buyer_id,public_key_pem,max_request,max_session,max_daily,policy_version,currency) VALUES($1,$2,0,0,0,'demo-free-v1','TEST_CREDIT') ON CONFLICT(buyer_id) DO NOTHING",
+                [buyerId, publicKeyPem],
+            );
+            const buyer = (
+                await client.query(
+                    "SELECT public_key_pem,enabled,max_request::text,max_session::text,max_daily::text,policy_version,currency FROM panas_accounting_buyers WHERE buyer_id=$1 FOR UPDATE",
+                    [buyerId],
+                )
+            ).rows[0];
+            if (
+                !buyer?.enabled ||
+                buyer.public_key_pem !== publicKeyPem ||
+                buyer.policy_version !== "demo-free-v1" ||
+                buyer.currency !== "TEST_CREDIT" ||
+                [buyer.max_request, buyer.max_session, buyer.max_daily].some(
+                    (v) => v !== "0",
+                )
+            )
+                fail(
+                    "UNAUTHORIZED",
+                    401,
+                    "Demo enrollment cannot replace existing authority",
+                );
+            const session = await client.query(
+                "INSERT INTO panas_accounting_sessions(session_id,buyer_id,cap,expires_at) VALUES($1,$2,0,$3) ON CONFLICT(session_id) DO UPDATE SET expires_at=GREATEST(panas_accounting_sessions.expires_at,EXCLUDED.expires_at) WHERE panas_accounting_sessions.buyer_id=EXCLUDED.buyer_id AND panas_accounting_sessions.cap=0 AND panas_accounting_sessions.enabled=true RETURNING session_id",
+                [sessionId, buyerId, expiresAt],
+            );
+            if (session.rowCount !== 1)
+                fail(
+                    "CONFLICT",
+                    409,
+                    "Demo session cannot replace existing authority",
+                );
+            await client.query("COMMIT");
+            const platformPublicKeyPem = createPublicKey(
+                this.options.platformPrivateKey,
+            )
+                .export({ type: "spki", format: "pem" })
+                .toString();
+            const token = signDocument(
+                DOMAIN.discovery,
+                {
+                    version: 1,
+                    scope: "free-discovery",
+                    buyerId,
+                    sessionId,
+                    issuedAt: this.now().toISOString(),
+                    expiresAt,
+                },
+                this.options.platformPrivateKey,
+            );
+            return {
+                buyerId,
+                sessionId,
+                expiresAt,
+                platformPublicKeyPem,
+                discoveryToken: `demo1.${Buffer.from(JSON.stringify(token)).toString("base64url")}`,
+                freeOnly: true as const,
+            };
+        } catch (error) {
+            await client.query("ROLLBACK");
+            throw error;
+        } finally {
+            client.release();
+        }
+    }
+
     async operatorEnrollBuyer(input: {
         buyerId: string;
         publicKeyPem: string;

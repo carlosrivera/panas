@@ -1,4 +1,6 @@
 import { z, ZodError } from "zod";
+import { discoveryQuerySchema } from "@panas/contracts/registry";
+import { verifyDemoDiscovery } from "@panas/protocol";
 import { checkDiscoveryToken, type RequestProof } from "./auth.js";
 import { RegistryError } from "./errors.js";
 import { toPublicPage, toPublicDetail, publicQueryFromUrl } from "./public.js";
@@ -17,6 +19,7 @@ export function jsonResponse(body: unknown, status = 200): Response {
 export function createHttpHandler(
     service: RegistryService,
     tokenHash: string | undefined,
+    demoPublicKey?: string,
 ) {
     return async (request: Request): Promise<Response> => {
         const path = new URL(request.url).pathname;
@@ -110,20 +113,60 @@ export function createHttpHandler(
                     : await service.heartbeat(rawBody, proof);
                 return respond(result);
             }
-            checkDiscoveryToken(
-                request.headers.get("authorization"),
-                tokenHash,
-            );
+            let freeOnly = false;
+            try {
+                checkDiscoveryToken(
+                    request.headers.get("authorization"),
+                    tokenHash,
+                );
+            } catch (error) {
+                if (!demoPublicKey) throw error;
+                try {
+                    verifyDemoDiscovery(
+                        (request.headers.get("authorization") ?? "").replace(
+                            /^Bearer /,
+                            "",
+                        ),
+                        demoPublicKey,
+                    );
+                    freeOnly = true;
+                } catch {
+                    throw error;
+                }
+            }
+            const discovery = freeOnly
+                ? {
+                      discover: (
+                          query: Parameters<RegistryService["discover"]>[0],
+                      ) =>
+                          service.discover({
+                              ...discoveryQuerySchema.parse(query),
+                              maxPriceAtomic: "0",
+                          }),
+                      getProvider: async (id: string) => {
+                          const provider = await service.getProvider(id);
+                          if (provider.price.totalAtomic !== "0")
+                              throw new RegistryError(
+                                  "UNAUTHORIZED",
+                                  403,
+                                  "Demo discovery is limited to free providers",
+                              );
+                          return provider;
+                      },
+                  }
+                : service;
             if (url.pathname === "/mcp")
-                return await handleMcp(request, service);
+                return await handleMcp(request, discovery);
             if (request.method === "GET" && url.pathname === "/providers")
-                return respond(await service.discover(queryFromUrl(url)));
+                return respond(await discovery.discover(queryFromUrl(url)));
             if (
                 request.method === "GET" &&
                 /^\/providers\/[^/]+$/.test(url.pathname)
             )
                 return respond(
-                    await service.getProvider(url.pathname.split("/")[2] ?? ""),
+                    await discovery.getProvider(
+                        url.pathname.split("/")[2] ?? "",
+                    ),
                 );
             return respond(
                 {

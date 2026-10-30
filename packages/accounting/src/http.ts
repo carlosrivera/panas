@@ -61,6 +61,8 @@ export function createHttpHandler(service: AccountingService) {
                     "Accounting request exceeds limit",
                 );
             const body = request.method === "GET" ? null : JSON.parse(raw);
+            if (request.method === "POST" && url.pathname === "/demo/enroll")
+                return json(await service.enrollFreeDemo(body));
             const encoded = request.headers.get("x-panas-proof");
             if (!encoded || encoded.length > 8192)
                 throw new AccountingError(

@@ -7,7 +7,7 @@ import type { RegistryService } from "./service.js";
 
 export async function handleMcp(
     request: Request,
-    service: RegistryService,
+    service: Pick<RegistryService, "discover" | "getProvider">,
 ): Promise<Response> {
     const server = new McpServer({ name: "panas-discovery", version: "0.1.0" });
     const transport = new WebStandardStreamableHTTPServerTransport({

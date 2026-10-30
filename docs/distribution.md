@@ -5,14 +5,45 @@
 Share your Mac’s spare inference capacity for free. With Node.js 24, Docker Desktop, the approved model and your enrolled provider configuration ready, install and start with one command:
 
 ```sh
-curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.6/install.sh | sh && ~/.local/bin/panas provider --free
+curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh | sh && ~/.local/bin/panas provider --free
 ```
 
-Buying compute? After installing and configuring your buyer identity, run `~/.local/bin/panas demo-prompt` and paste the result into Codex. Buyers need no Docker or local model. The detailed setup below covers enrollment, models and owner configuration.
+Try free inference with `~/.local/bin/panas demo`: choose Codex or Antigravity, press c to copy the prompt and paste it into your agent. Personal enrollment and MCP setup are automatic. `~/.local/bin/panas hello` runs the demo directly. Buyers need Node.js 24, without Docker, a wallet or a local model.
+
+## Interactive CLI
+
+`panas provider --free` opens a live terminal dashboard in an interactive terminal.
+It shows startup progress, verified local/peer checks and current availability.
+Use Tab for activity, `c` to copy the public provider link, and `q` or Ctrl-C to
+stop the owned containers while preserving durable state. Piped commands and
+`--plain` keep the existing noninteractive behavior. The dashboard reads the
+gateway's existing authenticated local IPC; it does not change the cloud services.
+
+`panas demo` (also `panas demo-prompt`) opens the buyer dashboard. Select **1 Codex**
+or **2 Antigravity**, then press **c COPY PROMPT**. The complete prompt is copied
+even when only part fits onscreen. Paste it into the selected agent; it instructs
+the agent to write its MCP configuration, discover a ready free device and send
+a single bounded Hello world request. Use `--plain --client codex` or
+`--plain --client antigravity` to print the prompt for scripts.
+
+`panas setup --client codex|antigravity` writes the Panas MCP entry and preserves
+other servers/settings with a local backup. Codex is configured using its native
+`codex mcp add` command; Antigravity uses `~/.gemini/config/mcp_config.json`. Each
+client gets a separate local demo store and zero spending limits. The agent can
+run this command itself; users need not edit config files. A client may need to
+reload MCP servers before the new tools appear.
+
+Free buyer enrollment is automatic. Setup creates a personal Ed25519 identity,
+registers it with zero spending authority, and stores only private local files.
+Each buyer launch renews the existing demo session and discovery token; it does
+not reset request history or replace operator-managed identities. `panas hello`
+performs one free Hello world request without waiting for a client MCP reload.
+After an uncertain outcome use `panas request REQUEST_UUID`, never replay hello.
+Provider enrollment and paid buyer setup remain operator-managed.
 
 ## Install the CLI
 
-Install the compiled release once. Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.6/install.sh) and run:
+Install the compiled release once. Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.7/install.sh) and run:
 
 ```sh
 sh ~/Downloads/install.sh
@@ -20,9 +51,9 @@ sh ~/Downloads/install.sh
 
 Requires Node.js **24** with its bundled npm. The installer verifies the tarball against the SHA-256 embedded in the versioned script, installs into `~/.local/share/panas/releases/`, and links `~/.local/bin/panas`. No sudo, source clone, pnpm, shell-profile changes or npm account are needed. If `~/.local/bin` is on PATH, use `panas`; otherwise the full short path below always works. HTTPS/source trust still matters: the script is executable code, and a checksum is not an independent signing/attestation claim.
 
-## Upgrade to alpha.6
+## Upgrade to alpha.7
 
-Stop the existing provider and buyer MCP processes, then rerun the alpha.6 installer. The CLI loads the matching `panas-provider:0.1.0-alpha.6` Docker image from this release when needed and checks its source revision against the installed CLI.
+Stop the existing provider and buyer MCP processes, then rerun the alpha.7 installer. The CLI loads the matching `panas-provider:0.1.0-alpha.7` Docker image from this release when needed and checks its source revision against the installed CLI.
 
 Preserve enrolled identities, keys, sessions, model data and durable state. Update only these endpoint fields in existing private configuration; the installer does not rewrite owner files:
 
@@ -31,11 +62,11 @@ Preserve enrolled identities, keys, sessions, model data and durable state. Upda
 | Provider `provider.env` | `PANAS_REGISTRY_URL=https://panas.mcpwire.co/registry` | `PANAS_ACCOUNTING_URL=https://panas.mcpwire.co/accounting` |
 | Buyer owner JSON        | `"registryUrl": "https://panas.mcpwire.co/registry"`   | `"accountingUrl": "https://panas.mcpwire.co/accounting"`   |
 
-Restart the provider and reconnect the buyer MCP after updating. Alpha.6 preserves the mounted service URLs and includes native-to-Docker UDP routing through MCPWire 1.1.3. Alpha.4 and alpha.5 do not include that routing fix.
+Restart the provider and reconnect the buyer MCP after updating. Alpha.7 preserves the mounted service URLs, adds automatic free enrollment and terminal dashboards, and retains native-to-Docker UDP routing through MCPWire 1.1.3. Alpha.4 and alpha.5 do not include that routing fix.
 
 ## One-time operator handoff
 
-An operator enrolls each provider's public identity and a buyer with a fresh owner-approved session (zero balance and zero money caps work for free providers). This prototype is an authorized marketplace; a public listing or MCPWire ticket does not grant execution. Keep operator database/signing credentials on the operator's computer.
+An operator enrolls each provider's public identity. Free buyers enroll automatically; paid buyers use a separate owner-approved session. This prototype is an authorized marketplace; a public listing or MCPWire ticket does not grant execution. Keep operator database/signing credentials on the operator's computer.
 
 On each provider Mac:
 
@@ -44,7 +75,7 @@ On each provider Mac:
 - Obtain the platform **public** PEM through a trusted channel; current SHA-256 SPKI fingerprint is `804e30700efdee88a0833bab3fc88c1e13d8591e57c600233d7579ef452c7353`.
 - Use the release's `provider.env.example` to create `~/.config/panas/provider.env` with mode0600. Fill the UUID and absolute runtime/model/key/state paths. The default free demo uses zero price; `--free` enforces it. A paid devnet demo uses `--solana-devnet --price-atomic 10000` with the separately configured devnet-USDC buyer/backend. Retain the same state/key for restarts. An existing identity directory is never overwritten.
 
-On the buyer computer, the operator supplies an enrolled buyer configuration plus its private key, discovery credential and platform public key. Every file is mode0600; the dedicated state directory is mode0700. See [buyer configuration schema](../apps/buyer-mcp/README.md#owner-setup). Create mode0600 `~/.config/panas/buyer.env` containing:
+For advanced paid buyer setup, the operator supplies an enrolled buyer configuration plus its private key, discovery credential and platform public key. Every file is mode0600; the dedicated state directory is mode0700. See [buyer configuration schema](../apps/buyer-mcp/README.md#owner-setup). Create mode0600 `~/.config/panas/buyer.env` containing:
 
 ```sh
 PANAS_BUYER_CONFIG=/absolute/private/buyer.json
@@ -68,15 +99,18 @@ Require `state: ready` and `peerProbe: verified`, then leave it running. Ctrl-C 
 ~/.local/bin/panas demo-prompt | pbcopy
 ```
 
-Paste into a new Codex chat. The prompt asks Codex to merge the output of `panas codex-config` into its MCP configuration, discover a ready provider and make at most one free request with all quote/receipt amounts zero. It requires original-request retrieval after uncertainty and a real receipt; it must stop rather than simulate an absent provider. The default prompt authorizes no spending. Use `panas demo-prompt --paid` with a separately enrolled devnet-USDC buyer for the blockchain path; see [payment setup](payments.md).
+Paste the copied prompt into Codex or Antigravity. The agent runs
+`panas setup --client codex|antigravity` to enroll its own free-only buyer and
+write its MCP configuration while preserving other settings. If tools cannot
+reload in the current chat, it runs `panas hello` once and shows the real result
+and zero-charge receipt. After an uncertain outcome it retrieves the same request
+with `panas request REQUEST_UUID`; it never replays inference automatically.
 
-You may inspect the generated configuration first:
-
-```sh
-~/.local/bin/panas codex-config
-```
-
-The TOML table uses absolute Node/CLI paths and a 120-second tool timeout. It contains local configuration paths, not credentials. Merge only `[mcp_servers.panas]` into `~/.codex/config.toml`; preserve the other settings. Start a new chat or reconnect MCP if the current tool catalog is stale. In the Codex CLI, `/mcp` shows active servers. These commands follow the [official OpenAI MCP documentation](https://learn.chatgpt.com/docs/extend/mcp). `panas mcp-config` still emits standard `mcpServers` JSON for other clients; that JSON is not Codex's TOML configuration format.
+You may print configuration without modifying it using `panas codex-config` for
+TOML or `panas mcp-config` for standard JSON. These are optional advanced commands;
+the free demo does not require manual editing. A client may need an MCP reload
+for future tool use. Use `panas demo-prompt --paid` with a separately enrolled
+devnet-USDC buyer for the blockchain path; see [payment setup](payments.md).
 
 ## Isolation: what this demo actually provides
 
