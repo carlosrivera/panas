@@ -1,3 +1,4 @@
+import { paymentCurrencySchema } from "@panas/contracts";
 import {
     createHash,
     createPrivateKey,
@@ -55,7 +56,7 @@ const quoteObject = z
         totalAtomic: atomicAmountSchema,
         providerAtomic: atomicAmountSchema,
         feeAtomic: atomicAmountSchema,
-        currency: z.literal("TEST_CREDIT"),
+        currency: paymentCurrencySchema,
         limits: requestLimitsSchema,
         payloadDigest: digestSchema,
         failurePolicy: z.literal("no_charge_failed_or_cancelled"),

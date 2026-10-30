@@ -1,3 +1,5 @@
+import { devnetFundingSchema } from "@panas/contracts/payments";
+import { paymentCurrencySchema } from "@panas/contracts";
 import { randomUUID, type KeyLike } from "node:crypto";
 import { z } from "zod";
 import { atomicAmountSchema } from "@panas/contracts";
@@ -55,7 +57,7 @@ const receiptSchema = z.object({
     receiptId: z.uuid(),
     requestId: z.uuid(),
     status: z.enum(["completed", "failed", "cancelled", "refunded"]),
-    currency: z.literal("TEST_CREDIT"),
+    currency: paymentCurrencySchema,
     buyerDebitAtomic: atomicAmountSchema,
     providerEarningsAtomic: atomicAmountSchema,
     feeAtomic: atomicAmountSchema,
@@ -248,6 +250,100 @@ export class BuyerService {
         });
         return publicQuote(quote);
     }
+    async balance() {
+        if (!this.options.cloud.balance)
+            throw new BuyerError("UNAVAILABLE", "Balance lookup unavailable");
+        const value = z
+            .object({
+                buyerId: z.uuid(),
+                sessionId: z.uuid(),
+                currency: paymentCurrencySchema,
+                balanceAtomic: atomicAmountSchema,
+                heldAtomic: atomicAmountSchema,
+                availableAtomic: atomicAmountSchema,
+                maxRequestAtomic: atomicAmountSchema,
+                sessionRemainingAtomic: atomicAmountSchema,
+                dailyRemainingAtomic: atomicAmountSchema,
+            })
+            .strict()
+            .parse(
+                await this.options.cloud.balance({
+                    sessionId: this.options.owner.sessionId,
+                }),
+            );
+        if (
+            value.buyerId !== this.options.owner.buyerId ||
+            value.sessionId !== this.options.owner.sessionId ||
+            value.currency !== (this.options.owner.currency ?? "TEST_CREDIT") ||
+            BigInt(value.balanceAtomic) - BigInt(value.heldAtomic) !==
+                BigInt(value.availableAtomic)
+        )
+            throw new BuyerError(
+                "CONFLICT",
+                "Balance does not match owner account",
+            );
+        return value;
+    }
+    async createFundingIntent(input: {
+        intentId: string;
+        amountAtomic: string;
+    }) {
+        if (
+            (this.options.owner.currency ?? "TEST_CREDIT") !==
+                "SOLANA_DEVNET_USDC" ||
+            !this.options.cloud.createFundingIntent
+        )
+            throw new BuyerError(
+                "UNAVAILABLE",
+                "Owner has not configured a devnet-USDC account",
+            );
+        input = {
+            ...input,
+            intentId: z.uuid().parse(input.intentId).toLowerCase(),
+        };
+        const result = devnetFundingSchema.parse(
+            await this.options.cloud.createFundingIntent(input),
+        );
+        if (
+            result.buyerId !== this.options.owner.buyerId ||
+            result.intentId !== input.intentId ||
+            result.amountAtomic !== input.amountAtomic
+        )
+            throw new BuyerError(
+                "CONFLICT",
+                "Funding intent does not match owner terms",
+            );
+        return result;
+    }
+    async confirmFunding(input: { intentId: string; signature: string }) {
+        if (
+            (this.options.owner.currency ?? "TEST_CREDIT") !==
+                "SOLANA_DEVNET_USDC" ||
+            !this.options.cloud.confirmFunding
+        )
+            throw new BuyerError(
+                "UNAVAILABLE",
+                "Owner has not configured devnet funding",
+            );
+        input = {
+            ...input,
+            intentId: z.uuid().parse(input.intentId).toLowerCase(),
+        };
+        const result = devnetFundingSchema.parse(
+            await this.options.cloud.confirmFunding(input),
+        );
+        if (
+            !result.funded ||
+            result.buyerId !== this.options.owner.buyerId ||
+            result.intentId !== input.intentId ||
+            result.signature !== input.signature
+        )
+            throw new BuyerError(
+                "CONFLICT",
+                "Transfer confirmation does not match the owner funding intent",
+            );
+        return result;
+    }
     private enforceBudget(
         state: BuyerState,
         request: StoredRequest,
@@ -255,11 +351,21 @@ export class BuyerService {
     ) {
         const limits = this.options.owner.limits;
         const amount = BigInt(quote.totalAtomic);
+        if (amount === 0n) return;
+        if (quote.currency !== (this.options.owner.currency ?? "TEST_CREDIT"))
+            throw new BuyerError(
+                "SPENDING_LIMIT",
+                "Quote currency does not match owner authority",
+            );
         const day = this.clock().toISOString().slice(0, 10);
         let session = 0n,
             daily = 0n;
         for (const existing of Object.values(state.requests)) {
-            if (existing.requestId === request.requestId) continue;
+            if (
+                existing.requestId === request.requestId ||
+                (existing.quote && existing.quote.currency !== quote.currency)
+            )
+                continue;
             const committed =
                 BigInt(existing.reservedAtomic) + BigInt(existing.spentAtomic);
             if (existing.sessionId === request.sessionId) session += committed;
@@ -551,7 +657,7 @@ export class BuyerService {
                 status: body.status,
                 result: body.result ?? null,
                 fixedTotalAtomic: record.quote!.totalAtomic,
-                currency: "TEST_CREDIT",
+                currency: record.quote!.currency,
                 chargeAtomic: null,
                 receipt: null,
                 accounting: "pending_reconciliation",
@@ -581,6 +687,7 @@ export class BuyerService {
                 );
             const debit = BigInt(receipt.buyerDebitAtomic);
             if (
+                receipt.currency !== record.quote.currency ||
                 (receipt.status === "completed" &&
                     (receipt.buyerDebitAtomic !== record.quote.totalAtomic ||
                         receipt.providerEarningsAtomic !==
@@ -683,7 +790,7 @@ export class BuyerService {
                     chargeAtomic: cloud.receipt.buyerDebitAtomic,
                     providerStatus: "unavailable",
                     retrieval: "provider_unavailable",
-                    currency: "TEST_CREDIT",
+                    currency: record.quote!.currency,
                 };
             }
         }
@@ -695,7 +802,7 @@ export class BuyerService {
             receipt: cloud.receipt,
             chargeAtomic: cloud.receipt?.buyerDebitAtomic ?? null,
             fixedTotalAtomic: record.quote.totalAtomic,
-            currency: "TEST_CREDIT",
+            currency: record.quote!.currency,
             cancelRequested: cloud.cancelRequested ?? false,
             finishReason,
         };

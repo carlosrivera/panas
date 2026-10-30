@@ -4,6 +4,15 @@ import { discoveryQuerySchema } from "@panas/contracts/registry";
 import { publicError } from "./errors";
 
 export interface BuyerTools {
+    balance?(): Promise<Record<string, unknown>>;
+    createFundingIntent?(input: {
+        intentId: string;
+        amountAtomic: string;
+    }): Promise<Record<string, unknown>>;
+    confirmFunding?(input: {
+        intentId: string;
+        signature: string;
+    }): Promise<Record<string, unknown>>;
     discover(input: unknown): Promise<Record<string, unknown>>;
     getProvider(input: {
         providerId: string;
@@ -49,6 +58,62 @@ export function createBuyerMcp(service: BuyerTools): McpServer {
             };
         }
     };
+    server.registerTool(
+        "get_balance",
+        {
+            description:
+                "Read this owner's prepaid balance, asset, available funds and remaining cloud spending authority. This does not fund a wallet or increase authority.",
+            inputSchema: z.object({}).strict(),
+            annotations: { readOnlyHint: true, openWorldHint: true },
+        },
+        async () =>
+            wrap(() => {
+                if (!service.balance) throw new Error("Balance unavailable");
+                return service.balance();
+            }),
+    );
+    server.registerTool(
+        "create_funding_intent",
+        {
+            description:
+                "Create or retrieve a buyer-bound Solana devnet USDC prepaid deposit intent. This does not send funds. Only test USDC on devnet; wallet private keys never enter this tool. Reuse intentId after uncertainty.",
+            inputSchema: z
+                .object({
+                    intentId: z.uuid(),
+                    amountAtomic: z.string().regex(/^[1-9][0-9]{0,8}$/),
+                })
+                .strict(),
+            annotations: { readOnlyHint: false, openWorldHint: true },
+        },
+        async (input) =>
+            wrap(() => {
+                if (!service.createFundingIntent)
+                    throw new Error("Funding unavailable");
+                return service.createFundingIntent(input);
+            }),
+    );
+    server.registerTool(
+        "confirm_funding",
+        {
+            description:
+                "Submit a public transaction signature for an existing owned devnet-USDC funding intent. The server independently verifies finalized transfer, cluster, mint, treasury, amount and memo, then credits it once. Never submit wallet secrets.",
+            inputSchema: z
+                .object({
+                    intentId: z.uuid(),
+                    signature: z
+                        .string()
+                        .regex(/^[1-9A-HJ-NP-Za-km-z]{64,88}$/),
+                })
+                .strict(),
+            annotations: { readOnlyHint: false, openWorldHint: true },
+        },
+        async (input) =>
+            wrap(() => {
+                if (!service.confirmFunding)
+                    throw new Error("Funding unavailable");
+                return service.confirmFunding(input);
+            }),
+    );
     server.registerTool(
         "discover_providers",
         {

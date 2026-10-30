@@ -7,10 +7,11 @@ import {
 } from "node:fs";
 import { isAbsolute } from "node:path";
 import { z } from "zod";
-import { atomicAmountSchema } from "@panas/contracts";
+import { paymentCurrencySchema, atomicAmountSchema } from "@panas/contracts";
 
 export const ownerConfigSchema = z
     .object({
+        currency: paymentCurrencySchema.optional(),
         buyerId: z.uuid(),
         sessionId: z.uuid(),
         privateKeyPath: z.string().refine(isAbsolute),
