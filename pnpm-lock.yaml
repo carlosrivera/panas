@@ -471,8 +471,8 @@ importers:
   packages/mcpwire:
     dependencies:
       '@mcpwire/cli':
-        specifier: 1.1.0
-        version: 1.1.0(@types/react@19.3.0)(bare-url@2.5.5)
+        specifier: 1.1.1
+        version: 1.1.1(@types/react@19.3.0)(bare-url@2.5.5)
     devDependencies:
       '@panas/typescript-config':
         specifier: workspace:*
@@ -1000,8 +1000,8 @@ packages:
   '@keyv/serialize@1.1.1':
     resolution: {integrity: sha512-dXn3FZhPv0US+7dtJsIi2R+c7qWYiReoEh5zUntWCf4oSpMNib8FDhSoed6m3QyZdx5hK7iLFkYk3rNxwt8vTA==}
 
-  '@mcpwire/cli@1.1.0':
-    resolution: {integrity: sha512-rbKdBO55f0g/NxjGQPAYVYulW4rokpyYcpIacfH7a7IoLJnYiQAeTpUt+MHpQoPKX/AJKRxfOKkQfbMGU2MgjQ==}
+  '@mcpwire/cli@1.1.1':
+    resolution: {integrity: sha512-hFfWhHaIHlARzK0CBrSZrDGz26wLZukWUImum7jL82wZ8a7n+2mFuN+F48lhRsS3pvLhHl0zOhW2jX2N/k6ugQ==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -3217,8 +3217,9 @@ snapshots:
 
   '@keyv/serialize@1.1.1': {}
 
-  '@mcpwire/cli@1.1.0(@types/react@19.3.0)(bare-url@2.5.5)':
+  '@mcpwire/cli@1.1.1(@types/react@19.3.0)(bare-url@2.5.5)':
     dependencies:
+      b4a: 1.9.0
       hyperdht: 6.32.0(bare-url@2.5.5)
       hyperswarm: 4.17.2(bare-url@2.5.5)
       ink: 5.2.1(@types/react@19.3.0)(react@18.3.1)

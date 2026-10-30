@@ -4,15 +4,16 @@ Agent-discovered inference on shared Macs, powered by MCPWire. Repository: `carl
 
 The prototype includes agent discovery, fixed TEST_CREDIT purchases, signed entitlements, durable accounting and native Mac inference through MCPWire. Physical two-Mac and recovery acceptance checks remain tracked in issue #10; real payments are disabled.
 
-## Run the release without cloning
+## Hackathon demo without cloning
 
-Install Node.js 24, then:
+Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.2/install.sh), run `sh ~/Downloads/install.sh` with Node 24, and complete the [one-time operator setup](docs/distribution.md). Then:
 
 ```sh
-npx --yes --package=https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.1/panas-cli-0.1.0-alpha.1.tgz panas --help
+~/.local/bin/panas provider
+~/.local/bin/panas demo-prompt | pbcopy
 ```
 
-Follow [installation and Mac B setup](docs/distribution.md) for a fresh identity, operator enrollment, the pinned native runtime/model and provider configuration. The same package exposes the buyer MCP facade. Use the exact release URL; the short `npx panas` command has not been published to npm.
+Paste the prompt into Codex to configure the buyer MCP, discover a provider and test one bounded TEST_CREDIT request. The provider runs natively with process supervision; **it is not OS-sandboxed**. See [the isolation limits](docs/distribution.md#isolation-what-this-demo-actually-provides).
 
 ## Development requirements and setup
 
