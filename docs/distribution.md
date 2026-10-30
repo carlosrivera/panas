@@ -12,7 +12,7 @@ Buying compute? After installing and configuring your buyer identity, run `~/.lo
 
 ## Install the CLI
 
-Install the compiled release once. Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.5/install.sh) and run:
+Install the compiled release once. Download [install.sh](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.6/install.sh) and run:
 
 ```sh
 sh ~/Downloads/install.sh
@@ -20,9 +20,9 @@ sh ~/Downloads/install.sh
 
 Requires Node.js **24** with its bundled npm. The installer verifies the tarball against the SHA-256 embedded in the versioned script, installs into `~/.local/share/panas/releases/`, and links `~/.local/bin/panas`. No sudo, source clone, pnpm, shell-profile changes or npm account are needed. If `~/.local/bin` is on PATH, use `panas`; otherwise the full short path below always works. HTTPS/source trust still matters: the script is executable code, and a checksum is not an independent signing/attestation claim.
 
-## Upgrade to alpha.5
+## Upgrade to alpha.6
 
-Stop the existing provider and buyer MCP processes, then rerun the alpha.5 installer. The CLI loads the matching `panas-provider:0.1.0-alpha.5` Docker image from this release when needed and checks its source revision against the installed CLI.
+Stop the existing provider and buyer MCP processes, then rerun the alpha.6 installer. The CLI loads the matching `panas-provider:0.1.0-alpha.6` Docker image from this release when needed and checks its source revision against the installed CLI.
 
 Preserve enrolled identities, keys, sessions, model data and durable state. Update only these endpoint fields in existing private configuration; the installer does not rewrite owner files:
 
@@ -31,7 +31,7 @@ Preserve enrolled identities, keys, sessions, model data and durable state. Upda
 | Provider `provider.env` | `PANAS_REGISTRY_URL=https://panas.mcpwire.co/registry` | `PANAS_ACCOUNTING_URL=https://panas.mcpwire.co/accounting` |
 | Buyer owner JSON        | `"registryUrl": "https://panas.mcpwire.co/registry"`   | `"accountingUrl": "https://panas.mcpwire.co/accounting"`   |
 
-Restart the provider and reconnect the buyer MCP after updating. Alpha.5 preserves mounted base paths while signing service-relative backend paths. Earlier CLI/Docker builds do not support these mounted URLs.
+Restart the provider and reconnect the buyer MCP after updating. Alpha.6 preserves the mounted service URLs and includes native-to-Docker UDP routing through MCPWire 1.1.3. Alpha.4 and alpha.5 do not include that routing fix.
 
 ## One-time operator handoff
 
@@ -86,6 +86,6 @@ Docker Desktop must be running, the matching release image must be available, an
 
 ## Release and provenance
 
-Current source pins external **MCPWire 1.1.3**, including its upstream b4a fix and explicit UDP peer routes for native-to-Docker connectivity (published alpha.4/alpha.5 pin 1.1.1 and does not include that routing fix); Panas's temporary direct b4a dependency is removed. `panas --version` reports source commit/dirty flag, runtime/model pins and `isolation: docker-gateway-offline-worker-cpu`. The immutable alpha.1/alpha.2 releases remain available. No Volcano deployment accompanies a CLI release.
+This release pins external **MCPWire 1.1.3**, including its upstream b4a fix and explicit UDP peer routes for native-to-Docker connectivity; Panas's temporary direct b4a dependency is removed. `panas --version` reports source commit/dirty flag, runtime/model pins and `isolation: docker-gateway-offline-worker-cpu`. The immutable alpha.1/alpha.2 releases remain available. No Volcano deployment accompanies a CLI release.
 
 Maintainers use pinned pnpm: `pnpm format:check`, `pnpm check`, `pnpm release:pack`, `pnpm release:smoke`. Tag publication repeats checks, installs via a fresh npx cache, tests the compiled adapter/IPC and buyer configuration, checks clean provenance, then uploads the tarball, installer, checksum file, public release metadata, prompt and environment example. No private keys, credentials, TypeScript source, source maps or model weights ship. Compiled JavaScript remains readable.
