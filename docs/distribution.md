@@ -40,3 +40,5 @@ The same tarball exposes `panas buyer --env-file /absolute/private/buyer.env`. T
 ## Maintainer release
 
 Use Node 24 and the repository's pinned pnpm. Run `pnpm install --frozen-lockfile`, `pnpm format:check`, `pnpm check`, `pnpm release:pack`, and `pnpm release:smoke`. The smoke installs the tarball into a clean directory outside the repository and exercises its real executable/adapter. Commit all source first and rebuild so release metadata records a clean exact commit. Upload the `.tgz`, `SHA256SUMS`, `release.json`, and `provider.env.example` to the prerelease tagged at that commit. GitHub's automatically generated source archives remain available; consumers use the compiled `.tgz` asset. This release is compatible with deployed control-plane revision `281033a964c98a9a173d440030586dd64fb7135b`; publishing it does not deploy Volcano.
+
+The tarball also pins `b4a 1.9.0`: MCPWire’s `hyperdht` uses `bogon 1.3.0`, which imports it without declaring it. This supplies the required runtime dependency in a fresh npm/npx layout while keeping MCPWire external. Release smoke uses a fresh npx cache and loads that native transport dependency graph.

@@ -13,3 +13,5 @@ The compiled tarball retains pinned external MCPWire 1.1.0, separate disposable 
 Read [installation and Mac B setup](https://github.com/carlosrivera/panas/blob/v0.1.0-alpha.1/docs/distribution.md). Control-plane compatibility: deployed revision 281033a964c98a9a173d440030586dd64fb7135b. No Volcano deployment accompanies this CLI release.
 
 This is an alpha for the #10 manual two-Mac tests. Physical sleep/wake, two-host/NAT connectivity, a deployed Volcano outage and natural 24-hour expiry remain validation gates. Native supervision does not claim hostile-code sandboxing or hardware attestation.
+
+The tarball also pins `b4a 1.9.0`: MCPWire’s `hyperdht` uses `bogon 1.3.0`, which imports it without declaring it. This supplies the required runtime dependency in a fresh npm/npx layout while keeping MCPWire external. Release smoke uses a fresh npx cache and loads that native transport dependency graph.
