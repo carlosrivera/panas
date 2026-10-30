@@ -13,6 +13,9 @@ Panas AI lets buyer agents discover a Mac provider and purchase a bounded infere
 
 ## Collaboration
 
+- Attribute commits and pull requests to human contributors only. Do not add AI co-author trailers, generated-by footers, or AI session links.
+- Commit metadata was rewritten on 2026-10-30. Rebase local work onto current `origin/main`; do not merge pre-rewrite history or force-push an old clone.
+
 - Work within the linked issue's boundaries and acceptance criteria. Coordinate shared contract changes before editing another lane's implementation.
 - Use `codex/` for new working branches unless the user specifies otherwise.
 - Keep PRs small enough to review and link their issue. Clearly distinguish scaffolding, fixtures, and actual integrations.

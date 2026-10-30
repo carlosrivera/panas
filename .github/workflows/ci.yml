@@ -11,6 +11,22 @@ jobs:
         timeout-minutes: 15
         steps:
             - uses: actions/checkout@v7.0.1
+              with:
+                  fetch-depth: 0
+            - name: Reject automated co-author attribution
+              shell: bash
+              env:
+                  PR_BODY: ${{ github.event.pull_request.body || '' }}
+              run: |
+                  git log --format=%B HEAD > "$RUNNER_TEMP/panas-commit-messages.txt"
+                  if grep -Eiq '^Co-authored-by:.*(claude|anthropic)' "$RUNNER_TEMP/panas-commit-messages.txt"; then
+                      echo '::error::Remove automated co-author trailers and rebase onto current main. Do not merge pre-rewrite history.'
+                      exit 1
+                  fi
+                  if printf '%s\n' "$PR_BODY" | grep -Ei 'generated (with|by).*claude|^Co-authored-by:.*(claude|anthropic)' > /dev/null; then
+                      echo '::error::Remove automated attribution from the pull request description.'
+                      exit 1
+                  fi
             - uses: pnpm/action-setup@v6.1.0
             - uses: actions/setup-node@v7.1.0
               with:
