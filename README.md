@@ -97,7 +97,13 @@ The next acceptance milestone combines the Docker provider, peer inference, and 
 
 This is an enrolled hackathon prototype. An operator supplies provider and buyer configuration before use; [setup instructions](docs/distribution.md) cover identities, the approved model, Docker image, and credentials. Providers require Apple Silicon macOS 14+, Docker Desktop, and the pinned model. The CLI requires Node.js 24.
 
-The documented alpha.4 installer URL currently returns HTTP 404. Until the matching CLI and Docker image are published and verified, use an operator-prepared build for the demo; source setup is below. The commands here assume that prepared CLI and completed enrollment.
+Download the versioned [alpha.4 installer](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.4/install.sh), then run it with Node.js 24:
+
+```sh
+sh ~/Downloads/install.sh
+```
+
+The commands below assume the matching Docker image/model and completed operator enrollment described in the setup guide.
 
 After the operator handoff, start a free provider on the provider Mac:
 
@@ -172,4 +178,4 @@ These documents and implementation paths are checked into this repository so jud
 | Faults, reconnects, and acceptance evidence  | [Failure matrix](docs/integration/failure-matrix.md), [two-machine procedure](docs/integration/two-machine.md)    | [Recorded evidence](docs/integration/evidence)                                                        |
 | Installation and cloud operation             | [Distribution](docs/distribution.md), [deployment](docs/deployment.md), [operations](docs/platform/operations.md) | [CLI](apps/cli/src), [platform scripts](scripts/platform)                                             |
 
-Some design documents retain earlier native-runtime or test-credit-only descriptions. For the current Docker and Solana paths, follow the dedicated Docker and payment documents linked above; the evidence records identify the build and topology actually exercised.
+The technical guides describe the current Docker and Solana devnet implementation. Historical issue plans and native-run evidence are explicitly labeled; each evidence record identifies the build and topology actually exercised.

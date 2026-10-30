@@ -1,53 +1,53 @@
-# Provider daemon
+# Provider daemon and Docker worker
 
-This package implements issue #2's native macOS worker and capability checks. It is a trusted local application component, not a public inference API. Paid authorization and the disposable MCP host adapter belong to issue #6; registry publication and MCPWire separate-peer probing are integration consumers.
+This package implements the persistent inference lifecycle, capability checks, bounded queue, encrypted request store and worker runtime. The public provider runs through the CLI's two-container Docker launcher. Authentication, discovery publication, peer adapters and terminal-event delivery are integrated by [the provider controller](../provider-mcp/README.md).
 
-## Explicit setup
+## Supported execution path
 
-Install an approved Ollama release and explicitly download `qwen2.5:0.5b` into a dedicated model directory. No code in this package pulls models or adopts a running server. Obtain the full model digest from that installation's `/api/tags` and pin it together with the exact approved runtime version.
-
-Set these values in your shell; keep application state outside version control:
+Use [distribution setup](../../docs/distribution.md) to install the matching CLI/image, enroll a provider, pin the platform public key and prepare the approved model. The launcher currently targets Apple Silicon macOS 14+ with Docker Desktop. Gateway and worker run Linux ARM64 containers; other hosts/architectures require validation. The buyer does not need a Mac, Docker or a model.
 
 ```sh
-export PANAS_PROVIDER_ID='<uuid>'
-export PANAS_OLLAMA_BINARY='/absolute/path/to/ollama'
-export PANAS_MODELS_PATH='/absolute/path/to/dedicated/models'
-export PANAS_MODEL_DIGEST='<full-sha256-digest>'
-export PANAS_OLLAMA_VERSION='<approved-version>'
-export PANAS_DATA_PATH='/absolute/path/to/private/panas-provider'
-export PANAS_OLLAMA_ENDPOINT='http://127.0.0.1:11536'
-pnpm --filter @panas/provider run doctor
-pnpm --filter @panas/provider run start
+~/.local/bin/panas provider --free
 ```
 
-Use a separate unused port. The daemon refuses an occupied port instead of mutating or stopping an existing Ollama server. It owns the process group it launches and terminates only that group. Runtime stderr is not retained because it can contain prompt metadata. A dedicated instance uses loopback, one loaded model, one parallel request, a 2,048-token context, and cloud features disabled.
+For a fixed 0.01 devnet-USDC price:
 
-`doctor` checks macOS 14+ on Apple Silicon, physical memory/free disk, explicit runtime version and model digest, bounded cold/warm inference, raw generation counts, output cap, and cancellation with owned-process-group termination/restart. It prints a report and exits successfully only if local checks pass. A local success is `testing` with `peerProbe.status=unverified`, never `ready`. A matching separate-peer probe newer than the test is required through the daemon integration API before readiness/heartbeat eligibility.
+```sh
+~/.local/bin/panas provider --solana-devnet --price-atomic 10000
+```
 
-## Lifecycle and IPC
+Only the provider owner chooses price; buyer funding/enrollment follows [the payment protocol](../../docs/payments.md). No treasury signing key belongs in the provider configuration.
 
-The daemon owns inference independently of per-peer MCP child processes. Admission is one active request and a queue of two. Inputs use raw Qwen2.5 generation; a conservative UTF-8 byte ceiling reserves output and special-token context headroom rather than advertising an independently verified tokenizer. Prompts are text only. The worker never executes generated tools or commands. Requests run with a 60-second generation deadline. A running cancellation aborts and terminates the dedicated runtime fail-safe, invalidates readiness, and requires fresh tests plus a peer probe before new work.
+Serving uses the pinned Linux Ollama runtime from the matching image and the hash-verified `qwen2.5:0.5b` model cache staged read-only by the launcher. No weights download during serving. The worker runs on CPU with networking disabled; no host Ollama or Metal fallback exists.
 
-`ProviderDaemon` exposes launch/retest, report/status, startup-bound verifyPeer, gated heartbeat, health checks, submit/get/cancel, pause/resume/drain, and emergency stop. Health gaps longer than 45 seconds invalidate readiness and trigger retest when idle. Idle unhealthy workers are also retested by the health loop; recovery always returns to unverified connectivity and needs a new peer proof. Runtime revision/digest changes invalidate readiness. Pausing rejects new work and holds queued work; draining rejects new work and completes accepted work.
+`createProviderRuntime` verifies the gateway container profile and uses `DockerWorkerRuntime` to call the worker through authenticated `/ipc/runtime.sock`. Only the worker owns the actual Ollama process and its private loopback endpoint. No runtime port is published on the host. The old direct native host commands are not the current serving path: starting the package entry point on an unconfined host fails its container check.
 
-`start` opens only `PANAS_DATA_PATH/daemon.sock`. The parent directory is private and socket mode is0600. Every newline-delimited JSON IPC message also requires the random local token stored mode 0600 in `ipc-token`; it is not paid buyer authorization. Available methods are status, heartbeat, pause, resume, drain, stop, retest, submit, get, and cancel. Local callers are trusted adapters belonging to the same OS account. The future host adapter must authenticate buyer entitlement before calling submit and must never expose this administrative token over MCPWire.
+For local capabilities, stop the owned provider first and use the compiled CLI's `panas doctor` command with the same private environment. It launches the required Docker boundary and checks confinement, Linux ARM64 identity, memory/disk, pinned runtime/model, cold/warm generation, output bounds and cancellation/restart. Passing local checks leaves `testing` and `peerProbe.status=unverified`; the controller must obtain a fresh separate-peer proof and publish successfully before readiness.
 
-Results and request metadata use AES-256-GCM with a generated local 0600 key inside the private store directory, fsynced temporary-file writes and atomic rename. A durable completed result is saved before it is visible as completion. Duplicate IDs return the known record; altered payloads conflict and other buyer identities cannot retrieve it. Restarted running records become `unknown` and are not reexecuted. Results expire after 24 hours and receipt metadata after 30 days during periodic cleanup; requests must be reconciled by the future control plane. Encryption at rest does not hide content from the provider account that owns the key.
+## Lifecycle, admission and durable state
 
-## Validation and limits
+The persistent daemon owns one active request and a queue of two across every peer adapter. Requests are text-only, with a 2,048-token context profile, at most 128 output tokens and a 60-second deadline. Conservative UTF-8 byte admission reserves output/context headroom; it does not claim independent tokenizer verification. Model output never executes tools or commands.
 
-Run `pnpm exec vitest run apps/provider/src/provider.test.ts`, `pnpm format:check`, and `pnpm check` from the repository root. Injectable tests exercise unavailable runtime, changed pins, unsupported hosts, probe freshness, global queue, cancellation, retention/recovery, and IPC isolation. Real hardware evidence must be recorded separately; fixture success is not a claim that the model or cloud path was exercised.
+`ProviderDaemon` exposes launch/retest, report/status, startup-bound peer verification, gated heartbeat, health, submit/get/cancel, pause/resume/drain and emergency stop. Health gaps and model/runtime changes invalidate readiness; recovery requires fresh local checks and peer evidence. Cancellation stops the dedicated worker runtime and requires retesting before new work.
 
-This is not a hostile-code sandbox, a hard GPU/unified-memory partition, a proof of token honesty, or a complete paid product. The persistent `apps/provider-mcp` host supplies authentication, paid authorization and transport/publication integration. No control-plane heartbeat is published by this package alone. [Sleep/wake recovery](../../docs/integration/provider-sleep-wake.md) guards liveness gaps and execution boundaries; it is not a native macOS power-event listener. Physical sleep and real paid recovery evidence remain deferred.
+The controller and trusted local adapters communicate through a mode-0600 Unix socket and local token in private gateway state. The host adapter verifies buyer grants and operation proofs before daemon admission; the local IPC token is not buyer authorization and never leaves the gateway.
 
-Ollama API behavior follows the official [generation API](https://docs.ollama.com/api/generate) and [runtime configuration FAQ](https://docs.ollama.com/faq). The application retains only counts and durations reported by its local runtime, not independent execution attestation.
+Results and request metadata use AES-256-GCM, fsynced temporary writes and atomic rename. Completed results are durable before being exposed. Duplicate request IDs retain their existing identity; altered payloads conflict and another buyer cannot retrieve them. Interrupted running records recover as `unknown`, without automatic reexecution. Retain the provider-specific Docker state volume, encryption keys, replay state and terminal outbox across restart. Results expire after 24 hours and request/receipt metadata after 30 days.
 
-### Hardware validation (October 28, 2026)
+## Isolation and recovery limits
+
+The gateway has network access and the provider application key; the worker has neither network access nor application/treasury private keys. Both use non-root identities, read-only roots, dropped capabilities, seccomp and CPU/memory/PID limits. See the complete [Docker boundary](../../docs/docker-sandbox.md), including gateway egress and disk-growth limits.
+
+The launcher heartbeat lease closes the gateway after owner loss/suspend. Container-scoped ownership permits retained-volume recovery without adopting a live predecessor. Recovery preserves durable outcomes and publishes a new startup; it never silently replays inference. [Crash](../../docs/integration/provider-crash.md) and [sleep/wake](../../docs/integration/provider-sleep-wake.md) documents distinguish component tests from outstanding physical drills.
+
+Encryption does not hide content from the provider operating the machine. Docker is not hardware attestation or confidential inference, and runtime usage counts are provider assertions.
+
+## Validation
+
+Run `pnpm format:check` and `pnpm check` from the root. [Current Docker validation](../../docs/validation/docker-sandbox.md) records actual confinement probes, local CPU inference and cancellation/restart. Earlier native observations below do not establish Docker peer/accounting or physical recovery acceptance. See [integration evidence](../../docs/integration/README.md) for those separate gates.
+
+### Historical native hardware validation (October 28, 2026)
 
 A real Apple Silicon Mac running macOS 27.0.1 with 16 GiB memory passed all nine local checks using Ollama 0.40.12 and the explicitly downloaded model digest `a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67`. One short eight-output-token warm fixture measured 60.55 ms / 132.13 output tokens per second; this is a smoke measurement, not a service-level guarantee.
 
 The real daemon CLI also launched its own loopback runtime, exposed a mode 0600 Unix socket, reported `testing/unverified`, returned no eligible heartbeat, rejected an unverified inference submission, supported pause/resume, and closed its dedicated runtime on SIGTERM. It did not touch the separate setup runtime or download a model. No separate-peer test, remote paid authorization, registry publication, or cloud deployment is claimed by this evidence.
-
-### Host crash recovery
-
-The paid host and local daemon claim their private data directory before recovery and refuse a live predecessor. Detached runtime/transport groups are guarded by parent-liveness IPC; restart retains request/nonce encryption keys and treats interrupted work as unknown, without automatic replay or settlement. See [recovery behavior and the deferred live drill](../../docs/integration/provider-crash.md). Legacy/untracked sockets and incomplete startup claims require conservative owner review.

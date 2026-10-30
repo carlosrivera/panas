@@ -17,7 +17,7 @@ On each provider Mac:
 - macOS 14+ on Apple Silicon, Docker Desktop, and explicitly installed **qwen2.5:0.5b** model with digest `a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67`. Copy the approved model cache from the operator Mac if desired. The matching Docker image contains the pinned Linux runtime; no host Ollama binary is used for serving. Launch never downloads weights silently.
 - Generate a new identity with `~/.local/bin/panas identity init --dir "$HOME/.config/panas"`. Give only its UUID and `provider-public.pem` to the operator. Keep `provider.pem` local. Never copy a different Mac's provider state/key.
 - Obtain the platform **public** PEM through a trusted channel; current SHA-256 SPKI fingerprint is `804e30700efdee88a0833bab3fc88c1e13d8591e57c600233d7579ef452c7353`.
-- Use the release's `provider.env.example` to create `~/.config/panas/provider.env` with mode0600. Fill the UUID and absolute runtime/model/key/state paths. Keep the fixed price at `2` TEST_CREDIT for this demo. Retain the same state/key for restarts. An existing identity directory is never overwritten.
+- Use the release's `provider.env.example` to create `~/.config/panas/provider.env` with mode0600. Fill the UUID and absolute runtime/model/key/state paths. The default free demo uses zero price; `--free` enforces it. A paid devnet demo uses `--solana-devnet --price-atomic 10000` with the separately configured devnet-USDC buyer/backend. Retain the same state/key for restarts. An existing identity directory is never overwritten.
 
 On the buyer computer, the operator supplies an enrolled buyer configuration plus its private key, discovery credential and platform public key. Every file is mode0600; the dedicated state directory is mode0700. See [buyer configuration schema](../apps/buyer-mcp/README.md#owner-setup). Create mode0600 `~/.config/panas/buyer.env` containing:
 
@@ -25,7 +25,9 @@ On the buyer computer, the operator supplies an enrolled buyer configuration plu
 PANAS_BUYER_CONFIG=/absolute/private/buyer.json
 ```
 
-The owner-selected session must still be valid and have sufficient TEST_CREDIT authority. Do not solve expired sessions or writer locks by clearing durable state. Buyer and provider can run on separate Macs; the second physical Mac remains a manual acceptance test.
+The owner-selected session must be valid. Free access requires no funded balance or positive money caps; paid devnet access requires matching asset, confirmed prepaid balance and sufficient owner authority. Do not solve expired sessions or writer locks by clearing durable state. Buyer and provider can run on separate Macs; the second physical Mac remains a manual acceptance test.
+
+The buyer needs Node.js 24 and the MCP facade, not a Mac, Docker or a local model. macOS/Linux process supervision is supported; Windows process-tree supervision remains outside the current matrix. `pbcopy` below is an optional macOS clipboard convenience; on Linux, run `panas demo-prompt` and copy its output.
 
 ## Command 1: start sharing the provider
 

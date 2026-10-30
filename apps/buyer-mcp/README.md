@@ -1,6 +1,8 @@
 # Panas buyer MCP facade
 
-One local MCP server exposes `discover_providers`, `get_provider`, `quote_inference`, `purchase_access`, `run_inference`, `get_request`, and `cancel_request`. Provider handoff happens inside the facade through the external MCPWire transport. A buyer agent does not install a new server for each purchase.
+One local MCP server exposes `discover_providers`, `get_provider`, `quote_inference`, `purchase_access`, `run_inference`, `get_request`, and `cancel_request`, plus `get_balance`, `create_funding_intent` and `confirm_funding`. Provider handoff happens inside the facade through the external MCPWire transport. A buyer agent does not install a new server for each purchase.
+
+The buyer requires Node.js 24 and a compatible MCP agent client, not macOS, Docker or a local model. macOS/Linux process supervision is supported; Windows process-tree supervision is not currently supported. Provider serving uses a separate [Docker gateway/worker](../../docs/docker-sandbox.md).
 
 ## Owner setup
 
@@ -26,7 +28,7 @@ Create an owner configuration outside the repository with mode `0600`. Reference
 }
 ```
 
-Amounts use integer atomic `TEST_CREDIT` units. This prototype accepts no real money. Daily local authority uses UTC calendar days; session authority uses the explicit owner-selected session ID and persists across process restarts. Both count gross completed charges, including later refunds; a refund does not reopen spending authority. Cloud policy is authoritative and may impose stricter limits. MCP tools cannot configure identities, credentials, session IDs, or spending limits.
+Amounts are integer atomic units in the configured account asset. Omit `currency` for the internal `TEST_CREDIT` regression rail or use `"currency": "SOLANA_DEVNET_USDC"` for a separately enrolled devnet-USDC buyer. USDC has six decimals. Account currency is immutable; assets are not mixed. Free providers require neither a funded balance nor positive money caps. Mainnet is disabled; the implemented blockchain rail uses devnet test tokens. Daily local authority uses UTC calendar days; session authority uses the explicit owner-selected session ID and persists across process restarts. Both count gross completed charges, including later refunds; a refund does not reopen spending authority. Cloud policy is authoritative and may impose stricter limits. MCP tools cannot configure identities, credentials, session IDs, or spending limits.
 
 Configure the buyer agent's MCP client once:
 
@@ -45,6 +47,10 @@ Configure the buyer agent's MCP client once:
 ```
 
 The CLI reserves stdout for MCP. Startup errors contain only a fixed diagnostic; caught crypto, cloud, and file exceptions are never printed. The managed MCPWire adapter suppresses upstream argument-preview logs.
+
+## Balance and Solana devnet funding
+
+`get_balance({})` reports asset, available prepaid balance and remaining owner authority. `create_funding_intent({intentId,amountAtomic})` returns exact buyer-bound deposit terms. The owner sends devnet USDC through a wallet, then `confirm_funding({intentId,signature})` asks the backend to verify the finalized transfer before crediting once. No wallet private key enters a tool or prompt; a deposit cannot raise owner caps. The default demo prompt permits only free access. See [payments](../../docs/payments.md) for setup, verification, and unimplemented mainnet/payout boundaries.
 
 ## Transaction and failure behavior
 
@@ -73,9 +79,9 @@ pnpm exec vitest run apps/buyer-mcp/src
 
 Deterministic tests use the official MCP client and injected cloud/peer boundaries for owner authority, signed HTTP requests, no prompt leakage to cloud, private output suppression, uncertain purchase/execution recovery, provider identity/nonce rejection, action-only retrieval, and restart behavior. Encryption/file permission tests use real temporary local files.
 
-Injected boundary tests do not establish real paid inference. The actual accounting/host integration and single-Mac cloud-credit smoke are recorded separately when their dependent implementations are available. Two physical Mac providers remain the later end-to-end milestone.
+Injected boundary tests do not establish real paid inference. Actual native-build accounting/host and single-Mac cloud-credit smoke records appear below; current Docker validation is recorded separately in [Docker evidence](../../docs/validation/docker-sandbox.md). Two physical Mac providers remain the later end-to-end milestone.
 
-## Verified single-Mac cloud flow
+## Historical native-build single-Mac cloud flow
 
 On October 28, 2026, the opt-in live smoke used the deployed Volcano registry/accounting services and an actual Apple Silicon Mac running the approved small Ollama model. The official MCP client discovered provider `ffceede0-32eb-465f-8f80-e86a476f1ce7`, obtained a quote and purchased request `35e32cdf-e96a-4351-89d5-affcd5a4a858`, connected through MCPWire, retrieved completed model output with a matching fixed receipt of `3` atomic test credits, rejected a duplicate inference submission, and retrieved the same charge through a fresh peer connection.
 

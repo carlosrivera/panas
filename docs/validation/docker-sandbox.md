@@ -1,5 +1,7 @@
 # Docker sandbox validation
 
+This report records the development build and acceptance boundaries at test time. CLI/image publication status below is historical; current installation instructions are in [distribution](../distribution.md). Publishing a release does not itself establish peer/accounting or physical-host acceptance.
+
 A development alpha.4 image was built and exercised on the Apple Silicon demo Mac using the real pinned Ollama 0.40.12 and qwen2.5:0.5b model, digest `a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67`.
 
 The two actual containers passed Docker configuration inspection and effective kernel-profile checks: UID 10001, no effective/permitted/bounding capabilities, no-new-privileges, seccomp filtering, read-only root, CPU/memory/PID cgroup bounds and disabled worker networking. The worker denied a real host canary file, provider-key and Docker-socket access, root/model writes and a connection to an external IP. It generated eight actual output tokens on CPU and passed the cancellation/restart check. The smoke suite also recreates the gateway while preserving its state volume and verifies container-scoped ownership recovery; a unit test covers live PID reuse across distinct scopes. The packaged `doctor` command passed local capabilities and correctly remained `testing` with its peer probe unverified.
