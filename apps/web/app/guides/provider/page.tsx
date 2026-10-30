@@ -7,27 +7,30 @@ import {
     GuideSection,
 } from "../../../components/guide-layout";
 export const metadata: Metadata = { title: "Prepare a provider Mac" };
-const runtimeTemplate = `export PANAS_PROVIDER_ID='<operator-enrolled-uuid>'
-export PANAS_OLLAMA_BINARY='/absolute/path/to/ollama'
-export PANAS_MODELS_PATH='/absolute/path/to/dedicated/models'
-export PANAS_MODEL_DIGEST='<full-sha256-digest>'
-export PANAS_OLLAMA_VERSION='<approved-exact-version>'
-export PANAS_DATA_PATH='/absolute/private/panas-provider'
-export PANAS_OLLAMA_ENDPOINT='http://127.0.0.1:11536'
-pnpm --filter @panas/provider run doctor`;
-const hostTemplate = `export PANAS_PROVIDER_PRIVATE_KEY_PATH='/absolute/private/provider-ed25519.pem'
-export PANAS_PLATFORM_PUBLIC_KEY_PATH='/absolute/private/platform-public.pem'
-export PANAS_REGISTRY_URL='https://REGISTRY_HOST'
-export PANAS_ACCOUNTING_URL='https://ACCOUNTING_HOST'
-export PANAS_PRICE_VERSION='1'
-export PANAS_PRICE_ATOMIC='10'
-pnpm --filter @panas/provider-mcp run host`;
+const runtimeTemplate = `# Save operator-supplied values in ~/.config/panas/provider.env (mode 0600)
+PANAS_PROVIDER_ID=<operator-enrolled-uuid>
+PANAS_PROVIDER_PRIVATE_KEY_PATH=/absolute/private/provider.pem
+PANAS_PLATFORM_PUBLIC_KEY_PATH=/absolute/private/platform-public.pem
+PANAS_MODELS_PATH=/absolute/path/to/dedicated/models
+PANAS_MODEL_DIGEST=a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67
+PANAS_OLLAMA_VERSION=0.40.12
+PANAS_REGISTRY_URL=<operator-registry-URL>
+PANAS_ACCOUNTING_URL=<operator-accounting-URL>
+PANAS_PRICE_VERSION=free-v1
+PANAS_PRICE_ATOMIC=0
+
+~/.local/bin/panas doctor`;
+const hostTemplate = `# Free access; identity and signed grants are still required
+~/.local/bin/panas provider --free
+
+# Optional fixed-price Solana devnet test-USDC access
+~/.local/bin/panas provider --solana-devnet --price-atomic 10000`;
 export default function ProviderGuide() {
     return (
         <GuideLayout
             audience="Provider"
             title="Give your spare compute a useful connection."
-            description="Prepare an Apple Silicon Mac to serve one approved small model natively. The controller tests capabilities before advertising readiness and keeps inference separate from peer connections."
+            description="Prepare an Apple Silicon Mac to serve one approved small model inside Docker. The controller tests capabilities before advertising readiness and keeps inference separate from peer connections."
             sections={[
                 { id: "prepare", label: "Prepare the Mac" },
                 { id: "model", label: "Download explicitly" },
@@ -42,20 +45,21 @@ export default function ProviderGuide() {
                 title="Start with a supported Mac."
             >
                 <p>
-                    The prototype targets Apple Silicon and macOS 14 or newer,
-                    with Node.js 24, the pinned pnpm 12.16.1, and an
-                    operator-approved Ollama revision. Install from a Panas
-                    checkout and enroll the provider ID and Ed25519 public key
-                    with the operator before publication.
+                    Use Apple Silicon, macOS 14 or newer, Node.js 24 and running
+                    Docker Desktop. Install the compiled alpha.4 release; no
+                    source checkout or container-registry account is required.
+                    Enroll the provider UUID and Ed25519 public key with the
+                    operator before publication.
                 </p>
-                <CodeSample label="Run from the Panas checkout">{`node --version
-pnpm --version
-pnpm install --frozen-lockfile`}</CodeSample>
+                <CodeSample label="Download and run the release installer">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.4/install.sh -o /tmp/panas-install.sh
+sh /tmp/panas-install.sh`}</CodeSample>
                 <p>
-                    Keep private keys and application state outside version
-                    control. Use a dedicated models directory and an unused
-                    loopback port. Panas refuses to adopt or stop an existing
-                    Ollama service.
+                    Public serving requires a Docker gateway and a separate
+                    network-disabled inference worker. Both run non-root with
+                    read-only roots and resource caps. No Docker socket, home
+                    directory or treasury keys are mounted. Startup verifies the
+                    matching image and refuses native fallback. The small model
+                    runs on CPU.
                 </p>
                 <p>
                     <a
@@ -101,7 +105,8 @@ curl --fail http://127.0.0.1:11536/api/tags`}</CodeSample>
                     Obtain the full digest from that runtime’s{" "}
                     <code>/api/tags</code> response and the exact approved
                     runtime version. Stop the temporary setup runtime before
-                    letting Panas own its configured process. Never paste a
+                    starting Panas. Serving uses the pinned Linux runtime inside
+                    Docker, not this temporary host setup process. Never paste a
                     digest from an unrelated model revision.
                 </p>
             </GuideSection>
@@ -131,23 +136,24 @@ curl --fail http://127.0.0.1:11536/api/tags`}</CodeSample>
                         The prototype profile allows one active request, a queue
                         of two, up to 2,048 context tokens, up to 128 output
                         tokens, and a 60-second generation deadline. Admission
-                        uses conservative input bounds. It does not promise hard
-                        GPU or unified-memory partitioning, hostile-code
-                        isolation, or independently verified token counts.
+                        uses conservative input bounds. Docker caps the worker
+                        at two CPUs, 4 GiB and 256 processes. Its network is
+                        disabled and model files are read-only. The gateway has
+                        network egress. This is not hardware attestation,
+                        confidential inference or independently verified usage.
                     </p>
                 </GuideNotice>
             </GuideSection>
             <GuideSection
                 id="share"
                 number="04"
-                title="Start the persistent paid host."
+                title="Start the sandboxed host."
             >
                 <p>
-                    After operator enrollment, add the provider key, pinned
-                    platform key, actual service addresses, and your versioned
-                    fixed test-credit price. Keep the runtime configuration from
-                    step 3 in the same environment. The sample price is an
-                    example, not a platform offer.
+                    Keep the operator configuration in its private env file,
+                    then choose free access or a fixed devnet test-USDC price.
+                    Paid access needs a separately funded devnet-USDC buyer.
+                    Never provide a treasury signing key to either container.
                 </p>
                 <CodeSample label="Host configuration template — operator values required">
                     {hostTemplate}
@@ -184,10 +190,11 @@ curl --fail http://127.0.0.1:11536/api/tags`}</CodeSample>
                 <p>
                     Keep the host process running while sharing. Stop it with
                     Ctrl+C to end the session and its owned runtime. Do not
-                    start a second controller against the same private data
-                    path. Administrative pause/resume/drain operations exist on
-                    private local IPC; this website does not expose device
-                    controls.
+                    start a second controller against the same provider
+                    identity. Retain its Docker state volume when recovering an
+                    uncertain request. Administrative pause/resume/drain
+                    operations exist on private local IPC; this website does not
+                    expose device controls.
                 </p>
                 <div className="guide-faq">
                     <details>
@@ -238,7 +245,7 @@ curl --fail http://127.0.0.1:11536/api/tags`}</CodeSample>
                 </div>
                 <a
                     className="text-link"
-                    href="https://github.com/carlosrivera/panas/blob/main/apps/provider-mcp/README.md"
+                    href="https://github.com/carlosrivera/panas/blob/main/docs/docker-sandbox.md"
                 >
                     Maintained host setup documentation ↗
                 </a>
@@ -250,7 +257,7 @@ curl --fail http://127.0.0.1:11536/api/tags`}</CodeSample>
                     Runtime and capability details ↗
                 </a>
                 <p className="small-note">
-                    Repository access may be required. Self-serve enrollment and
+                    Source cloning is not required. Self-serve enrollment and
                     real-money payments are not available in this prototype.
                 </p>
                 <Link href="/providers" className="text-link">
