@@ -23,7 +23,6 @@ pnpm --filter @panas/integration run local-boundaries-seam --config /private/pat
 
 The commands use actual TEST_CREDIT purchases. Preserve private artifacts and review unknown reservations under the existing audited operator policy. They do not stop shared Volcano services or sleep the Mac.
 
-
 ## Current Docker ownership and recovery
 
 The Mac launcher owns the two containers and sends a heartbeat lease to the gateway. Lease loss or closed stdin terminates the gateway; owned-container cleanup stops the worker as the launcher exits. Never infer that a public provider is healthy from a surviving Docker process alone: current startup, capability, peer and registry evidence are required.
@@ -48,6 +47,5 @@ The earlier `apps/provider/src/crash-recovery.test.ts` subprocess fixtures use a
 4. Restart via the same CLI/environment, provider key and state volume. Require a fresh passing container/capability suite, startup/share and peer/registry publication. Never remove the volume to bypass an ownership or uncertainty error.
 5. Retrieve the original request through fresh action authorization and the current descriptor. Verify its original request/startup binding, preserved durable result when available, unknown/pending handling otherwise, nonce protection and no automatic execution replay or duplicate debit.
 6. Check terminal-outbox idempotency and authoritative receipt/ledger/hold invariants. Uncertain authorized work stays held until audited reconciliation decides its outcome. Stop only the owned fixture containers and retain metadata-only evidence.
-
 
 Keep issue #10's physical crash acceptance gate pending until the matching observations exist. Older native artifacts remain evidence for their recorded build only.

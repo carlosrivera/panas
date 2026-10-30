@@ -4,7 +4,6 @@ This guide specifies authorization boundaries and deferred observations, not a c
 
 **Historical native follow-up, October 29:** full merged validation is recorded in #10. [Actual one-Mac observations](evidence/crash-and-boundaries-2026-10-29.json) now cover old-startup rejection before nonce consumption, original-startup unknown retrieval, six accepted real requests across two persistent peers, seventh-request zero-charge refusal, continued capping after restart at43.8 seconds, and acceptance after81.5 real elapsed seconds. The rate fixture has seven completed receipts, two failed zero-debit receipts and no holds. Natural24-hour expiry and two-physical-Mac observations remain pending; the initial deferred/component descriptions below are historical implementation-batch scope.
 
-
 ## Startup binding
 
 Execution requires the grant's provider/startup/model binding to match the current daemon. The signed host rechecks it after its initial request read and nonce persistence, and passes a guard into the daemon's serialized admission decision. A restart/retest during storage I/O cannot admit an old-startup grant into the new startup. Invalid initial bindings consume no nonce or execution authorization; a nonce already durably consumed before a later binding failure remains consumed. Use a new proof nonce when retrying a separately authorized operation.

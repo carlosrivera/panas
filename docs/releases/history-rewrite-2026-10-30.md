@@ -4,8 +4,8 @@ Published branches and release tags were rewritten to remove automated co-author
 
 An existing artifact reports the original build-source commit below. Its release tag now resolves to the corresponding rewritten commit with the identical Git tree. This table records that correspondence; it does not claim a new build or new validation.
 
-| Release | Original build-source commit | Current tag commit |
-| --- | --- | --- |
+| Release        | Original build-source commit               | Current tag commit                         |
+| -------------- | ------------------------------------------ | ------------------------------------------ |
 | v0.1.0-alpha.6 | `1c5a8308ae7ce50a2de89d4e9c54ea6c2969bcd4` | `557b7084ce546bdf4109dec395d8e92759a341d7` |
 | v0.1.0-alpha.5 | `971c37e26fbd937d72adb386c68fefe6c8548d79` | `5265db213b1d30125597921bc278788110f8b53d` |
 | v0.1.0-alpha.4 | `d822bcd1ed63709cbb6f5cd04dfd58afb6658aff` | `6357460f1dffb2148ee61dfa00e7c2aa3d3a982d` |
