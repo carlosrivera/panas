@@ -1,3 +1,4 @@
+import { sqlStatements } from "../sql-statements.js";
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -219,7 +220,8 @@ export async function applyMigrations(
                 assertChecksum(file.sha256, old, file.name);
                 continue;
             }
-            await client.query(file.sql);
+            for (const statement of sqlStatements(file.sql))
+                await client.query(statement);
             await client.query(
                 "INSERT INTO panas_schema_migrations(name,sha256,release_sha,adopted) VALUES($1,$2,$3,false)",
                 [file.name, file.sha256, release],
