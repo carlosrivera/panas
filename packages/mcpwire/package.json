@@ -10,7 +10,7 @@
         "typecheck": "tsc --noEmit"
     },
     "dependencies": {
-        "@mcpwire/cli": "1.1.2",
+        "@mcpwire/cli": "1.1.3",
         "@panas/contracts": "workspace:*"
     },
     "devDependencies": {
