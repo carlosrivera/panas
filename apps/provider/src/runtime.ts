@@ -5,6 +5,7 @@ import { signalOwnedGroup } from "../../../scripts/owned-signal.js";
 import { setTimeout as delay } from "node:timers/promises";
 
 export interface RuntimeInfo {
+    sandbox?: "docker-worker";
     version: string;
     digest: string;
 }

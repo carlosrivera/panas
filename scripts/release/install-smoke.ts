@@ -57,7 +57,7 @@ if [ "\${PANAS_TEST_CORRUPT:-0}" = 1 ]; then printf corrupt >> "$out"; fi
     );
     assert.equal(
         JSON.parse(first).isolation,
-        "native-supervised-no-os-sandbox",
+        "docker-gateway-offline-worker-cpu",
     );
     // No shell profile/PATH edits or unrelated executable replacement.
     await rm(binary);

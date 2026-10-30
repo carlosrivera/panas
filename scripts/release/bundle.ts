@@ -16,6 +16,9 @@ if (Number(process.versions.node.split(".")[0]) !== 24)
 await rm(destination, { recursive: true, force: true });
 await mkdir(destination, { recursive: true });
 const entries = {
+    "apps/cli/src/container-entry": "apps/cli/src/container-entry.ts",
+    "apps/provider/src/container-probe": "apps/provider/src/container-probe.ts",
+    "apps/provider/src/worker": "apps/provider/src/worker.ts",
     "bin/panas": "apps/cli/src/cli.ts",
     "apps/provider-mcp/src/host": "apps/provider-mcp/src/host.ts",
     "apps/provider-mcp/src/main": "apps/provider-mcp/src/main.ts",
@@ -71,7 +74,7 @@ await writeFile(
             sourceDirty: Boolean(run(["status", "--porcelain"])),
             deployedControlPlane: "281033a964c98a9a173d440030586dd64fb7135b",
             node: process.versions.node,
-            isolation: "native-supervised-no-os-sandbox",
+            isolation: "docker-gateway-offline-worker-cpu",
             mcpwire: "1.1.1",
             ollama: "0.40.12",
             model: "qwen2.5:0.5b",

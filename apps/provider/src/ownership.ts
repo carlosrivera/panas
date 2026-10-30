@@ -8,7 +8,7 @@ import {
     rmdir,
 } from "node:fs/promises";
 import { createConnection, type NetConnectOpts } from "node:net";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -39,7 +39,7 @@ async function exists(path: string) {
         throw error;
     }
 }
-/** A live PID is always refused, including PID reuse. Never kill a recorded PID. */
+/** A live PID within the same ownership scope is refused. Never kill a recorded PID. */
 function alive(pid: number): boolean {
     try {
         process.kill(pid, 0);
@@ -52,8 +52,14 @@ function alive(pid: number): boolean {
 /** Serialize stale-owner recovery before any request/key/nonce store is opened. */
 export async function claimProviderHost(
     directory: string,
+    containerScope?: string,
 ): Promise<{ recovered: boolean }> {
-    const guard = join(directory, "host.starting");
+    const guard = join(
+        directory,
+        containerScope
+            ? `host.starting.${createHash("sha256").update(containerScope).digest("hex").slice(0, 16)}`
+            : "host.starting",
+    );
     try {
         await mkdir(guard, { mode: 0o700 });
     } catch (error) {
@@ -68,7 +74,12 @@ export async function claimProviderHost(
         if (info) {
             if (!info.isFile() || info.isSymbolicLink() || info.mode & 0o077)
                 throw new Error("INVALID_HOST_OWNER_RECORD");
-            let owner: { version?: unknown; pid?: unknown; instance?: unknown };
+            let owner: {
+                version?: unknown;
+                pid?: unknown;
+                instance?: unknown;
+                containerScope?: unknown;
+            };
             try {
                 owner = JSON.parse(await readFile(ownerPath, "utf8"));
             } catch {
@@ -83,7 +94,19 @@ export async function claimProviderHost(
                 typeof owner.instance !== "string"
             )
                 throw new Error("INVALID_HOST_OWNER_RECORD");
-            if (alive(Number(owner.pid)))
+            if (
+                (containerScope === undefined) !==
+                    (owner.containerScope === undefined) ||
+                (owner.containerScope !== undefined &&
+                    typeof owner.containerScope !== "string")
+            )
+                throw new Error("HOST_OWNER_SCOPE_REQUIRES_REVIEW");
+            // PIDs are meaningful only within the same Docker instance/namespace.
+            // The outer launcher independently excludes another live gateway for this provider.
+            if (
+                owner.containerScope === containerScope &&
+                alive(Number(owner.pid))
+            )
                 throw new Error("PROVIDER_HOST_ALREADY_RUNNING");
             recovered = true;
         }
@@ -114,6 +137,7 @@ export async function claimProviderHost(
                         version: 1,
                         pid: process.pid,
                         instance: randomUUID(),
+                        ...(containerScope ? { containerScope } : {}),
                     }),
                 );
                 await file.sync();
@@ -132,8 +156,8 @@ export async function claimProviderHost(
                 if (error.code !== "ENOENT") throw error;
             });
         }
-        // Keep this record through shutdown. A successor must observe this PID dead,
-        // not merely an early cleanup callback, before accessing the same store.
+        // Keep this record through shutdown. A successor in the same scope must observe
+        // the PID dead; a Docker successor proves a different container/PID namespace.
         return { recovered };
     } finally {
         await rmdir(guard);

@@ -45,6 +45,7 @@ async function fixture(hooks: RequestHooks = {}) {
         info: vi.fn(async () => ({
             digest: config.expectedDigest,
             version: config.expectedRuntimeVersion,
+            sandbox: "docker-worker" as const,
         })),
         cancellationCheck: vi.fn(async () => true),
         generate: vi.fn(async () => result),
@@ -55,7 +56,8 @@ async function fixture(hooks: RequestHooks = {}) {
         runtime,
         store,
         async () => ({
-            platform: "darwin",
+            platform: "linux",
+            sandbox: "docker",
             architecture: "arm64",
             osMajor: 14,
             memoryBytes: 8 * 1024 ** 3,
