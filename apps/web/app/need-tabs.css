@@ -1,0 +1,73 @@
+.pr27-page .need-tabs-list {
+    display: flex;
+    gap: 6px;
+    width: fit-content;
+    margin: 0 auto;
+    padding: 4px;
+    border: 1px solid var(--edge);
+    border-radius: 999px;
+}
+
+.pr27-page .need-tabs-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 30px;
+    padding: 0 11px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.pr27-page .need-tabs-tab[aria-selected="true"] {
+    background: var(--fg);
+    color: var(--bg);
+}
+
+.pr27-page .need-tabs-tab[aria-selected="true"]::before {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--lime);
+    content: "";
+}
+
+.pr27-page .need-tabs-tab:not([aria-selected="true"]) {
+    border-color: var(--edge);
+}
+
+.pr27-page .need-tabs-tab:focus-visible,
+.pr27-page .need-tabs-panel:focus-visible {
+    outline: 2px solid var(--lime);
+    outline-offset: 3px;
+}
+
+.pr27-page .need-tabs-panel[hidden] {
+    display: none;
+}
+
+.pr27-page .need-tabs-panel .prototype-annotation {
+    position: relative;
+    inset: auto;
+    margin: 28px 0 0;
+}
+
+.pr27-page .need-tabs-panel .prototype-policy {
+    margin-top: 32px;
+}
+
+.pr27-page .need-tabs-panel .use-cases-inner {
+    padding-top: 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pr27-page .need-tabs-tab {
+        scroll-behavior: auto;
+        transition: none;
+    }
+}
