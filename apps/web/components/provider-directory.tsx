@@ -28,6 +28,7 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [fromFixtures, setFromFixtures] = useState(false);
     const [query, setQuery] = useState("");
     const [readyFilter, setReadyFilter] = useState("false");
     const [maxPrice, setMaxPrice] = useState("");
@@ -48,9 +49,12 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                 setObservation((old) => ({ ...old, trusted: false }));
             try {
                 if (isFixturePreview() && !providerId) {
-                    const { previewProviderPage } = await import("../lib/preview-providers");
-                    const parsed = publicProviderPageSchema.parse(previewProviderPage);
+                    const { previewProviderPage } =
+                        await import("../lib/preview-providers");
+                    const parsed =
+                        publicProviderPageSchema.parse(previewProviderPage);
                     if (turn !== sequence.current) return;
+                    setFromFixtures(true);
                     setPage(parsed);
                     const nextObservation = anchorObservation(
                         lastObservation.current,
@@ -231,8 +235,10 @@ export function ProviderDirectory({ providerId }: { providerId?: string }) {
                     </p>
                 </form>
             )}
-            {isFixturePreview() && !providerId && (
-                <p className="small-note">development preview · fixtures, not live providers</p>
+            {fromFixtures && (
+                <p className="small-note">
+                    development preview · fixtures, not live providers
+                </p>
             )}
             <div className="directory-toolbar">
                 <p className="small-note">

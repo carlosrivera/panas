@@ -14,7 +14,9 @@
 .pr27-page .top-panas-heading h2 {
     margin: 0;
     color: var(--fg, #edede6);
-    font: 400 clamp(1.8rem, 4vw, 3rem) / 1.05 "Paper Mono", monospace;
+    font:
+        400 clamp(1.8rem, 4vw, 3rem) / 1.05 "Paper Mono",
+        monospace;
 }
 .pr27-page .top-panas-heading .lime {
     color: var(--lime, #c5f74f);
@@ -23,7 +25,9 @@
 .pr27-page .top-panas-preview {
     margin: 0.55rem 0 0;
     color: var(--muted, #8a8a82);
-    font: 0.8rem / 1.5 "Paper Mono", monospace;
+    font:
+        0.8rem / 1.5 "Paper Mono",
+        monospace;
 }
 .pr27-page .top-panas-preview {
     margin: 0 0 1rem;
@@ -38,7 +42,9 @@
 }
 .pr27-page .top-panas-message {
     color: var(--muted, #8a8a82);
-    font: 0.9rem / 1.6 "Paper Mono", monospace;
+    font:
+        0.9rem / 1.6 "Paper Mono",
+        monospace;
 }
 .pr27-page .top-panas-message a {
     color: var(--lime, #c5f74f);

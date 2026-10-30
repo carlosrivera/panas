@@ -44,7 +44,11 @@ export function NeedTabs() {
 
     return (
         <section className="use-cases need-tabs" aria-label="Panas use cases">
-            <div className="need-tabs-list" role="tablist" aria-label="Panas plans">
+            <div
+                className="need-tabs-list"
+                role="tablist"
+                aria-label="Panas plans"
+            >
                 <button
                     ref={(element) => {
                         tabs.current[0] = element;
@@ -90,8 +94,8 @@ export function NeedTabs() {
                 hidden={selected !== "free"}
             >
                 <p className="prototype-annotation">
-                    concept / planned use cases · current prototype: one
-                    bounded model request with fixed test credits
+                    concept / planned use cases · current prototype: one bounded
+                    model request with fixed test credits
                 </p>
                 <div className="use-cases-inner">
                     <h2>

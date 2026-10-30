@@ -25,14 +25,17 @@ export function TopPanas() {
     const [now, setNow] = useState(0);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [fromFixtures, setFromFixtures] = useState(false);
 
     const load = useCallback(async () => {
         const startedAt = performance.now();
         try {
             let parsed: PublicProviderPage;
             if (isFixturePreview()) {
-                const { previewProviderPage } = await import("../lib/preview-providers");
+                const { previewProviderPage } =
+                    await import("../lib/preview-providers");
                 parsed = publicProviderPageSchema.parse(previewProviderPage);
+                setFromFixtures(true);
             } else {
                 const response = await fetch("/api/providers?limit=50", {
                     cache: "no-store",
@@ -44,7 +47,11 @@ export function TopPanas() {
             }
             setPage(parsed);
             setObservation((previous) =>
-                anchorObservation(previous.trusted ? previous : null, parsed.observedAt, startedAt),
+                anchorObservation(
+                    previous.trusted ? previous : null,
+                    parsed.observedAt,
+                    startedAt,
+                ),
             );
             setNow(performance.now());
             setError(false);
@@ -77,16 +84,18 @@ export function TopPanas() {
         return () => window.clearInterval(timer);
     }, []);
 
-    const providers = page?.providers
-        .slice()
-        .sort((a: PublicProvider, b: PublicProvider) => {
-            const aReady = displayedReadiness(a, observation, now).ready;
-            const bReady = displayedReadiness(b, observation, now).ready;
-            if (aReady !== bReady) return aReady ? -1 : 1;
-            const priceOrder = BigInt(a.price.totalAtomic) - BigInt(b.price.totalAtomic);
-            return priceOrder < 0n ? -1 : priceOrder > 0n ? 1 : 0;
-        })
-        .slice(0, 3) ?? [];
+    const providers =
+        page?.providers
+            .slice()
+            .sort((a: PublicProvider, b: PublicProvider) => {
+                const aReady = displayedReadiness(a, observation, now).ready;
+                const bReady = displayedReadiness(b, observation, now).ready;
+                if (aReady !== bReady) return aReady ? -1 : 1;
+                const priceOrder =
+                    BigInt(a.price.totalAtomic) - BigInt(b.price.totalAtomic);
+                return priceOrder < 0n ? -1 : priceOrder > 0n ? 1 : 0;
+            })
+            .slice(0, 3) ?? [];
 
     return (
         <section className="top-panas" aria-labelledby="top-panas-title">
@@ -101,11 +110,22 @@ export function TopPanas() {
                     view all panas →
                 </Link>
             </div>
-            {isFixturePreview() && (
-                <p className="top-panas-preview">development preview · fixtures, not live providers</p>
+            {fromFixtures && (
+                <p className="top-panas-preview">
+                    development preview · fixtures, not live providers
+                </p>
             )}
-            {loading && !page && <p className="top-panas-message" role="status">checking who’s awake…</p>}
-            {!loading && error && <p className="top-panas-message" role="status">registry’s taking a nap. try the <Link href="/providers">full directory</Link>.</p>}
+            {loading && !page && (
+                <p className="top-panas-message" role="status">
+                    checking who’s awake…
+                </p>
+            )}
+            {!loading && error && (
+                <p className="top-panas-message" role="status">
+                    registry’s taking a nap. try the{" "}
+                    <Link href="/providers">full directory</Link>.
+                </p>
+            )}
             {!loading && !error && providers.length === 0 && (
                 <div className="top-panas-message" role="status">
                     <p>no panas awake yet. all good, naps are important.</p>
