@@ -31,6 +31,17 @@ functions:
           - PANAS_REGISTRY_DATABASE_URL
 frontends:
     - name: panas
+      function_routes:
+          - function: registry
+            path_prefix: /registry
+            strip_prefix: true
+          - function: accounting
+            path_prefix: /accounting
+            strip_prefix: true
+      custom_domains:
+          - domain: panas.mcpwire.co
+            tls:
+                mode: managed
       variable_scope: scoped
       variables:
           - PUBLIC_REGISTRY_URL

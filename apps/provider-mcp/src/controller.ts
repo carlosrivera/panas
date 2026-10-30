@@ -1,3 +1,4 @@
+import { serviceUrl } from "@panas/contracts/service-url";
 import { randomUUID, type KeyLike } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { probePeer, superviseShare } from "@panas/mcpwire";
@@ -99,7 +100,7 @@ export class ProviderController {
         );
         const started = Date.now();
         try {
-            const response = await fetch(new URL(path, base), {
+            const response = await fetch(serviceUrl(base, path), {
                 method: "POST",
                 headers: {
                     "content-type": "application/json",

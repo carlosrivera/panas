@@ -3,6 +3,8 @@ import { generateKeyPairSync, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import {
     DOMAIN,
+    verifyDocument,
+    signedCloudRequestSchema,
     signDocument,
     type TerminalEvent,
     type Grant,
@@ -129,4 +131,44 @@ it("binds descriptor acknowledgements to provider and startup", async () => {
     }
     post.mockResolvedValueOnce({ uploaded: true, providerId, startupId });
     await expect(client.descriptor({ startupId })).resolves.toBeUndefined();
+});
+
+it("preserves the accounting mount while signing the backend path", async () => {
+    const keys = generateKeyPairSync("ed25519");
+    const providerId = randomUUID();
+    const client = new AccountingHttpClient(
+        "https://panas.mcpwire.co/accounting/",
+        providerId,
+        keys.privateKey,
+    );
+    const fetcher = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(async (input, init) => {
+            const request = new Request(input, init);
+            expect(request.url).toBe(
+                "https://panas.mcpwire.co/accounting/provider/descriptor",
+            );
+            const signed = signedCloudRequestSchema.parse(
+                JSON.parse(
+                    Buffer.from(
+                        request.headers.get("x-panas-proof")!,
+                        "base64url",
+                    ).toString(),
+                ),
+            );
+            expect(signed.payload.path).toBe("/provider/descriptor");
+            expect(verifyDocument(DOMAIN.cloud, signed, keys.publicKey)).toBe(
+                true,
+            );
+            return Response.json({
+                uploaded: true,
+                providerId,
+                startupId: "fixture",
+            });
+        });
+    try {
+        await client.descriptor({ startupId: "fixture" });
+    } finally {
+        fetcher.mockRestore();
+    }
 });

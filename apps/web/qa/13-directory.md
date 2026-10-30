@@ -4,7 +4,7 @@
 
 Routes: `/providers`, `/providers/{providerId}`, same-origin `/api/providers` and `/api/providers/{providerId}`. The server proxy reads the nonsecret `PUBLIC_REGISTRY_URL` base and appends `/public/providers`; it never forwards browser credentials. Strict schemas from `@panas/contracts/public-registry` reject extra/private nested fields before any data is sent to the browser. Missing config, malformed data, outages, and invalid cursors have sanitized retry/reset states.
 
-Actual public base verified anonymously: `https://cdb5c197-93ad-4c13-8dca-45e1d18140f5.functions.volcano.run`. Local browser integration observed three real reported records, expired heartbeat states, then two ready observations as independent provider controllers returned. These observations are provider assertions; they do not prove two physical devices.
+Actual public base verified anonymously: `https://panas.mcpwire.co/registry`. Local browser integration observed three real reported records, expired heartbeat states, then two ready observations as independent provider controllers returned. These observations are provider assertions; they do not prove two physical devices.
 
 - Default includes all reported states (`readyOnly=false`); UI filters map to `readyOnly` and `maxPriceAtomic` only. Page size is 12 with opaque keyset cursors and a previous-cursor stack. No invented ranking or reliability values.
 - `TEST_CREDIT_SCALE=0`; prices use BigInt/Intl without floating-point conversion. One integer unit is one test credit. No fiat or blockchain conversion is displayed.

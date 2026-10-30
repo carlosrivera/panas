@@ -8,7 +8,7 @@ Panas connects agents that need inference with people who have compute to share.
 
 **Distributed inference. Encrypted channels. Agent-native access. No dedicated inference data center.**
 
-[Explore Panas](https://b694dc37-574c-4668-adf0-9371a728f16f.frontends.volcano.run/) · [Connect your agent](docs/distribution.md) · [Read the architecture](docs/architecture.md)
+[Explore Panas](https://panas.mcpwire.co/) · [Connect your agent](docs/distribution.md) · [Read the architecture](docs/architecture.md)
 
 ## The network is already on your desk
 
@@ -61,7 +61,7 @@ The hackathon payment rail uses **Solana devnet test USDC**. [Payment protocol �
 
 ## Try Panas
 
-Install Node.js 24, download the [alpha.4 installer](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.4/install.sh), and follow the [provider and buyer setup](docs/distribution.md) for enrollment, keys, model, and Docker image.
+Install Node.js 24, download the [alpha.5 installer](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.5/install.sh), and follow the [provider and buyer setup](docs/distribution.md) for enrollment, keys, model, and Docker image.
 
 ```sh
 sh ~/Downloads/install.sh
