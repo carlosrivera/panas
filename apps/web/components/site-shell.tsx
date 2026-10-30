@@ -11,7 +11,6 @@ export function SiteHeader() {
             <nav aria-label="Main navigation" className="main-nav">
                 <Link href="/guides/buyer">docs</Link>
                 <Link href="/providers">find a pana</Link>
-                <a href="https://github.com/carlosrivera/mcpwire">mcpwire ↗</a>
             </nav>
         </header>
     );

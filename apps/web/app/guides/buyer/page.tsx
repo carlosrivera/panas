@@ -1,12 +1,17 @@
 import Link from "next/link";
-import type { Metadata } from "next";
+import { pageMetadata } from "../../../lib/site-metadata";
 import {
     CodeSample,
     GuideLayout,
+    GuideQuickStart,
     GuideNotice,
     GuideSection,
 } from "../../../components/guide-layout";
-export const metadata: Metadata = { title: "Connect a buyer agent" };
+export const metadata = pageMetadata(
+    "Connect a buyer agent",
+    "Connect your agent to Panas through MCP. Discover ready providers, request inference and retrieve a receipt.",
+    "/guides/buyer",
+);
 const ownerTemplate = `{
   "buyerId": "OWNER_ENROLLED_BUYER_UUID",
   "sessionId": "OWNER_SELECTED_SESSION_UUID",
@@ -71,7 +76,23 @@ export default function BuyerGuide() {
         <GuideLayout
             audience="Buyer"
             title="Connect once. Let your agent handle the handoff."
-            description="The local Panas MCP facade gives your agent one stable connection for discovery, fixed quotes, inference, and receipt retrieval. This website is not part of checkout."
+            description="Give your agent one MCP connection to discover providers, run inference and collect receipts."
+            quickStart={
+                <GuideQuickStart
+                    command={
+                        "curl -fsSL https://github.com/carlosrivera/panas/releases/latest/download/install.sh | sh && ~/.local/bin/panas demo-prompt"
+                    }
+                >
+                    <>
+                        Paste the printed prompt into Codex. You need Node.js 24
+                        and your enrolled buyer configuration; your agent needs
+                        no local model.{" "}
+                        <a href="#owner" className="inline-link">
+                            Owner setup →
+                        </a>
+                    </>
+                </GuideQuickStart>
+            }
             sections={[
                 { id: "prepare", label: "Prepare your client" },
                 { id: "owner", label: "Set owner authority" },
@@ -86,12 +107,12 @@ export default function BuyerGuide() {
                 title="Prepare the local tools."
             >
                 <p>
-                    Install the compiled alpha.5 CLI with Node.js 24. Codex
+                    Install the latest compiled CLI with Node.js 24. Codex
                     connects to the local stdio facade; the buyer does not need
                     Docker or Ollama. The provider runs the sandboxed worker on
                     its own Mac.
                 </p>
-                <CodeSample label="Install without cloning">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.5/install.sh -o /tmp/panas-install.sh
+                <CodeSample label="Install without cloning">{`curl --fail --location https://github.com/carlosrivera/panas/releases/latest/download/install.sh -o /tmp/panas-install.sh
 sh /tmp/panas-install.sh`}</CodeSample>
                 <p>
                     No repository checkout or pnpm installation is needed by

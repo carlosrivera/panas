@@ -1,7 +1,11 @@
-import type { Metadata } from "next";
+import { pageMetadata } from "../../lib/site-metadata";
 import { PageIntro } from "../../components/site-shell";
 import { ProviderDirectory } from "../../components/provider-directory";
-export const metadata: Metadata = { title: "Provider directory" };
+export const metadata = pageMetadata(
+    "Find a pana",
+    "Browse shared inference providers, current availability and fixed prices. Let your agent handle discovery and booking.",
+    "/providers",
+);
 export default function Providers() {
     return (
         <main id="main" className="shell section">

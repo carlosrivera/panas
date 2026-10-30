@@ -393,6 +393,12 @@
 }
 
 .pr27-page #pick {
+    position: fixed;
+    inset: 0;
+    height: fit-content;
+    max-height: calc(100svh - 32px);
+    margin: auto;
+    overflow: auto;
     width: min(680px, calc(100vw - 32px));
     padding: 0;
     color: var(--fg);
