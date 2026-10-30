@@ -72,7 +72,10 @@ await writeFile(
             version: manifest.version,
             sourceCommit: run(["rev-parse", "HEAD"]),
             sourceDirty: Boolean(run(["status", "--porcelain"])),
-            deployedControlPlane: "281033a964c98a9a173d440030586dd64fb7135b",
+            requiredControlPlaneFeatures: [
+                "docker-sandbox-readiness",
+                "devnet-usdc-funding",
+            ],
             node: process.versions.node,
             isolation: "docker-gateway-offline-worker-cpu",
             mcpwire: "1.1.1",
