@@ -1,9 +1,20 @@
+import {
+    SolanaDevnetVerifier,
+    DEVNET_USDC_MINT,
+    fundingIntentInputSchema,
+    fundingConfirmationSchema,
+    type FundingIntent,
+} from "./solana-devnet.js";
 import { createPublicKey, randomUUID, type KeyLike } from "node:crypto";
 import pg, { type PoolClient } from "pg";
 import { z } from "zod";
 import { capabilityReportSchema } from "@panas/contracts/provider";
 import { registryPriceSchema } from "@panas/contracts/registry";
-import { atomicAmountSchema } from "@panas/contracts";
+import {
+    paymentCurrencySchema,
+    type PaymentCurrency,
+    atomicAmountSchema,
+} from "@panas/contracts";
 import {
     assertFresh,
     DOMAIN,
@@ -54,6 +65,7 @@ interface Buyer {
     max_session: string;
     max_daily: string;
     policy_version: string;
+    currency: PaymentCurrency;
 }
 interface Session {
     session_id: string;
@@ -112,6 +124,7 @@ export interface AccountingOptions {
     descriptorEncryptionKey: Buffer;
     feeAtomic?: string;
     clock?: () => Date;
+    solanaDevnet?: SolanaDevnetVerifier;
 }
 export class AccountingService {
     private readonly now: () => Date;
@@ -184,7 +197,7 @@ export class AccountingService {
                 buyer =
                     ((
                         await client.query(
-                            "SELECT buyer_id,public_key_pem,enabled,balance::text,held::text,max_request::text,max_session::text,max_daily::text,policy_version FROM panas_accounting_buyers WHERE buyer_id=$1 FOR UPDATE",
+                            "SELECT buyer_id,public_key_pem,enabled,balance::text,held::text,max_request::text,max_session::text,max_daily::text,policy_version,currency FROM panas_accounting_buyers WHERE buyer_id=$1 FOR UPDATE",
                             [buyerId],
                         )
                     ).rows[0] as Buyer | undefined) ?? null;
@@ -318,6 +331,7 @@ export class AccountingService {
             fail("SPENDING_LIMIT", 402, "Owner session is unavailable");
         if (
             amount !== undefined &&
+            amount > 0n &&
             (amount > BigInt(buyer.max_request) ||
                 BigInt(session.held) + BigInt(session.spent) + amount >
                     BigInt(session.cap) ||
@@ -374,7 +388,17 @@ export class AccountingService {
                 );
             const now = this.now(),
                 providerAtomic = BigInt(provider.price.totalAtomic),
-                total = providerAtomic + this.fee;
+                fee = providerAtomic === 0n ? 0n : this.fee,
+                total = providerAtomic + fee;
+            if (
+                providerAtomic > 0n &&
+                provider.price.currency !== buyer!.currency
+            )
+                fail(
+                    "SPENDING_LIMIT",
+                    402,
+                    "Buyer account currency does not match provider pricing",
+                );
             const q = quoteSchema.parse({
                 version: 1,
                 quoteId: randomUUID(),
@@ -393,8 +417,8 @@ export class AccountingService {
                 priceVersion: provider.price.version,
                 totalAtomic: total.toString(),
                 providerAtomic: providerAtomic.toString(),
-                feeAtomic: this.fee.toString(),
-                currency: "TEST_CREDIT",
+                feeAtomic: fee.toString(),
+                currency: buyer!.currency,
                 limits: {
                     ...provider.report.profile,
                     maxOutputTokens: body.maxOutputTokens,
@@ -514,6 +538,9 @@ export class AccountingService {
                     q.modelDigest ||
                 provider.price.version !== q.priceVersion ||
                 provider.price.totalAtomic !== q.providerAtomic ||
+                (BigInt(q.totalAtomic) > 0n &&
+                    provider.price.currency !== q.currency) ||
+                buyer!.currency !== q.currency ||
                 provider.report.profile.maxContextTokens <
                     q.limits.maxContextTokens ||
                 provider.report.profile.maxOutputTokens <
@@ -534,7 +561,10 @@ export class AccountingService {
             );
             const amount = BigInt(q.totalAtomic);
             await this.session(client, buyer!, q.sessionId, amount);
-            if (BigInt(buyer!.balance) - BigInt(buyer!.held) < amount)
+            if (
+                amount > 0n &&
+                BigInt(buyer!.balance) - BigInt(buyer!.held) < amount
+            )
                 fail(
                     "SPENDING_LIMIT",
                     402,
@@ -553,8 +583,9 @@ export class AccountingService {
                 )
             ).rows[0] as { held: string; spent: string };
             if (
+                amount > 0n &&
                 BigInt(daily.held) + BigInt(daily.spent) + amount >
-                BigInt(buyer!.max_daily)
+                    BigInt(buyer!.max_daily)
             )
                 fail("SPENDING_LIMIT", 402, "Owner daily limit exceeded");
             const reservationId = randomUUID(),
@@ -840,12 +871,21 @@ export class AccountingService {
         kind: "fund" | "settle" | "refund",
         idem: string,
         entries: { account: string; amountAtomic: string }[],
+        currency: PaymentCurrency = "TEST_CREDIT",
     ) {
         if (entries.reduce((sum, e) => sum + BigInt(e.amountAtomic), 0n) !== 0n)
             throw new Error("Ledger transaction is not balanced");
         await client.query(
-            "INSERT INTO panas_accounting_ledger(ledger_id,request_id,idempotency_key,kind,entries,created_at) VALUES($1,$2,$3,$4,$5,$6)",
-            [randomUUID(), id, idem, kind, JSON.stringify(entries), this.now()],
+            "INSERT INTO panas_accounting_ledger(ledger_id,request_id,idempotency_key,kind,entries,created_at,currency) VALUES($1,$2,$3,$4,$5,$6,$7)",
+            [
+                randomUUID(),
+                id,
+                idem,
+                kind,
+                JSON.stringify(entries),
+                this.now(),
+                currency,
+            ],
         );
     }
     private async release(
@@ -970,13 +1010,14 @@ export class AccountingService {
                     "settle",
                     `settle:${id}`,
                     entries,
+                    grant.currency,
                 );
             }
             const receipt = receiptSchema.parse({
                 receiptId: randomUUID(),
                 requestId: id,
                 status: value.outcome,
-                currency: "TEST_CREDIT",
+                currency: grant.currency,
                 buyerDebitAtomic: success ? grant.totalAtomic : "0",
                 providerEarningsAtomic: success ? grant.providerAtomic : "0",
                 feeAtomic: success ? grant.feeAtomic : "0",
@@ -998,6 +1039,7 @@ export class AccountingService {
         maxSessionAtomic: string;
         maxDailyAtomic: string;
         policyVersion: string;
+        currency?: PaymentCurrency;
     }) {
         z.uuid().parse(input.buyerId);
         if (createPublicKey(input.publicKeyPem).asymmetricKeyType !== "ed25519")
@@ -1010,8 +1052,11 @@ export class AccountingService {
             positive(amount);
         if (!input.policyVersion || input.policyVersion.length > 80)
             throw new Error("Policy version required");
-        await this.pool.query(
-            "INSERT INTO panas_accounting_buyers(buyer_id,public_key_pem,max_request,max_session,max_daily,policy_version) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(buyer_id) DO UPDATE SET public_key_pem=EXCLUDED.public_key_pem,enabled=true,max_request=EXCLUDED.max_request,max_session=EXCLUDED.max_session,max_daily=EXCLUDED.max_daily,policy_version=EXCLUDED.policy_version",
+        const currency = paymentCurrencySchema.parse(
+            input.currency ?? "TEST_CREDIT",
+        );
+        const enrolled = await this.pool.query(
+            "INSERT INTO panas_accounting_buyers(buyer_id,public_key_pem,max_request,max_session,max_daily,policy_version,currency) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(buyer_id) DO UPDATE SET public_key_pem=EXCLUDED.public_key_pem,enabled=true,max_request=EXCLUDED.max_request,max_session=EXCLUDED.max_session,max_daily=EXCLUDED.max_daily,policy_version=EXCLUDED.policy_version WHERE panas_accounting_buyers.currency=EXCLUDED.currency RETURNING buyer_id",
             [
                 input.buyerId,
                 input.publicKeyPem,
@@ -1019,8 +1064,15 @@ export class AccountingService {
                 input.maxSessionAtomic,
                 input.maxDailyAtomic,
                 input.policyVersion,
+                currency,
             ],
         );
+        if (enrolled.rowCount !== 1)
+            fail(
+                "CONFLICT",
+                409,
+                "Buyer settlement currency cannot be changed",
+            );
     }
     async operatorOpenSession(input: {
         buyerId: string;
@@ -1068,11 +1120,17 @@ export class AccountingService {
             await client.query("BEGIN");
             const buyer = (
                 await client.query(
-                    "SELECT buyer_id FROM panas_accounting_buyers WHERE buyer_id=$1 FOR UPDATE",
+                    "SELECT buyer_id,currency FROM panas_accounting_buyers WHERE buyer_id=$1 FOR UPDATE",
                     [input.buyerId],
                 )
             ).rows[0];
             if (!buyer) fail("NOT_FOUND", 404, "Buyer not found");
+            if (buyer.currency !== "TEST_CREDIT")
+                fail(
+                    "CONFLICT",
+                    409,
+                    "Devnet USDC requires verified on-chain funding",
+                );
             const idem = `fund:${input.buyerId}:${input.idempotencyKey}`,
                 old = (
                     await client.query(
@@ -1121,6 +1179,234 @@ export class AccountingService {
             client.release();
         }
     }
+    async balance(actor: Actor, input: unknown) {
+        if (actor.actor !== "buyer")
+            fail("UNAUTHORIZED", 401, "Buyer authorization required");
+        const { sessionId } = z
+            .object({ sessionId: z.uuid() })
+            .strict()
+            .parse(input);
+        return this.tx(actor, actor.id, async (client, buyer) => {
+            const session = await this.session(client, buyer!, sessionId);
+            const daily = (
+                await client.query(
+                    "SELECT held::text,spent::text FROM panas_accounting_daily WHERE buyer_id=$1 AND usage_day=$2",
+                    [actor.id, this.now().toISOString().slice(0, 10)],
+                )
+            ).rows[0] ?? { held: "0", spent: "0" };
+            const min = (a: bigint, b: bigint) => (a < b ? a : b);
+            const floor = (v: bigint) => (v < 0n ? "0" : v.toString());
+            const used = BigInt(session.held) + BigInt(session.spent);
+            return {
+                buyerId: actor.id,
+                sessionId,
+                currency: buyer!.currency,
+                balanceAtomic: buyer!.balance,
+                heldAtomic: buyer!.held,
+                availableAtomic: (
+                    BigInt(buyer!.balance) - BigInt(buyer!.held)
+                ).toString(),
+                maxRequestAtomic: buyer!.max_request,
+                sessionRemainingAtomic: floor(
+                    min(BigInt(session.cap), BigInt(buyer!.max_session)) - used,
+                ),
+                dailyRemainingAtomic: floor(
+                    BigInt(buyer!.max_daily) -
+                        BigInt(daily.held) -
+                        BigInt(daily.spent),
+                ),
+            };
+        });
+    }
+    async createFundingIntent(actor: Actor, input: unknown) {
+        if (actor.actor !== "buyer")
+            fail("UNAUTHORIZED", 401, "Buyer authorization required");
+        const verifier = this.options.solanaDevnet;
+        if (!verifier)
+            fail("UNAVAILABLE", 503, "Solana devnet funding is not configured");
+        const body = fundingIntentInputSchema.parse(input);
+        return this.tx(actor, actor.id, async (client, buyer) => {
+            if (buyer!.currency !== "SOLANA_DEVNET_USDC")
+                fail(
+                    "CONFLICT",
+                    409,
+                    "A devnet-USDC buyer account is required",
+                );
+            const old = (
+                await client.query(
+                    "SELECT * FROM panas_accounting_devnet_funding WHERE intent_id=$1 FOR UPDATE",
+                    [body.intentId],
+                )
+            ).rows[0];
+            if (
+                old &&
+                (old.buyer_id !== actor.id ||
+                    old.amount.toString() !== body.amountAtomic)
+            )
+                fail(
+                    "CONFLICT",
+                    409,
+                    "Funding intent belongs to different terms",
+                );
+            const now = this.now();
+            if (
+                old &&
+                !old.funded_at &&
+                rowDate(old.expires_at).getTime() <= now.getTime()
+            )
+                fail(
+                    "QUOTE_EXPIRED",
+                    409,
+                    "Funding intent expired; confirm any original transfer before creating another deposit",
+                );
+            if (!old) {
+                const pending = (
+                    await client.query(
+                        "SELECT count(*)::integer AS count FROM panas_accounting_devnet_funding WHERE buyer_id=$1 AND funded_at IS NULL AND expires_at>$2",
+                        [actor.id, now],
+                    )
+                ).rows[0];
+                if (pending.count >= 10)
+                    fail(
+                        "SPENDING_LIMIT",
+                        429,
+                        "Too many open funding intents; reuse an existing intent",
+                    );
+            }
+            const row =
+                old ??
+                (
+                    await client.query(
+                        "INSERT INTO panas_accounting_devnet_funding(intent_id,buyer_id,amount,memo,treasury_owner,treasury_token_account,created_at,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *",
+                        [
+                            body.intentId,
+                            actor.id,
+                            body.amountAtomic,
+                            `panas-devnet:${body.intentId}`,
+                            verifier.config.treasuryOwner,
+                            verifier.config.treasuryTokenAccount,
+                            now,
+                            new Date(now.getTime() + 1800000),
+                        ],
+                    )
+                ).rows[0];
+            return this.publicFunding(row);
+        });
+    }
+    private publicFunding(row: Record<string, unknown>) {
+        return {
+            intentId: row.intent_id,
+            buyerId: row.buyer_id,
+            currency: "SOLANA_DEVNET_USDC",
+            network: "solana-devnet",
+            mint: DEVNET_USDC_MINT,
+            decimals: 6,
+            amountAtomic: String(row.amount),
+            memo: row.memo,
+            treasuryOwner: row.treasury_owner,
+            treasuryTokenAccount: row.treasury_token_account,
+            createdAt: rowDate(row.created_at as Date).toISOString(),
+            expiresAt: rowDate(row.expires_at as Date).toISOString(),
+            funded: row.funded_at !== null,
+            signature: row.signature,
+        };
+    }
+    async confirmFunding(actor: Actor, input: unknown) {
+        if (actor.actor !== "buyer")
+            fail("UNAUTHORIZED", 401, "Buyer authorization required");
+        const verifier = this.options.solanaDevnet;
+        if (!verifier)
+            fail("UNAVAILABLE", 503, "Solana devnet funding is not configured");
+        const body = fundingConfirmationSchema.parse(input);
+        const row = (
+            await this.pool.query(
+                "SELECT * FROM panas_accounting_devnet_funding WHERE intent_id=$1 AND buyer_id=$2",
+                [body.intentId, actor.id],
+            )
+        ).rows[0];
+        if (!row) fail("NOT_FOUND", 404, "Owned funding intent not found");
+        // Network I/O happens before taking financial row locks. Finalize idempotently below.
+        let proof:
+            Awaited<ReturnType<SolanaDevnetVerifier["verify"]>> | undefined;
+        if (!row.funded_at) {
+            const intent: FundingIntent = {
+                intentId: body.intentId,
+                buyerId: actor.id,
+                amountAtomic: row.amount.toString(),
+                memo: row.memo,
+                treasuryOwner: row.treasury_owner,
+                treasuryTokenAccount: row.treasury_token_account,
+                createdAt: rowDate(row.created_at).toISOString(),
+                expiresAt: rowDate(row.expires_at).toISOString(),
+            };
+            try {
+                proof = await verifier.verify(intent, body.signature);
+            } catch {
+                fail(
+                    "INVALID_INPUT",
+                    400,
+                    "No matching finalized Solana devnet USDC transfer was verified",
+                );
+            }
+        }
+        return this.tx(actor, actor.id, async (client, buyer) => {
+            if (buyer!.currency !== "SOLANA_DEVNET_USDC")
+                fail("CONFLICT", 409, "Buyer funding currency changed");
+            const current = (
+                await client.query(
+                    "SELECT * FROM panas_accounting_devnet_funding WHERE intent_id=$1 AND buyer_id=$2 FOR UPDATE",
+                    [body.intentId, actor.id],
+                )
+            ).rows[0];
+            if (current.funded_at) {
+                if (current.signature !== body.signature)
+                    fail(
+                        "CONFLICT",
+                        409,
+                        "Funding intent already used another transfer",
+                    );
+                return this.publicFunding(current);
+            }
+            if (!proof || proof.amountAtomic !== current.amount.toString())
+                fail("CONFLICT", 409, "Funding terms changed");
+            const duplicate = (
+                await client.query(
+                    "SELECT intent_id FROM panas_accounting_devnet_funding WHERE signature=$1",
+                    [body.signature],
+                )
+            ).rows[0];
+            if (duplicate)
+                fail("CONFLICT", 409, "Transfer was already credited");
+            await client.query(
+                "UPDATE panas_accounting_buyers SET balance=balance+$2::numeric WHERE buyer_id=$1",
+                [actor.id, proof.amountAtomic],
+            );
+            await this.ledger(
+                client,
+                null,
+                "fund",
+                `solana-devnet:${body.signature}`,
+                [
+                    {
+                        account: "escrow:solana-devnet-usdc",
+                        amountAtomic: `-${proof.amountAtomic}`,
+                    },
+                    {
+                        account: `buyer:${actor.id}`,
+                        amountAtomic: proof.amountAtomic,
+                    },
+                ],
+                "SOLANA_DEVNET_USDC",
+            );
+            const updated = (
+                await client.query(
+                    "UPDATE panas_accounting_devnet_funding SET signature=$2,proof=$3,funded_at=$4 WHERE intent_id=$1 RETURNING *",
+                    [body.intentId, body.signature, proof, this.now()],
+                )
+            ).rows[0];
+            return this.publicFunding(updated);
+        });
+    }
     async operatorResolve(input: {
         requestId: string;
         action: "release" | "refund";
@@ -1140,7 +1426,7 @@ export class AccountingService {
             ).rows[0] as { buyer_id: string } | undefined;
             if (!peek) fail("NOT_FOUND", 404, "Request not found");
             await client.query(
-                "SELECT buyer_id FROM panas_accounting_buyers WHERE buyer_id=$1 FOR UPDATE",
+                "SELECT buyer_id,currency FROM panas_accounting_buyers WHERE buyer_id=$1 FOR UPDATE",
                 [peek.buyer_id],
             );
             const row = (
@@ -1194,6 +1480,7 @@ export class AccountingService {
                         "refund",
                         `refund:${input.requestId}`,
                         entries,
+                        grant.currency,
                     );
                 }
                 receipt = receiptSchema.parse({
@@ -1223,7 +1510,7 @@ export class AccountingService {
                     receiptId: randomUUID(),
                     requestId: input.requestId,
                     status: "failed",
-                    currency: "TEST_CREDIT",
+                    currency: grant.currency,
                     buyerDebitAtomic: "0",
                     providerEarningsAtomic: "0",
                     feeAtomic: "0",

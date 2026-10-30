@@ -77,7 +77,14 @@ it("formats integer scale-zero test credits beyond Number precision without roun
         "9,007,199,254,740,993 test credits",
     );
     expect(formatCredits("1")).toBe("1 test credit");
-    expect(formatCredits("0")).toBe("0 test credits");
+    expect(formatCredits("0")).toBe("Free");
+    expect(formatCredits("0", "SOLANA_DEVNET_USDC")).toBe("Free");
+    expect(formatCredits("10000", "SOLANA_DEVNET_USDC")).toBe(
+        "0.01 devnet USDC",
+    );
+    expect(formatCredits("9007199254740993", "SOLANA_DEVNET_USDC")).toBe(
+        "9,007,199,254.740993 devnet USDC",
+    );
     for (const value of ["1.5", "1e3", "-1", "01"])
         expect(() => formatCredits(value)).toThrow();
 });

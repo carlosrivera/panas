@@ -57,6 +57,10 @@ await cp(
     resolve(root, "docs/demo-prompt.md"),
     resolve(destination, "demo-prompt.md"),
 );
+await cp(
+    resolve(root, "docs/demo-paid-prompt.md"),
+    resolve(destination, "demo-paid-prompt.md"),
+);
 await writeFile(
     resolve(destination, "release.json"),
     JSON.stringify(
@@ -96,6 +100,7 @@ await writeFile(
                 "release.json",
                 "provider.env.example",
                 "demo-prompt.md",
+                "demo-paid-prompt.md",
             ],
             engines: { node: ">=24 <25" },
             repository: {
