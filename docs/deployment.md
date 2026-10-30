@@ -14,7 +14,7 @@ Cloudflare zone `mcpwire.co` uses these routes, with more-specific routes taking
 | `panas.mcpwire.co/accounting*` | None: bypass Workers and use the existing Volcano origin |
 | `panas.mcpwire.co/*`           | `panas-web-router`                                       |
 
-The `panas` CNAME continues pointing to `b694dc37-574c-4668-adf0-9371a728f16f.frontends.volcano.run`, with Cloudflare proxying enabled. Keep `_volcano` ownership TXT and `_acme-challenge.panas` CNAME records for Volcano ownership and certificate renewal. Do not repoint `panas` to GitHub Pages or remove the Volcano frontend/function-route configuration.
+The `panas` CNAME continues pointing to `b694dc37-574c-4668-adf0-9371a728f16f.frontends.volcano.run`, with Cloudflare proxying enabled. A hostname-specific Configuration Rule (`http.host eq "panas.mcpwire.co"`) sets SSL to Strict so the origin certificate is validated without changing TLS settings for other subdomains. Keep `_volcano` ownership TXT and `_acme-challenge.panas` CNAME records for Volcano ownership and certificate renewal. Do not repoint `panas` to GitHub Pages or remove the Volcano frontend/function-route configuration.
 
 Worker source and configuration are in `scripts/edge/`. It streams static responses, preserves video Range requests, rewrites Pages redirects back to the public hostname, and never forwards browser authorization, cookies or query strings to GitHub. API exclusions avoid Worker execution and quotas on API calls. The Worker also forwards original API requests intact as defense in depth if an exclusion is absent.
 
