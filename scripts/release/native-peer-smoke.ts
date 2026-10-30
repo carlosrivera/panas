@@ -1,3 +1,4 @@
+import { reservePeerPort } from "../../apps/cli/src/docker-provider.js";
 /** Actual host Node -> Docker UDP -> external MCPWire CLI -> MCP fixture.
  * No cloud credentials, model, purchase, transport mocks or Docker buyer.
  */
@@ -18,48 +19,49 @@ const image =
     process.env.PANAS_SANDBOX_BUILD_TAG ?? `panas-provider:${release.version}`;
 const name = `panas-native-peer-${randomUUID()}`;
 const server = `const rl=require('node:readline').createInterface({input:process.stdin});rl.on('line',l=>{const p=JSON.parse(l);if(p.id===undefined)return;const result=p.method==='initialize'?{protocolVersion:'2025-11-25',capabilities:{tools:{}},serverInfo:{name:'network-fixture',version:'1'}}:p.method==='tools/list'?{tools:[{name:'get_capabilities',inputSchema:{type:'object'}}]}:{content:[],structuredContent:{platform:process.platform,uid:process.getuid()}};process.stdout.write(JSON.stringify({jsonrpc:'2.0',id:p.id,result})+'\\n')});`;
-const host = spawn(
-    "docker",
-    [
-        "run",
-        "--rm",
-        "--name",
-        name,
-        "--read-only",
-        "--user",
-        "10001:10001",
-        "--cap-drop",
-        "ALL",
-        "--security-opt",
-        "no-new-privileges=true",
-        "--memory",
-        "256m",
-        "--cpus",
-        "0.5",
-        "--pids-limit",
-        "64",
-        "--network",
-        "bridge",
-        "--publish",
-        "127.0.0.1::49737/udp",
-        "--entrypoint",
-        "node",
-        image,
-        "/opt/panas/node_modules/@mcpwire/cli/dist/index.js",
-        "share",
-        "--port",
-        "49737",
-        "--ttl",
-        "3m",
-        "--allow",
-        "get_capabilities",
-        "--",
-        "node",
-        "-e",
-        server,
-    ],
-    { stdio: ["pipe", "pipe", "pipe"] },
-);
+const lease = await reservePeerPort();
+const createArgs = [
+    "create",
+    "--name",
+    name,
+    "--read-only",
+    "--user",
+    "10001:10001",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges=true",
+    "--memory",
+    "256m",
+    "--cpus",
+    "0.5",
+    "--pids-limit",
+    "64",
+    "--network",
+    "bridge",
+    "--publish",
+    `0.0.0.0:${lease.port}:49737/udp`,
+    "--entrypoint",
+    "node",
+    image,
+    "/opt/panas/node_modules/@mcpwire/cli/dist/index.js",
+    "share",
+    "--port",
+    "49737",
+    "--ttl",
+    "3m",
+    "--allow",
+    "get_capabilities",
+    "--",
+    "node",
+    "-e",
+    server,
+];
+await exec("docker", createArgs);
+await lease.release();
+const host = spawn("docker", ["start", "--attach", "--interactive", name], {
+    stdio: ["pipe", "pipe", "pipe"],
+});
 let output = "",
     spawnError = false;
 host.on("error", () => {
@@ -90,6 +92,11 @@ try {
     }[];
     const port = Number(
         inspect[0]!.NetworkSettings.Ports["49737/udp"]![0]!.HostPort,
+    );
+    assert.equal(
+        port,
+        lease.port,
+        "Docker must preserve the explicitly reserved host port",
     );
     for (let i = 0; i < 3; i++) {
         const client = new Client({
@@ -128,6 +135,7 @@ try {
     );
 } finally {
     await exec("docker", ["stop", "--time", "2", name]).catch(() => {});
+    await exec("docker", ["rm", "--force", name]).catch(() => {});
     host.stdin.destroy();
     host.stdout.destroy();
     host.stderr.destroy();

@@ -1,3 +1,4 @@
+import { createSocket } from "node:dgram";
 import { networkInterfaces } from "node:os";
 import {
     gatewayDhtPort,
@@ -56,7 +57,10 @@ export function sandboxArgs(
     providerId: string,
     image: string,
     modelsPath: string,
+    hostPort = gatewayDhtPort,
 ) {
+    if (role === "gateway")
+        peerAddressesSchema.parse([{ host: "127.0.0.1", port: hostPort }]);
     const prefix = `panas-${providerId}`,
         limits = containerLimits[role];
     const args = [
@@ -97,7 +101,7 @@ export function sandboxArgs(
         role === "worker" ? "none" : "bridge",
     ];
     if (role === "gateway")
-        args.push("--publish", `0.0.0.0::${gatewayDhtPort}/udp`);
+        args.push("--publish", `0.0.0.0:${hostPort}:${gatewayDhtPort}/udp`);
     args.push(
         "--mount",
         `type=volume,source=${prefix}-ipc,target=/ipc${role === "gateway" ? ",readonly" : ""}`,
@@ -127,6 +131,7 @@ export function verifySandboxInspect(
     role: "gateway" | "worker",
     providerId: string,
     imageId: string,
+    hostPort = gatewayDhtPort,
 ) {
     const h = value.HostConfig,
         c = value.Config,
@@ -157,7 +162,7 @@ export function verifySandboxInspect(
         h.CapDrop[0]?.toUpperCase() !== "ALL" ||
         !h.SecurityOpt?.includes("no-new-privileges=true") ||
         h.SecurityOpt.some((v: string) => v !== "no-new-privileges=true") ||
-        !validPortBindings(h.PortBindings, role) ||
+        !validPortBindings(h.PortBindings, role, hostPort) ||
         h.Devices?.length ||
         h.DeviceRequests?.length ||
         h.VolumesFrom?.length ||
@@ -206,7 +211,13 @@ export function verifySandboxInspect(
 export function validPortBindings(
     bindings: Record<string, unknown> | undefined,
     role: "gateway" | "worker",
+    hostPort = gatewayDhtPort,
 ) {
+    if (
+        role === "gateway" &&
+        (!Number.isSafeInteger(hostPort) || hostPort < 1 || hostPort > 65535)
+    )
+        return false;
     const entries = Object.entries(bindings ?? {});
     if (role === "worker") return entries.length === 0;
     if (entries.length !== 1 || entries[0]![0] !== `${gatewayDhtPort}/udp`)
@@ -216,7 +227,7 @@ export function validPortBindings(
         Array.isArray(value) &&
         value.length === 1 &&
         value[0]?.HostIp === "0.0.0.0" &&
-        value[0]?.HostPort === ""
+        value[0]?.HostPort === String(hostPort)
     );
 }
 export function advertisedPeerAddresses(
@@ -253,6 +264,44 @@ export function advertisedPeerAddresses(
     );
 }
 
+/** Reserve an OS-assigned UDP port until just before Docker starts. Docker
+ * Desktop can report HostPort=0 for wildcard/empty UDP bindings on create/start.
+ * A bind race after release causes a failed start, never another mapping.
+ */
+export async function reservePeerPort() {
+    const socket = createSocket("udp4");
+    try {
+        await new Promise<void>((resolve, reject) => {
+            socket.once("error", reject);
+            socket.bind(
+                { address: "0.0.0.0", port: 0, exclusive: true },
+                resolve,
+            );
+        });
+        socket.unref();
+        const address = socket.address();
+        if (typeof address === "string")
+            throw new Error("UDP port unavailable");
+        let closed = false;
+        return {
+            port: address.port,
+            async release() {
+                if (closed) return;
+                closed = true;
+                await new Promise<void>((resolve) =>
+                    socket.close(() => resolve()),
+                );
+            },
+        };
+    } catch (error) {
+        try {
+            socket.close();
+        } catch {
+            /* an unbound failed socket needs no close */
+        }
+        throw error;
+    }
+}
 export async function prepareIpcVolume(providerId: string) {
     const name = `panas-${providerId}-ipc`;
     await docker([
@@ -367,11 +416,16 @@ export async function launchDockerProvider(
         modelsPath,
         process.env.PANAS_MODEL_DIGEST ?? "",
     );
+    const peerPort = await reservePeerPort().catch(async (error: unknown) => {
+        await model.cleanup();
+        throw error;
+    });
     let closed = false;
     const created: string[] = [];
     const cleanup = async () => {
         if (closed) return;
         closed = true;
+        await peerPort.release();
         for (const name of [...created].reverse()) {
             await docker(["stop", "--time", "10", name], 20000).catch(() => {});
             await docker(["rm", "--force", name]).catch(() => {});
@@ -387,7 +441,13 @@ export async function launchDockerProvider(
         for (const role of ["worker", "gateway"] as const) {
             const name = `${prefix}-${role}`;
             await docker(
-                sandboxArgs(role, providerId, imageId, model.modelsPath),
+                sandboxArgs(
+                    role,
+                    providerId,
+                    imageId,
+                    model.modelsPath,
+                    peerPort.port,
+                ),
             );
             created.push(name);
             verifySandboxInspect(
@@ -395,6 +455,7 @@ export async function launchDockerProvider(
                 role,
                 providerId,
                 imageId,
+                peerPort.port,
             );
             if (role === "worker") {
                 await docker(["start", name]);
@@ -451,6 +512,7 @@ export async function launchDockerProvider(
         process.stderr.write(
             "Panas Docker sandbox: isolated gateway with one UDP peer port + offline CPU inference worker; no Docker socket or treasury mounts.\n",
         );
+        await peerPort.release();
         const child = spawn(
             "docker",
             ["start", "--attach", "--interactive", `${prefix}-gateway`],
@@ -476,7 +538,7 @@ export async function launchDockerProvider(
                 row?.NetworkSettings?.Ports?.[`${gatewayDhtPort}/udp`]?.[0]
                     ?.HostPort,
             );
-            if (row?.State?.Running && port >= 1 && port <= 65535) {
+            if (row?.State?.Running && port === peerPort.port) {
                 hostPort = port;
                 break;
             }

@@ -1,5 +1,6 @@
 import { it, expect } from "vitest";
 import {
+    reservePeerPort,
     advertisedPeerAddresses,
     sandboxArgs,
     verifySandboxInspect,
@@ -19,7 +20,7 @@ function fixture(role: "worker" | "gateway") {
         },
         HostConfig: {
             PortBindings: (role === "gateway"
-                ? { "49737/udp": [{ HostIp: "0.0.0.0", HostPort: "" }] }
+                ? { "49737/udp": [{ HostIp: "0.0.0.0", HostPort: "49737" }] }
                 : {}) as Record<string, unknown>,
             Privileged: false,
             ReadonlyRootfs: true,
@@ -127,16 +128,16 @@ it.each(["worker", "gateway"] as const)(
 it("publishes exactly one gateway UDP socket and rejects additional host access", () => {
     const gateway = fixture("gateway");
     const args = sandboxArgs("gateway", "fixture", "sha256:image", "/models");
-    expect(args[args.indexOf("--publish") + 1]).toBe("0.0.0.0::49737/udp");
+    expect(args[args.indexOf("--publish") + 1]).toBe("0.0.0.0:49737:49737/udp");
     expect(
         sandboxArgs("worker", "fixture", "sha256:image", "/models"),
     ).not.toContain("--publish");
     for (const bindings of [
         {},
-        { "49737/tcp": [{ HostIp: "0.0.0.0", HostPort: "" }] },
+        { "49737/tcp": [{ HostIp: "0.0.0.0", HostPort: "49737" }] },
         {
-            "49737/udp": [{ HostIp: "0.0.0.0", HostPort: "" }],
-            "22/tcp": [{ HostIp: "0.0.0.0", HostPort: "" }],
+            "49737/udp": [{ HostIp: "0.0.0.0", HostPort: "49737" }],
+            "22/tcp": [{ HostIp: "0.0.0.0", HostPort: "49737" }],
         },
     ]) {
         gateway.HostConfig.PortBindings = bindings;
@@ -173,4 +174,26 @@ it("advertises owner host interfaces rather than a container address", () => {
         { host: "192.168.1.20", port: 52000 },
         { host: "127.0.0.1", port: 52000 },
     ]);
+});
+
+it("reserves a real UDP port until release rather than accepting Docker port zero", async () => {
+    const { createSocket } = await import("node:dgram");
+    const lease = await reservePeerPort();
+    expect(lease.port).toBeGreaterThan(0);
+    const other = createSocket("udp4");
+    try {
+        await expect(
+            new Promise<void>((resolve, reject) => {
+                other.once("error", reject);
+                other.bind(
+                    { address: "0.0.0.0", port: lease.port, exclusive: true },
+                    resolve,
+                );
+            }),
+        ).rejects.toMatchObject({ code: "EADDRINUSE" });
+    } finally {
+        other.close();
+        await lease.release();
+        await lease.release();
+    }
 });
