@@ -4,10 +4,8 @@ import { constants } from "node:fs";
 import { open, writeFile, mkdir, chmod } from "node:fs/promises";
 
 const path = z.string().refine(isAbsolute);
-export const TEST_REGISTRY_URL =
-    "https://cdb5c197-93ad-4c13-8dca-45e1d18140f5.functions.volcano.run";
-export const TEST_ACCOUNTING_URL =
-    "https://e32b4a0e-51a7-4d7e-acab-b64501184f2a.functions.volcano.run";
+export const TEST_REGISTRY_URL = "https://panas.mcpwire.co/registry";
+export const TEST_ACCOUNTING_URL = "https://panas.mcpwire.co/accounting";
 export const setupSchema = z
     .object({
         privateDir: path,

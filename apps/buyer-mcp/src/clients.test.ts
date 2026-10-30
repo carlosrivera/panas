@@ -6,19 +6,28 @@ import {
     verifyDocument,
     signedCloudRequestSchema,
 } from "@panas/protocol";
-import { createCloudClient, safeProvider } from "./clients";
+import {
+    createCloudClient,
+    createDiscoveryClient,
+    safeProvider,
+} from "./clients";
 import { prototypeLimits } from "@panas/contracts";
-it("binds HTTP proof to exact actor, method, path, and parsed body without forwarding private prompts", async () => {
+it.each([
+    "https://account.test",
+    "https://account.test/accounting",
+    "https://account.test/accounting/",
+])("binds HTTP proof to the backend path with base %s", async (base) => {
     const pair = generateKeyPairSync("ed25519");
     const buyerId = randomUUID();
     let calls = 0;
     const client = createCloudClient({
-        url: "https://account.test",
+        url: base,
         buyerId,
         privateKey: pair.privateKey,
         fetch: async (input, options) => {
             calls++;
             const request = new Request(input, options);
+            expect(request.headers.get("x-panas-peer-addresses")).toBe("1");
             const raw = request.headers.get("x-panas-proof")!;
             const signed = signedCloudRequestSchema.parse(
                 JSON.parse(Buffer.from(raw, "base64url").toString()),
@@ -27,7 +36,12 @@ it("binds HTTP proof to exact actor, method, path, and parsed body without forwa
                 true,
             );
             expect(signed.payload.actorId).toBe(buyerId);
-            expect(signed.payload.path).toBe(new URL(request.url).pathname);
+            expect(signed.payload.path).toBe(
+                new URL(request.url).pathname.replace(/^\/accounting/, ""),
+            );
+            expect(request.url).toBe(
+                `${base.replace(/\/$/, "")}${signed.payload.path}`,
+            );
             expect(signed.payload.method).toBe(request.method);
             const body = request.method === "GET" ? null : await request.json();
             expect(signed.payload.bodyDigest).toBe(digest(body));
@@ -82,6 +96,7 @@ it("does not disclose remote diagnostics or infrastructure failures", async () =
 it("returns useful bounded provider information while excluding private connection fields", () => {
     const date = new Date().toISOString();
     const value = {
+        peerAddresses: [{ host: "192.168.1.50", port: 52000 }],
         providerId: randomUUID(),
         startupId: randomUUID(),
         model: {
@@ -108,4 +123,29 @@ it("returns useful bounded provider information while excluding private connecti
         "private connection material",
     );
     expect(JSON.stringify(projected)).not.toContain("private authorization");
+    expect(JSON.stringify(projected)).not.toContain("192.168.1.50");
+});
+
+it("preserves the registry mount and bearer credential for discovery", async () => {
+    const id = randomUUID();
+    const urls: string[] = [];
+    const client = createDiscoveryClient({
+        url: "https://panas.mcpwire.co/registry",
+        token: "test-discovery-token",
+        fetch: async (input, init) => {
+            const request = new Request(input, init);
+            urls.push(request.url);
+            expect(request.headers.get("authorization")).toBe(
+                "Bearer test-discovery-token",
+            );
+            expect(init?.redirect).toBe("error");
+            return Response.json({});
+        },
+    });
+    await client.discover({ readyOnly: true, limit: 1 });
+    await client.getProvider(id);
+    expect(urls).toEqual([
+        "https://panas.mcpwire.co/registry/providers?readyOnly=true&limit=1",
+        `https://panas.mcpwire.co/registry/providers/${id}`,
+    ]);
 });

@@ -1,3 +1,4 @@
+import { serviceUrl } from "@panas/contracts/service-url";
 import { randomUUID, type KeyLike } from "node:crypto";
 import { z } from "zod";
 import { requestLimitsSchema } from "@panas/contracts";
@@ -16,6 +17,15 @@ import { BuyerError, type BuyerErrorCode } from "./errors";
 import type { PrivateDescriptor } from "./state";
 
 export interface CloudClient {
+    balance?(body: { sessionId: string }): Promise<unknown>;
+    createFundingIntent?(body: {
+        intentId: string;
+        amountAtomic: string;
+    }): Promise<unknown>;
+    confirmFunding?(body: {
+        intentId: string;
+        signature: string;
+    }): Promise<unknown>;
     quote(body: {
         providerId: string;
         sessionId: string;
@@ -132,6 +142,7 @@ export function createCloudClient(options: {
         method: "GET" | "POST",
         path: string,
         body: unknown = null,
+        timeoutMs = 15000,
     ) => {
         const now = (options.clock ?? (() => new Date()))();
         const proof = signDocument(
@@ -151,17 +162,18 @@ export function createCloudClient(options: {
         );
         try {
             return await readResponse(
-                await (options.fetch ?? fetch)(new URL(path, options.url), {
+                await (options.fetch ?? fetch)(serviceUrl(options.url, path), {
                     method,
                     redirect: "error",
                     headers: {
                         "content-type": "application/json",
+                        "x-panas-peer-addresses": "1",
                         "x-panas-proof": Buffer.from(
                             JSON.stringify(proof),
                         ).toString("base64url"),
                     },
                     ...(method === "POST" ? { body: canonicalJson(body) } : {}),
-                    signal: AbortSignal.timeout(15_000),
+                    signal: AbortSignal.timeout(timeoutMs),
                 }),
             );
         } catch (error) {
@@ -173,6 +185,11 @@ export function createCloudClient(options: {
         }
     };
     return {
+        balance: (body) => send("POST", "/balance", body),
+        createFundingIntent: (body) =>
+            send("POST", "/funding/solana-devnet/intents", body),
+        confirmFunding: (body) =>
+            send("POST", "/funding/solana-devnet/confirm", body, 30000),
         quote: (body) => send("POST", "/quotes", body),
         purchase: (body) => send("POST", "/purchases", body),
         get: (id) => send("GET", `/requests/${z.uuid().parse(id)}`),
@@ -188,7 +205,7 @@ export function createDiscoveryClient(options: {
     const send = async (path: string) => {
         try {
             return await readResponse(
-                await (options.fetch ?? fetch)(new URL(path, options.url), {
+                await (options.fetch ?? fetch)(serviceUrl(options.url, path), {
                     headers: { authorization: `Bearer ${options.token}` },
                     redirect: "error",
                     signal: AbortSignal.timeout(10_000),
@@ -230,6 +247,9 @@ export function createPeerClient(): PeerClient & { close(): Promise<void> } {
                 );
             const session = superviseJoin({
                 ticket: descriptor.ticket,
+                ...(descriptor.peerAddresses
+                    ? { peerAddresses: descriptor.peerAddresses }
+                    : {}),
                 startupTimeoutMs: 35_000,
             });
             sessions.add(session);

@@ -1,10 +1,10 @@
+import { serviceUrl } from "@panas/contracts/service-url";
 import { generateKeyPairSync, randomBytes, randomUUID } from "node:crypto";
 import pg from "pg";
 import { DOMAIN, digest, signDocument } from "@panas/protocol";
 import { AccountingService } from "../src/service.js";
 const endpoint =
-    process.env.PANAS_ACCOUNTING_URL ??
-    "https://e32b4a0e-51a7-4d7e-acab-b64501184f2a.functions.volcano.run/";
+    process.env.PANAS_ACCOUNTING_URL ?? "https://panas.mcpwire.co/accounting/";
 const connectionString = process.env.PANAS_REGISTRY_DATABASE_URL;
 if (!connectionString)
     throw new Error("Load private operator database environment");
@@ -42,7 +42,7 @@ async function call(
             },
             keys.privateKey,
         );
-    return fetch(new URL(path, endpoint), {
+    return fetch(serviceUrl(endpoint, path), {
         method,
         headers: {
             "content-type": "application/json",
@@ -72,7 +72,7 @@ try {
         expiresAt: new Date(Date.now() + 300000).toISOString(),
     });
     const unauthorized = await fetch(
-        new URL(`/requests/${randomUUID()}`, endpoint),
+        serviceUrl(endpoint, `/requests/${randomUUID()}`),
     );
     if (unauthorized.status !== 401)
         throw new Error(`Expected401, got${unauthorized.status}`);

@@ -56,6 +56,36 @@ function html(paths: string[]) {
 }
 
 describe("frontend rollout boundary", () => {
+    it("binds custom-domain verification to the exact frontend ID", async () => {
+        const app = await fixture((req, res) => {
+            if (req.url === "/") res.end(html(["/_next/static/a.js"]));
+            else {
+                res.setHeader("content-type", "text/javascript");
+                res.end("asset");
+            }
+        });
+        try {
+            const options = {
+                url: app.url,
+                frontendId: "frontend",
+                projectId: "project",
+                ...clock(),
+                deployment: async () =>
+                    record("https://internal-origin.invalid"),
+            };
+            expect((await probeFrontend(options)).record.id).toBe("frontend");
+            await expect(
+                probeFrontend({ ...options, frontendId: "other-frontend" }),
+            ).rejects.toMatchObject({
+                diagnostic: {
+                    stage: "frontend_deployment",
+                    code: "CHECK_FAILED",
+                },
+            });
+        } finally {
+            await app.close();
+        }
+    });
     it("refreshes stale HTML, checks every asset, and waits for management readiness", async () => {
         let pages = 0,
             metadata = 0;

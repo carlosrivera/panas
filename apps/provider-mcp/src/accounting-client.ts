@@ -1,3 +1,4 @@
+import { serviceUrl } from "@panas/contracts/service-url";
 import { randomUUID, type KeyLike } from "node:crypto";
 import {
     DOMAIN,
@@ -64,7 +65,7 @@ export class AccountingHttpClient implements AccountingPort {
             }),
             this.privateKey,
         );
-        const response = await fetch(new URL(path, this.base), {
+        const response = await fetch(serviceUrl(this.base, path), {
             method: "POST",
             headers: {
                 "content-type": "application/json",

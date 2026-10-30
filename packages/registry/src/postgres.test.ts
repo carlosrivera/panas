@@ -201,6 +201,43 @@ describe.skipIf(!databaseUrl)(
                 "heartbeat_expired",
             );
         });
+        it("filters atomic prices by asset while keeping free providers eligible", async () => {
+            const free = await enroll(),
+                token = await enroll(),
+                credit = await enroll();
+            await register(free);
+            await register(token);
+            await register(credit);
+            await pool.query(
+                "UPDATE panas_registry_current SET price=jsonb_set(price,'{totalAtomic}','\"0\"'::jsonb) WHERE provider_id=$1",
+                [free],
+            );
+            await pool.query(
+                "UPDATE panas_registry_current SET price=jsonb_set(price,'{currency}','\"SOLANA_DEVNET_USDC\"'::jsonb) WHERE provider_id=$1",
+                [token],
+            );
+            const page = await service.discover({
+                currency: "SOLANA_DEVNET_USDC",
+                maxPriceAtomic: "100",
+                limit: 50,
+            });
+            expect(page.providers.some((v) => v.providerId === free)).toBe(
+                true,
+            );
+            expect(page.providers.some((v) => v.providerId === token)).toBe(
+                true,
+            );
+            expect(page.providers.some((v) => v.providerId === credit)).toBe(
+                false,
+            );
+            const legacy = await service.discover({
+                maxPriceAtomic: "100",
+                limit: 50,
+            });
+            expect(legacy.providers.some((v) => v.providerId === token)).toBe(
+                false,
+            );
+        });
         it("rejects failed/unverified evidence and stale startup resurrection", async () => {
             const id = await enroll();
             const { data } = await register(id);

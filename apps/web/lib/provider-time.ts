@@ -1,5 +1,6 @@
 import type { PublicProvider } from "@panas/contracts/public-registry";
 import { TEST_CREDIT_SCALE } from "@panas/contracts/public-registry";
+import { priceParts } from "./provider-price";
 
 const REPORT_TTL_MS = 24 * 60 * 60 * 1000;
 const SCHEDULING_GUARD_MS = 250;
@@ -72,11 +73,18 @@ export function displayedReadiness(
         return { label: "Readiness expired", tone: "warning", ready: false };
     return { label: "Ready as observed", tone: "ready", ready: true };
 }
-export function formatCredits(value: string): string {
+export function formatCredits(
+    value: string,
+    currency: "TEST_CREDIT" | "SOLANA_DEVNET_USDC" = "TEST_CREDIT",
+): string {
     if (TEST_CREDIT_SCALE !== 0 || !/^(0|[1-9][0-9]{0,29})$/.test(value))
         throw new Error("Invalid public test-credit amount");
-    const integer = BigInt(value);
-    return `${new Intl.NumberFormat("en-US").format(integer)} ${integer === 1n ? "test credit" : "test credits"}`;
+    const price = priceParts({
+        version: "display",
+        totalAtomic: value,
+        currency,
+    });
+    return price.unit ? `${price.amount} ${price.unit}` : "Free";
 }
 export function formatPublicDate(value: string): string {
     return (
@@ -86,4 +94,30 @@ export function formatPublicDate(value: string): string {
             timeZone: "UTC",
         }).format(new Date(value)) + " UTC"
     );
+}
+/** Elapsed time since an instant, measured on the observation's monotonic clock. */
+export function elapsedSinceMs(
+    instant: string,
+    observation: Observation,
+    monotonicNow: number,
+): number {
+    return Math.max(
+        0,
+        Date.parse(observation.observedAt) -
+            Date.parse(instant) +
+            Math.max(0, monotonicNow - observation.startedAt),
+    );
+}
+export function formatAgo(ms: number): string {
+    const seconds = Math.floor(ms / 1000);
+    if (seconds < 60) return `${seconds}s ago`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+}
+/** Compact card label; the full label stays available to assistive technology. */
+export function shortReadinessLabel(label: string, ready: boolean): string {
+    return ready ? "awake" : label.toLowerCase();
 }

@@ -1,16 +1,17 @@
+import { peerAddressesSchema } from "@panas/contracts";
 import { readFile, writeFile, chmod, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { createPublicKey, randomBytes } from "node:crypto";
 import {
     configFromEnv,
     prepareDataPath,
-    OllamaRuntime,
+    createProviderRuntime,
     ProviderDaemon,
     EncryptedStore,
     inspectHost,
     serveLocal,
     claimProviderHost,
-    waitForPreviousRuntime,
+    gatewayOwnershipScope,
 } from "@panas/provider";
 import { registryPriceSchema } from "@panas/contracts/registry";
 import { AccountingHttpClient } from "./accounting-client.js";
@@ -24,7 +25,7 @@ function required(name: string): string {
 }
 const config = configFromEnv(),
     paths = await prepareDataPath(config.dataPath);
-const ownership = await claimProviderHost(config.dataPath);
+await claimProviderHost(config.dataPath, await gatewayOwnershipScope());
 const keyPath = required("PANAS_PROVIDER_PRIVATE_KEY_PATH");
 if ((await stat(keyPath)).mode & 0o077)
     throw new Error(
@@ -52,7 +53,7 @@ const service = new ProviderHostService(
     new EncryptedStore(join(config.dataPath, "nonces")),
     accounting,
 );
-const runtime = new OllamaRuntime(config);
+const runtime = await createProviderRuntime(config);
 const daemon = new ProviderDaemon(
     config,
     runtime,
@@ -64,6 +65,9 @@ const daemon = new ProviderDaemon(
 service.bind(daemon);
 const controller = new ProviderController(
     {
+        peerAddresses: peerAddressesSchema.parse(
+            JSON.parse(process.env.PANAS_PEER_ADDRESSES ?? "[]"),
+        ),
         registryUrl: required("PANAS_REGISTRY_URL"),
         providerId: config.providerId,
         providerPublicKeyPem: publicKeyPem,
@@ -71,7 +75,7 @@ const controller = new ProviderController(
         price: registryPriceSchema.parse({
             version: process.env.PANAS_PRICE_VERSION ?? "1",
             totalAtomic: required("PANAS_PRICE_ATOMIC"),
-            currency: "TEST_CREDIT",
+            currency: process.env.PANAS_PRICE_CURRENCY ?? "TEST_CREDIT",
         }),
     },
     daemon,
@@ -104,7 +108,6 @@ process.once("SIGINT", () => {
     void stop();
 });
 try {
-    if (ownership.recovered) await waitForPreviousRuntime(runtime.url);
     let initialized = false;
     timer = setInterval(() => {
         controller.observeLiveness();
@@ -127,6 +130,13 @@ try {
             providerId: config.providerId,
             state: daemon.status?.state,
             peerProbe: daemon.status?.peerProbe.status,
+            access:
+                process.env.PANAS_PRICE_ATOMIC === "0"
+                    ? "free"
+                    : process.env.PANAS_PRICE_CURRENCY === "SOLANA_DEVNET_USDC"
+                      ? "solana-devnet-usdc"
+                      : "test-credit",
+            priceAtomic: process.env.PANAS_PRICE_ATOMIC,
         }),
     );
 } catch (error) {

@@ -1,3 +1,5 @@
+import { gatewayDhtPort, type PeerAddress } from "@panas/contracts";
+import { serviceUrl } from "@panas/contracts/service-url";
 import { randomUUID, type KeyLike } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { probePeer, superviseShare } from "@panas/mcpwire";
@@ -15,6 +17,7 @@ export interface ControllerConfig {
     providerPublicKeyPem: string;
     privateKey: KeyLike;
     price: RegistryPrice;
+    peerAddresses?: PeerAddress[];
 }
 class PublicationError extends Error {}
 interface Publication {
@@ -99,7 +102,7 @@ export class ProviderController {
         );
         const started = Date.now();
         try {
-            const response = await fetch(new URL(path, base), {
+            const response = await fetch(serviceUrl(base, path), {
                 method: "POST",
                 headers: {
                     "content-type": "application/json",
@@ -155,11 +158,20 @@ export class ProviderController {
         )
             return;
         const session = superviseShare({
+            ...(this.config.peerAddresses?.length
+                ? { port: gatewayDhtPort }
+                : {}),
             command: process.execPath,
             args: [
-                "--import",
-                "tsx",
-                fileURLToPath(new URL("./main.ts", import.meta.url)),
+                ...(import.meta.url.endsWith(".ts") ? ["--import", "tsx"] : []),
+                fileURLToPath(
+                    new URL(
+                        import.meta.url.endsWith(".ts")
+                            ? "./main.ts"
+                            : "./main.js",
+                        import.meta.url,
+                    ),
+                ),
             ],
         });
         this.share = session;
@@ -213,6 +225,9 @@ export class ProviderController {
             descriptor: {
                 startupId: report.startupId,
                 ticket: ready.ticket,
+                ...(this.config.peerAddresses?.length
+                    ? { peerAddresses: this.config.peerAddresses }
+                    : {}),
                 providerKeyId: keyId(this.config.privateKey),
                 providerPublicKeyPem: this.config.providerPublicKeyPem,
                 expiresAt: new Date(this.descriptorExpires).toISOString(),

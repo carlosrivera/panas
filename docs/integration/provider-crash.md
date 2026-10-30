@@ -1,6 +1,10 @@
 # Provider crash recovery
 
-The implementation and one-physical-Mac live drill have passed; two-physical-Mac observation remains pending. [October29 evidence](evidence/crash-and-boundaries-2026-10-29.json) records actual cloud authorization, pinned native inference, owner SIGKILL, preserved state and recovery. Component fixtures remain separate from this live evidence.
+Current serving uses the [Docker gateway and offline worker](../docker-sandbox.md). Recovery implementation, component fixtures and local container restart observations are distinct from a crash during accepted remote inference. The full paid Docker crash/two-physical-Mac gate remains open until recorded.
+
+## Historical native drill (October 29)
+
+The earlier native implementation passed a one-physical-Mac live drill; this historical observation does not establish current Docker crash acceptance. [October29 evidence](evidence/crash-and-boundaries-2026-10-29.json) records actual cloud authorization, pinned native inference, owner SIGKILL, preserved state and recovery. Component fixtures remain separate from this live evidence.
 
 ## Observed live run
 
@@ -19,41 +23,31 @@ pnpm --filter @panas/integration run local-boundaries-seam --config /private/pat
 
 The commands use actual TEST_CREDIT purchases. Preserve private artifacts and review unknown reservations under the existing audited operator policy. They do not stop shared Volcano services or sleep the Mac.
 
-## Implemented behavior
 
-Both provider entry points claim the private data directory **before** opening request or nonce stores. A live recorded PID blocks a second host; PID reuse also blocks rather than risking another process. An atomic startup guard serializes dead-owner recovery. With a valid dead-owner record, the host probes and removes only a non-listening Unix socket; regular files, symlinks, live sockets and untracked stale sockets are refused.
+## Current Docker ownership and recovery
 
-The owner record remains through shutdown, so a successor cannot access the store merely because an early cleanup callback ran while its predecessor is still alive. The native runtime gets a short cleanup window on restart, but an occupied port is never adopted or signaled.
+The Mac launcher owns the two containers and sends a heartbeat lease to the gateway. Lease loss or closed stdin terminates the gateway; owned-container cleanup stops the worker as the launcher exits. Never infer that a public provider is healthy from a surviving Docker process alone: current startup, capability, peer and registry evidence are required.
 
-Native Ollama and external MCPWire CLI groups run beneath a small Node owner guard. The guard's private IPC channel closes when its parent dies, including SIGKILL. It terminates the owned group, reaps the native leader and kills remaining descendants. The CLI's stdio remains the transport stream; its bounded exit metadata travels on the separate guard channel. MCPWire remains an external pinned CLI.
+Persistent request, nonce and terminal-outbox state lives in the provider-specific gateway volume. On startup, the host claims that state before recovery and rejects a live predecessor. Owner metadata includes a container scope so PID reuse in a newly created gateway is not mistaken for the previous owner. A live owner in the same scope still blocks a second host. Untracked sockets, incomplete claims and malformed ownership require conservative owner review.
 
-Recovery uses the original provider key, request encryption key, nonce key and durable records. Interrupted `running` requests become `unknown`; they are never executed again automatically or declared cancelled/completed to manufacture a refund. Completed results within the existing retention window and pending terminal events remain available for authenticated retrieval and idempotent delivery. A new launch still runs capability tests and publishes a new startup and share ticket.
+Retain the original provider key, encryption keys and Docker state volume. Interrupted `running` records become `unknown`; they are not automatically executed again or declared cancelled/completed to manufacture a refund. Durable completed results remain retrievable within retention, and pending signed terminal events retry idempotently. A new gateway launch obtains a fresh startup, capability suite and share ticket before readiness.
 
-## Focused evidence in this batch
+The offline worker owns Ollama's process group. The gateway uses authenticated Unix-socket runtime IPC; neither its runtime nor transport is a native host Ollama service. The owner-guard/process-group utility remains part of child supervision inside the relevant container.
 
-`apps/provider/src/crash-recovery.test.ts` uses real subprocess termination with a fake native HTTP executable and fake CLI. It verifies:
+## Evidence boundaries
 
-- a second owner is rejected before mutating a running record;
-- killing the owner stops both detached groups, including SIGTERM-resistant fixture leaders;
-- restart reclaims the stale socket and preserves encryption keys, completed encrypted result bytes, nonce bytes and a pending terminal record;
-- interrupted state becomes unknown without fabricating a terminal result;
-- a busy unrelated runtime listener survives a refused restart.
+[Docker validation](../validation/docker-sandbox.md) records actual local inference/cancellation and gateway recreation with retained-volume ownership recovery. A unit test covers live PID reuse across different container scopes. Those checks do not establish a remote crash while accepted generation was active or successful cloud settlement after that crash.
 
-Existing runtime, host shutdown, signed-host service and MCPWire lifecycle fixtures cover the adjoining boundaries. These are component fixtures, not live cloud, real-model, or physical-host evidence. No new `provider-crash-e2e` passing artifact is asserted here.
+The earlier `apps/provider/src/crash-recovery.test.ts` subprocess fixtures use a fake native HTTP executable and fake CLI. They verify predecessor exclusion, owner-death group cleanup, stale-socket recovery, preservation of encrypted result/nonce/outbox bytes and conservative unknown-state handling. They are useful component checks, not native production serving instructions or current Docker end-to-end evidence.
 
-## Repeat on the second physical Mac
+## Deferred current-build live drill
 
-1. Use fresh isolated TEST_CREDIT fixtures and record the reviewed source and deployed release. Launch the real pinned model and external MCPWire provider; observe passing launch tests and buyer discovery.
-2. Purchase once through the buyer facade. Establish that native generation is actually active before the crash. A stored `running` flag or a held **completed** HTTP response does not establish mid-generation activity; report the observation accurately if the small model finishes too quickly.
-3. Capture the exact owned host PID, startup and child groups privately. Kill only that provider host PID with SIGKILL. Do not kill another listener, a general Ollama service, the Mac, or shared Volcano services.
-4. Confirm the owned runtime and transport groups stop, then restart with the same data directory, provider key, model and limits. Require a new passing capability suite, startup and share ticket.
-5. Use a fresh authenticated retrieval through the buyer facade and current descriptor. Verify the original request/receipt binding, original completed result if one was durably recorded, unknown/pending handling for interrupted work, preserved nonce replay protection and no automatic inference replay or duplicate debit.
-6. Check terminal-outbox idempotency and financial invariants. Unknown authorized work remains held pending the existing audited reconciliation/operator policy; do not release it simply to tidy the drill. Stop only owned fixture processes and retain redacted evidence.
+1. Use isolated enrolled fixtures and record the exact CLI/image/source and deployed backend release. Start the Docker provider through `panas provider` with its owner environment, approved model, retained volume and selected free/test asset. A devnet-USDC case additionally requires the separately validated [funding flow](../payments.md).
+2. Purchase once through the buyer facade. Observe actual worker generation before inducing the fault; a stored `running` flag or held completed response is not proof of ongoing computation.
+3. Identify the exact owned launcher, gateway and worker privately. Test launcher loss and gateway loss as separate cases using only the corresponding owned PID/container. Do not signal a shared Docker daemon, unrelated runtime or cloud service. Record which containers actually stop and when leases expire.
+4. Restart via the same CLI/environment, provider key and state volume. Require a fresh passing container/capability suite, startup/share and peer/registry publication. Never remove the volume to bypass an ownership or uncertainty error.
+5. Retrieve the original request through fresh action authorization and the current descriptor. Verify its original request/startup binding, preserved durable result when available, unknown/pending handling otherwise, nonce protection and no automatic execution replay or duplicate debit.
+6. Check terminal-outbox idempotency and authoritative receipt/ledger/hold invariants. Uncertain authorized work stays held until audited reconciliation decides its outcome. Stop only the owned fixture containers and retain metadata-only evidence.
 
-Keep the corresponding #10 live-validation gate unchecked until this actually runs. Full two-Mac observation remains a separate manual gate.
 
-## Conservative recovery cases
-
-Upgrade an older host by stopping it normally first. Do not delete keys, request files or nonces to make startup succeed. A legacy stale socket without an owner record is not automatically trusted.
-
-If the host was killed during the tiny startup-claim transaction, `host.starting` may remain. The next startup refuses it. An owner must verify that no startup/host is still running before removing only that empty guard and reviewing owner/socket metadata. Likewise, a reused live PID or malformed owner record requires manual review; never signal a PID merely because it appears in `host.owner.json`.
+Keep issue #10's physical crash acceptance gate pending until the matching observations exist. Older native artifacts remain evidence for their recorded build only.

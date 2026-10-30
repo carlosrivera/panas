@@ -1,8 +1,10 @@
-# Team implementation plan
+# Implementation plan and historical issue map
 
-This plan divides the prototype into reviewable GitHub issues. `docs/issues.json` contains publishable issue bodies; dependency references link to published GitHub issues. Published issue links appear below; ownership lanes are recommendations, not GitHub assignments.
+The current implementation uses a Docker gateway/offline Linux ARM64 worker and prepaid Solana devnet USDC, with TEST_CREDIT retained for regression testing. See [architecture](architecture.md), [Docker boundary](docker-sandbox.md), and [payments](payments.md) for current contracts. The buyer does not require a Mac.
 
-The foundation team owns the first issue and supplies shared contracts, tooling, CLI boundaries, launch skeleton, health-function scaffold, and CI. Follow-up owners complete runtime behavior and integrations. Generated deployment configuration is deployment-ready scaffolding, not evidence that a cloud project is live.
+The issue map below preserves the original foundation plan, not current completion status. `docs/issues.json` archives the original issue bodies with historical-scope notices; dependency references link to published GitHub issues. Published issue links appear below; ownership lanes are recommendations, not GitHub assignments.
+
+The original foundation issue supplied shared contracts, tooling, CLI boundaries, a launch skeleton, health-function scaffold and CI; the later runtime, host, buyer, registry, accounting and deployment implementations now exist. Generated deployment configuration is deployment-ready scaffolding, not evidence that a cloud project is live.
 
 ## Issue map
 
@@ -37,7 +39,7 @@ Keys F1–F10 are planning keys, not GitHub issue numbers.
 - Registry readiness is computed from fresh capability evidence and heartbeat expiry at read/admission time; a cleanup job is not the source of truth.
 - Accounting owns quote/ledger policy. Buyer and provider enforce authorized bounds without maintaining competing balance calculations.
 - The informational frontend consumes a safe read projection and is outside the required buyer transaction.
-- Real-money/blockchain work is a later explicit issue once the test-credit transaction, refund behavior, and payout policy are proven.
+- Solana devnet prepaid funding and asset-bound settlement are implemented. Mainnet custody, automated on-chain payouts and wallet withdrawals remain separate work; recorded test-credit inference and Docker validation do not establish a live funded Solana drill.
 
 ## Completion evidence
 
@@ -45,4 +47,4 @@ Each implementation PR links its issue, states what changed, records relevant te
 
 ## Common defaults
 
-Use a pinned small approved model (initial proposal `qwen2.5:0.5b`) on macOS/Apple Silicon, one active request, queue depth two, 2,048 context tokens including template overhead, 128 output tokens, and a 60-second execution deadline. Validate these in capability tests before advertising them. Heartbeat defaults are 15 seconds with 45-second expiry. Fixed quotes and all disclosed fees fit within owner-authorized spending caps.
+Use pinned `qwen2.5:0.5b` on the network-disabled Linux ARM64 Docker CPU worker, launched from the currently supported Apple Silicon Mac, one active request, queue depth two, 2,048 context tokens including template overhead, 128 output tokens, and a 60-second execution deadline. Validate these in capability tests before advertising them. Heartbeat defaults are 15 seconds with 45-second expiry. Fixed quotes and all disclosed fees fit within owner-authorized spending caps.

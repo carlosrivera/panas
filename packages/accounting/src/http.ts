@@ -10,6 +10,23 @@ function json(value: unknown, status = 200) {
         },
     });
 }
+// Existing released buyers reject unknown descriptor fields. Only clients that
+// explicitly understand UDP hints receive them; grant/receipt bytes stay intact.
+function buyerJson(value: unknown, request: Request) {
+    if (
+        request.headers.get("x-panas-peer-addresses") !== "1" &&
+        value &&
+        typeof value === "object" &&
+        "descriptor" in value &&
+        value.descriptor &&
+        typeof value.descriptor === "object"
+    ) {
+        const descriptor = { ...value.descriptor } as Record<string, unknown>;
+        delete descriptor.peerAddresses;
+        return json({ ...value, descriptor });
+    }
+    return json(value);
+}
 export function createHttpHandler(service: AccountingService) {
     return async (request: Request): Promise<Response> => {
         try {
@@ -69,10 +86,22 @@ export function createHttpHandler(service: AccountingService) {
                 url.pathname,
                 body,
             );
+            if (request.method === "POST" && url.pathname === "/balance")
+                return json(await service.balance(actor, body));
+            if (
+                request.method === "POST" &&
+                url.pathname === "/funding/solana-devnet/intents"
+            )
+                return json(await service.createFundingIntent(actor, body));
+            if (
+                request.method === "POST" &&
+                url.pathname === "/funding/solana-devnet/confirm"
+            )
+                return json(await service.confirmFunding(actor, body));
             if (request.method === "POST" && url.pathname === "/quotes")
                 return json(await service.quote(actor, body));
             if (request.method === "POST" && url.pathname === "/purchases")
-                return json(await service.purchase(actor, body));
+                return buyerJson(await service.purchase(actor, body), request);
             if (
                 request.method === "POST" &&
                 url.pathname === "/provider/descriptor"
@@ -94,7 +123,7 @@ export function createHttpHandler(service: AccountingService) {
                 );
             const id = z.uuid().parse(match[2]);
             if (request.method === "GET" && !match[1] && !match[3])
-                return json(await service.getRequest(actor, id));
+                return buyerJson(await service.getRequest(actor, id), request);
             if (
                 request.method === "POST" &&
                 match[1] &&

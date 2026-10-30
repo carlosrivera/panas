@@ -1,12 +1,16 @@
 import { z } from "zod";
-import { atomicAmountSchema, providerStateSchema } from "./index.js";
+import {
+    atomicAmountSchema,
+    providerStateSchema,
+    paymentCurrencySchema,
+} from "./index.js";
 import { capabilityReportSchema } from "./provider.js";
 
 export const registryPriceSchema = z
     .object({
         version: z.string().min(1).max(80),
         totalAtomic: atomicAmountSchema,
-        currency: z.literal("TEST_CREDIT"),
+        currency: paymentCurrencySchema,
     })
     .strict();
 export const registrationSchema = z
@@ -28,6 +32,7 @@ export const discoveryQuerySchema = z
         minContextTokens: z.number().int().positive().max(2048).optional(),
         minOutputTokens: z.number().int().positive().max(128).optional(),
         maxPriceAtomic: atomicAmountSchema.optional(),
+        currency: paymentCurrencySchema.optional(),
         maxLatencyMs: z.number().nonnegative().max(60000).optional(),
         readyOnly: z.boolean().default(true),
         limit: z.number().int().min(1).max(50).default(20),

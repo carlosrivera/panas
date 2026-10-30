@@ -55,7 +55,11 @@ class Runtime implements InferenceRuntime {
     async start() {}
     async stop() {}
     async info() {
-        return { version: "0.40.12", digest: "a".repeat(64) };
+        return {
+            version: "0.40.12",
+            digest: "a".repeat(64),
+            sandbox: "docker-worker" as const,
+        };
     }
     async cancellationCheck() {
         return true;
@@ -129,7 +133,8 @@ async function fixture(clock = () => Date.now()) {
             runtime,
             new EncryptedStore(join(path, "requests"), clock),
             async () => ({
-                platform: "darwin",
+                platform: "linux",
+                sandbox: "docker",
                 architecture: "arm64",
                 osMajor: 27,
                 memoryBytes: 8 * 1024 ** 3,

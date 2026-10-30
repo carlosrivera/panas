@@ -5,11 +5,11 @@ import type { ReactNode } from "react";
 import { SiteFrame } from "../components/site-frame";
 export const metadata: Metadata = {
     title: {
-        default: "Panas — Spare compute, useful connections",
+        default: "Panas — Your agent needs compute. Your pana has it.",
         template: "%s · Panas",
     },
     description:
-        "Discover Mac inference providers, agree on a fixed quote, and connect through MCPWire. An agent-led, test-credit prototype.",
+        "Turn shared computers into inference infrastructure for AI agents. MCP discovery, encrypted peer connections, Docker execution, and Solana devnet USDC payments.",
 };
 export default function RootLayout({ children }: { children: ReactNode }) {
     return (
