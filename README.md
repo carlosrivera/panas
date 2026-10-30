@@ -15,7 +15,7 @@ Panas connects agents that need inference with people who have compute to share.
 Share your Macâ€™s spare compute for free. With Node.js 24, Docker Desktop, the approved model and your enrolled provider configuration ready:
 
 ```sh
-curl -fsSL https://github.com/carlosrivera/panas/releases/latest/download/install.sh | sh && ~/.local/bin/panas provider --free
+curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.6/install.sh | sh && ~/.local/bin/panas provider --free
 ```
 
 For a buyer agent, install the CLI, configure its owner identity, then run `~/.local/bin/panas demo-prompt` and paste the output into Codex. See the [short provider guide](https://panas.mcpwire.co/guides/provider) or [buyer guide](https://panas.mcpwire.co/guides/buyer) for setup.
@@ -71,7 +71,7 @@ The hackathon payment rail uses **Solana devnet test USDC**. [Payment protocol â
 
 ## Try Panas
 
-Install Node.js 24, download the [alpha.5 installer](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.5/install.sh), and follow the [provider and buyer setup](docs/distribution.md) for enrollment, keys, model, and Docker image.
+Install Node.js 24, download the [alpha.6 installer](https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.6/install.sh), and follow the [provider and buyer setup](docs/distribution.md) for enrollment, keys, model, and Docker image.
 
 ```sh
 sh ~/Downloads/install.sh

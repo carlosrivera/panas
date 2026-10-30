@@ -1,16 +1,21 @@
-Panas alpha.5 moves public client configuration to `https://panas.mcpwire.co/registry` (MCP at `/registry/mcp`) and `https://panas.mcpwire.co/accounting`. The CLI and matching Linux ARM64 Docker image preserve these base paths for discovery, provider publication and signed accounting requests. Both artifacts are built from the same clean source commit.
+Panas alpha.6 includes the native macOS buyer → Docker provider routing fix, the portable free/paid demo prompts and MCPWire 1.1.3. The CLI and matching Linux ARM64 Docker image come from the same clean source commit.
 
-Upgrading from alpha.4: stop provider and buyer MCP processes, rerun this release's installer, update `PANAS_REGISTRY_URL` / `PANAS_ACCOUNTING_URL` in provider configuration and `registryUrl` / `accountingUrl` in buyer owner JSON to the URLs above, then restart/reconnect. Keep all identities, keys, model data, sessions and durable state. The installer preserves private owner files, and the provider loads the matching alpha.5 image from this release when required. Earlier binaries cannot use mounted base paths.
+The gateway publishes one explicitly reserved UDP port and shares bounded connection hints only through the encrypted private handoff. The CPU worker keeps networking disabled. Existing non-root, read-only filesystem, capability and resource restrictions remain in place. No host networking, Docker socket or native inference fallback is added.
 
-Panas hackathon demo CLI. The provider launcher requires macOS 14+ on Apple Silicon and Docker Desktop; gateway/worker execution is Linux ARM64. The buyer requires Node.js 24 and an MCP client, not a Mac, Docker or a local model. Buyer process supervision supports macOS/Linux; Windows supervision is outside the current matrix.
-
-Download `install.sh` from this release, then run `sh ~/Downloads/install.sh`. It installs the checksum-verified compiled CLI under your home directory. With operator-provided configuration in `~/.config/panas`:
+Install or upgrade:
 
 ```sh
+curl -fsSL https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.6/install.sh -o /tmp/panas-install.sh
+sh /tmp/panas-install.sh
 ~/.local/bin/panas provider --free
-~/.local/bin/panas demo-prompt | pbcopy
+# On the buyer computer, after owner configuration:
+~/.local/bin/panas demo-prompt
 ```
 
-Paste the prompt into Codex to configure the buyer MCP, discover a ready provider, accept one free zero-charge request, execute it once and verify its receipt. `panas codex-config` emits Codex TOML with absolute executable paths; `panas mcp-config` emits generic MCP JSON.
+Stop existing provider/buyer processes before upgrading; preserve identities, keys, model data, sessions and durable state. Public service bases remain `https://panas.mcpwire.co/registry` and `https://panas.mcpwire.co/accounting`. The installer preserves private owner files.
 
-Docker Desktop, a matching release image, pinned model installation, enrollment and private configuration are required. The public provider path uses a Docker gateway and separate network-disabled CPU inference worker, with read-only roots, non-root identities and bounded resources. No native fallback, host home, Docker socket or treasury mount is supported. See `docs/docker-sandbox.md` for limits and validation. A CLI release does not deploy the matching Volcano backend. Mainnet and automated wallet payouts remain disabled.
+The shipped demo prompt has no developer-specific home path or fixed provider ID. `panas codex-config` generates the installed Node/package paths for the current user; enrollment and owner configuration are still required. The provider requires Apple Silicon macOS 14+, Docker Desktop and the pinned model; the buyer needs Node.js 24 and an MCP client.
+
+Testing is intentionally deferred for this publication at the maintainer’s request: no fresh unit, integration, sandbox, inference, installer or post-release smoke tests were run. Artifacts were built and packaged with matching source metadata and SHA-256 checksums. Prior native macOS demo evidence is recorded in #56; this publication does not claim a new run. Two physical Macs and other network/NAT paths remain manual acceptance checks.
+
+Mainnet and automated on-chain payouts remain disabled.
