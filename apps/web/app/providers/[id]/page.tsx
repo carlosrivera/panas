@@ -1,10 +1,22 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { pageMetadata } from "../../../lib/site-metadata";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { PageIntro } from "../../../components/site-shell";
 import { ProviderDirectory } from "../../../components/provider-directory";
-export const metadata: Metadata = { title: "Provider details" };
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+    const { id } = await params;
+    return pageMetadata(
+        "Provider details",
+        "Explore this provider’s model, limits, price and reported availability on Panas.",
+        z.uuid().safeParse(id).success ? `/providers/${id}` : "/providers",
+    );
+}
 export default async function Provider({
     params,
 }: {

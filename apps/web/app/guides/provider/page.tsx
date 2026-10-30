@@ -1,12 +1,17 @@
 import Link from "next/link";
-import type { Metadata } from "next";
+import { pageMetadata } from "../../../lib/site-metadata";
 import {
     CodeSample,
     GuideLayout,
+    GuideQuickStart,
     GuideNotice,
     GuideSection,
 } from "../../../components/guide-layout";
-export const metadata: Metadata = { title: "Prepare a provider Mac" };
+export const metadata = pageMetadata(
+    "Share your Mac",
+    "Start a Docker-isolated Panas provider on your Apple Silicon Mac. Share spare inference capacity for free or a fixed price.",
+    "/guides/provider",
+);
 const runtimeTemplate = `# Save operator-supplied values in ~/.config/panas/provider.env (mode 0600)
 PANAS_PROVIDER_ID=<operator-enrolled-uuid>
 PANAS_PROVIDER_PRIVATE_KEY_PATH=/absolute/private/provider.pem
@@ -30,7 +35,22 @@ export default function ProviderGuide() {
         <GuideLayout
             audience="Provider"
             title="Give your spare compute a useful connection."
-            description="Prepare an Apple Silicon Mac to serve one approved small model inside Docker. The controller tests capabilities before advertising readiness and keeps inference separate from peer connections."
+            description="Share spare compute from your Mac for free, with inference isolated in Docker."
+            quickStart={
+                <GuideQuickStart
+                    command={
+                        "curl -fsSL https://github.com/carlosrivera/panas/releases/latest/download/install.sh | sh && ~/.local/bin/panas provider --free"
+                    }
+                >
+                    <>
+                        <a href="#prepare" className="inline-link">
+                            Setup requirements
+                        </a>
+                        : Node.js 24, Docker Desktop, the approved model and
+                        your enrolled provider configuration.
+                    </>
+                </GuideQuickStart>
+            }
             sections={[
                 { id: "prepare", label: "Prepare the Mac" },
                 { id: "model", label: "Download explicitly" },
@@ -46,12 +66,12 @@ export default function ProviderGuide() {
             >
                 <p>
                     Use Apple Silicon, macOS 14 or newer, Node.js 24 and running
-                    Docker Desktop. Install the compiled alpha.5 release; no
+                    Docker Desktop. Install the latest compiled release; no
                     source checkout or container-registry account is required.
                     Enroll the provider UUID and Ed25519 public key with the
                     operator before publication.
                 </p>
-                <CodeSample label="Download and run the release installer">{`curl --fail --location https://github.com/carlosrivera/panas/releases/download/v0.1.0-alpha.5/install.sh -o /tmp/panas-install.sh
+                <CodeSample label="Download and run the release installer">{`curl --fail --location https://github.com/carlosrivera/panas/releases/latest/download/install.sh -o /tmp/panas-install.sh
 sh /tmp/panas-install.sh`}</CodeSample>
                 <p>
                     Public serving requires a Docker gateway and a separate

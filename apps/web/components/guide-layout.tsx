@@ -6,12 +6,14 @@ export function GuideLayout({
     title,
     description,
     sections,
+    quickStart,
     children,
 }: {
     audience: string;
     title: string;
     description: string;
     sections: { id: string; label: string }[];
+    quickStart?: ReactNode;
     children: ReactNode;
 }) {
     return (
@@ -25,6 +27,7 @@ export function GuideLayout({
                     Available now · Operator-assisted prototype
                 </span>
             </PageIntro>
+            {quickStart}
             <div className="guide-layout">
                 <aside className="guide-toc">
                     <nav aria-label="On this page">
@@ -37,7 +40,7 @@ export function GuideLayout({
                         ))}
                     </nav>
                     <p>
-                        Test credits only.
+                        Free or Solana devnet USDC.
                         <br />
                         No real-money pilot.
                     </p>
@@ -94,5 +97,25 @@ export function GuideNotice({
             <h3>{title}</h3>
             <div>{children}</div>
         </div>
+    );
+}
+
+export function GuideQuickStart({
+    command,
+    children,
+}: {
+    command: string;
+    children: ReactNode;
+}) {
+    return (
+        <section
+            className="guide-quick-start"
+            aria-labelledby="quick-start-title"
+        >
+            <p className="eyebrow">TL;DR</p>
+            <h2 id="quick-start-title">Get started.</h2>
+            <CodeSample label="Run in your terminal">{command}</CodeSample>
+            <p>{children}</p>
+        </section>
     );
 }
