@@ -2,6 +2,28 @@
 
 Current serving uses the [Docker gateway and offline worker](../docker-sandbox.md). Recovery implementation, component fixtures and local container restart observations are distinct from a crash during accepted remote inference. The full paid Docker crash/two-physical-Mac gate remains open until recorded.
 
+## Historical native drill (October 29)
+
+The earlier native implementation passed a one-physical-Mac live drill; this historical observation does not establish current Docker crash acceptance. [October29 evidence](evidence/crash-and-boundaries-2026-10-29.json) records actual cloud authorization, pinned native inference, owner SIGKILL, preserved state and recovery. Component fixtures remain separate from this live evidence.
+
+## Observed live run
+
+The local observer changed only Ollama response framing to its supported [streaming API](https://docs.ollama.com/api/generate) for one armed request. The prompt/profile/output bound remained unchanged. A non-final native chunk at23:19:00.451Z triggered SIGKILL of the verified owned host at23:19:00.482Z. No completed response was held. All six captured descendants stopped and both owned runtime ports closed.
+
+Restart with the original key/data passed fresh capability/peer checks and produced a new startup. Request/nonce encryption keys and the completed control record's encrypted bytes were preserved. The interrupted authorized request recovered as unknown/pending with no receipt or settlement; buyer replay was rejected. Original completed work remained retrievable with its same receipt and a fresh paid bounded request completed. A subsequent real startup-binding check rejected the old grant before nonce consumption, while refreshed original-request action authority retrieved unknown state.
+
+The interrupted request initially held2 TEST_CREDIT pending separate operator review. After the real deadline and explicit human approval, the existing audited operator transaction released that reservation with a zero-debit failed receipt. Balance stayed994, held credits fell2→0 and settlement count stayed0. Audit `95b45418-eab5-42d2-982f-68875752e107` identifies that separate decision; it did not pretend the provider knew the interrupted outcome. Both fixtures now have zero holds, no overdue pending requests or financial invariant failures. The evidence records the earlier preflight ownership refusal and source/instrumentation attribution; this is not a claim of hardware attestation or two hosts.
+
+Reproduce with a fresh private setup and verified release reference:
+
+```sh
+pnpm --filter @panas/integration run crash-seam --config /private/path/run.json
+pnpm --filter @panas/integration run local-boundaries-seam --config /private/path/run.json
+```
+
+The commands use actual TEST_CREDIT purchases. Preserve private artifacts and review unknown reservations under the existing audited operator policy. They do not stop shared Volcano services or sleep the Mac.
+
+
 ## Current Docker ownership and recovery
 
 The Mac launcher owns the two containers and sends a heartbeat lease to the gateway. Lease loss or closed stdin terminates the gateway; owned-container cleanup stops the worker as the launcher exits. Never infer that a public provider is healthy from a surviving Docker process alone: current startup, capability, peer and registry evidence are required.
@@ -26,5 +48,6 @@ The earlier `apps/provider/src/crash-recovery.test.ts` subprocess fixtures use a
 4. Restart via the same CLI/environment, provider key and state volume. Require a fresh passing container/capability suite, startup/share and peer/registry publication. Never remove the volume to bypass an ownership or uncertainty error.
 5. Retrieve the original request through fresh action authorization and the current descriptor. Verify its original request/startup binding, preserved durable result when available, unknown/pending handling otherwise, nonce protection and no automatic execution replay or duplicate debit.
 6. Check terminal-outbox idempotency and authoritative receipt/ledger/hold invariants. Uncertain authorized work stays held until audited reconciliation decides its outcome. Stop only the owned fixture containers and retain metadata-only evidence.
+
 
 Keep issue #10's physical crash acceptance gate pending until the matching observations exist. Older native artifacts remain evidence for their recorded build only.

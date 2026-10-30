@@ -1,0 +1,204 @@
+{
+    "schemaVersion": 1,
+    "source": "fault_injected_cloud_one_mac",
+    "physicalMachineCount": 1,
+    "issue10Complete": false,
+    "release": {
+        "status": "referenced_verified_report",
+        "reference": {
+            "projectId": "7db5f8f4-c378-4ba5-a48f-f435bc4c034b",
+            "commit": "281033a964c98a9a173d440030586dd64fb7135b",
+            "verifiedAt": "2026-10-29T23:03:33.397Z"
+        }
+    },
+    "crashSourceCommit": "1baa6711ca4323f5842bcdc6ff56c097169fe186",
+    "crashSourceTreeDirty": false,
+    "boundarySourceCommit": "ee3611f14e1cb794b7bd5702376f88668ef7d198",
+    "boundarySourceAttribution": "Recorded CLI invocation immediately after this clean commit; the original boundary report did not yet embed source fields.",
+    "runtimePin": {
+        "model": "qwen2.5:0.5b",
+        "version": "0.40.12",
+        "digest": "a8b0c51577010a279d933d14c2a8ab4b268079d44c5c8830c0a93900f1827c67",
+        "verification": "Passing startup capability suite required before ready discovery"
+    },
+    "injection": "Owned native HTTP observer requests stream=true for the armed generation; first non-final chunk triggers owner SIGKILL. No completed response is held.",
+    "preflight": "An earlier attempt completed one legitimate 2-credit control request, then refused the wrapper command format before any crash; its owned processes stopped. The successful drill began with balance998/held0.",
+    "crash": {
+        "status": "passed_with_unknown_pending_reconciliation",
+        "startedAt": "2026-10-29T23:18:08.114Z",
+        "finishedAt": "2026-10-29T23:20:01.138Z",
+        "originalStartup": "e52a2240-af51-4eab-90fd-59712b032443",
+        "recoveredStartup": "469b730a-afee-46ac-9a68-f29315d0b293",
+        "interruptedRequestId": "3ad87574-fede-4155-b86a-d40503364ee9",
+        "crashObservation": {
+            "observedAt": "2026-10-29T23:19:00.451Z",
+            "killedAt": "2026-10-29T23:19:00.482Z",
+            "nonFinalNativeChunk": true,
+            "completedNativeResponseHeld": false
+        },
+        "ownedRuntimePortsClosedAfterCrash": true,
+        "capturedDescendantsStopped": 6,
+        "encryptionAndCompletedBytesPreserved": true,
+        "buyerReplayRejected": "UNCERTAIN",
+        "retrieval": {
+            "status": "pending",
+            "providerStatus": "unknown",
+            "receipt": null
+        },
+        "pendingAfterRecovery": {
+            "requestExists": true,
+            "status": "pending",
+            "hasReceipt": false,
+            "settlements": 0,
+            "balance": "994",
+            "held": "2"
+        },
+        "cleanup": {
+            "ownedProcessesStopped": true,
+            "portsClosed": true,
+            "crashed": true
+        }
+    },
+    "controlReceipt": {
+        "receiptId": "5e622b0b-587e-482d-aa1b-8ae1a7d80704",
+        "requestId": "0d7a44a6-0da8-4700-9d02-74a6fa184496",
+        "status": "completed",
+        "buyerDebitAtomic": "2",
+        "providerEarningsAtomic": "2",
+        "feeAtomic": "0"
+    },
+    "postRecoveryReceipt": {
+        "receiptId": "6d0b1eaa-6f87-4bfd-9811-8f34bf82e175",
+        "requestId": "ce37a0d0-82ae-4e6c-8569-457a1d7bd263",
+        "status": "completed",
+        "buyerDebitAtomic": "2",
+        "providerEarningsAtomic": "2",
+        "feeAtomic": "0"
+    },
+    "boundaries": {
+        "version": 1,
+        "mode": "live-local-boundaries",
+        "physicalMachineCount": 1,
+        "startedAt": "2026-10-29T23:23:58.615Z",
+        "issue10Complete": false,
+        "startupBinding": {
+            "status": "passed",
+            "rejection": "EXECUTION_BINDING_MISMATCH",
+            "nonceConsumed": false,
+            "oldStartup": "e52a2240-af51-4eab-90fd-59712b032443",
+            "currentStartup": "979c2d4b-9696-4096-a496-807a93de835d"
+        },
+        "originalStartupRetrieval": "unknown_without_execution",
+        "rateCap": {
+            "status": "passed",
+            "accepted": 6,
+            "seventh": "RATE_LIMITED",
+            "elapsedMs": 10362,
+            "twoPersistentPeers": true,
+            "requestIds": [
+                "aaebefab-90b3-40ea-bd96-03fbbe029f4e",
+                "bc0716f3-8897-48d6-861f-b06f2d6463e4",
+                "1fd08d20-24f7-4134-8b15-08b9428d53af",
+                "2d1118f4-ea38-4030-aa50-5811d7a611a9",
+                "9a57bb1f-789e-4109-8745-08d165f8d35a",
+                "5ee2ce3e-0547-4cb1-9ad7-f4531aa9d7bb",
+                "34ae8ff2-699e-4cd5-97e7-da1f8f969792"
+            ]
+        },
+        "rateAfterRestart": {
+            "status": "passed",
+            "rejection": "RATE_LIMITED",
+            "elapsedMs": 43797
+        },
+        "realMinuteElapsed": {
+            "status": "passed",
+            "elapsedMs": 81506,
+            "requestId": "88ddb630-8d0c-454d-b6c9-3adecf85c5bc"
+        },
+        "accounting": {
+            "balance": "86",
+            "held": "0",
+            "completed": 7,
+            "failed": 2,
+            "seventhAuthorized": false,
+            "seventhDebitAtomic": "0"
+        },
+        "status": "passed",
+        "finishedAt": "2026-10-29T23:26:20.963Z"
+    },
+    "financialHealth": {
+        "observedAt": "2026-10-29T23:33:02.127Z",
+        "ledgerImbalanceCount": 0,
+        "heldMismatchCount": 0,
+        "requiresOperatorReview": true,
+        "overduePendingCount": 1,
+        "ownedPortsClosed": true
+    },
+    "pendingReview": {
+        "observedAt": "2026-10-29T23:30:11.153Z",
+        "requestId": "3ad87574-fede-4155-b86a-d40503364ee9",
+        "status": "pending",
+        "authorizedAt": "2026-10-29T23:19:00.231Z",
+        "reconcileAfter": "2026-10-29T23:28:51.782Z",
+        "hasReceipt": false,
+        "operatorResolutionPerformed": false,
+        "reason": "Authorized unknown work requires separate operator review; no automatic release or fabricated outcome."
+    },
+    "notRun": [
+        "two physical Macs",
+        "physical Mac sleep/wake",
+        "actual deployed Volcano outage",
+        "natural 24-hour action-grant expiry"
+    ],
+    "operatorResolution": {
+        "observedAt": "2026-10-29T23:36:21.070Z",
+        "requestId": "3ad87574-fede-4155-b86a-d40503364ee9",
+        "action": "release",
+        "authorization": "Explicit human approval in this chat after concrete crash evidence and real deadline review",
+        "reconcileAfter": "2026-10-29T23:28:51.782Z",
+        "observedAfterRealDeadline": true,
+        "before": {
+            "account": {
+                "balance": "994",
+                "held": "2"
+            },
+            "settlements": 0
+        },
+        "after": {
+            "account": {
+                "balance": "994",
+                "held": "0"
+            },
+            "settlements": 0
+        },
+        "receipt": {
+            "receiptId": "cf2145a5-bd85-47d8-acbd-6cddcdb5fa95",
+            "requestId": "3ad87574-fede-4155-b86a-d40503364ee9",
+            "status": "failed",
+            "currency": "TEST_CREDIT",
+            "buyerDebitAtomic": "0",
+            "providerEarningsAtomic": "0",
+            "feeAtomic": "0",
+            "issuedAt": "2026-10-29T23:36:19.595Z",
+            "resultDigest": null,
+            "usage": null
+        },
+        "auditId": "95b45418-eab5-42d2-982f-68875752e107",
+        "health": {
+            "ledgerImbalanceCount": 0,
+            "heldMismatchCount": 0,
+            "overduePendingCount": 0,
+            "requiresOperatorReview": false
+        }
+    },
+    "finalHealth": {
+        "ledgerImbalanceCount": 0,
+        "heldMismatchCount": 0,
+        "overduePendingCount": 0,
+        "requiresOperatorReview": false
+    },
+    "finalFixtureHolds": {
+        "crashBuyer": "0",
+        "rateBuyer": "0"
+    }
+}

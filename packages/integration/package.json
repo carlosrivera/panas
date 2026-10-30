@@ -13,7 +13,9 @@
         "fault-seams": "tsx src/cli.ts fault-seams",
         "deadline-seam": "tsx src/cli.ts deadline-seam",
         "reconcile-fixtures": "tsx src/cli.ts reconcile-fixtures",
-        "cancel-race-seam": "tsx src/cli.ts cancel-race-seam"
+        "cancel-race-seam": "tsx src/cli.ts cancel-race-seam",
+        "crash-seam": "tsx src/cli.ts crash-seam",
+        "local-boundaries-seam": "tsx src/cli.ts local-boundaries-seam"
     },
     "dependencies": {
         "@panas/accounting": "workspace:*",
