@@ -1,3 +1,4 @@
+import { peerAddressesSchema } from "@panas/contracts";
 import { paymentCurrencySchema } from "@panas/contracts";
 import { z } from "zod";
 import { atomicAmountSchema } from "@panas/contracts";
@@ -36,6 +37,7 @@ export const descriptorSchema = z
         startupId: z.uuid(),
         providerKeyId: digestSchema,
         providerPublicKeyPem: z.string().min(40).max(4096),
+        peerAddresses: peerAddressesSchema.optional(),
         ticket: z.string().regex(/^wire:\/\/[a-f0-9]{64}$/i),
         expiresAt: z.iso.datetime(),
     })

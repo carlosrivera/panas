@@ -61,3 +61,4 @@ jobs:
             - run: pnpm install --frozen-lockfile
             - run: ./docker/build.sh
             - run: pnpm exec tsx scripts/release/sandbox-smoke.ts
+            - run: pnpm exec tsx scripts/release/native-peer-smoke.ts

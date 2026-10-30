@@ -1,3 +1,10 @@
+import { createSocket } from "node:dgram";
+import { networkInterfaces } from "node:os";
+import {
+    gatewayDhtPort,
+    peerAddressesSchema,
+    type PeerAddress,
+} from "@panas/contracts";
 import { withReleaseImage } from "./sandbox-image.js";
 import { stageApprovedModel } from "./model-stage.js";
 import { execFile, spawn } from "node:child_process";
@@ -35,6 +42,9 @@ interface DockerInfo {
         RW: boolean;
     }[];
     State?: { Running: boolean };
+    NetworkSettings?: {
+        Ports?: Record<string, { HostIp: string; HostPort: string }[] | null>;
+    };
 }
 const exec = promisify(execFile);
 const docker = async (args: string[], timeout = 20000) =>
@@ -47,7 +57,10 @@ export function sandboxArgs(
     providerId: string,
     image: string,
     modelsPath: string,
+    hostPort = gatewayDhtPort,
 ) {
+    if (role === "gateway")
+        peerAddressesSchema.parse([{ host: "127.0.0.1", port: hostPort }]);
     const prefix = `panas-${providerId}`,
         limits = containerLimits[role];
     const args = [
@@ -87,6 +100,8 @@ export function sandboxArgs(
         "--network",
         role === "worker" ? "none" : "bridge",
     ];
+    if (role === "gateway")
+        args.push("--publish", `0.0.0.0:${hostPort}:${gatewayDhtPort}/udp`);
     args.push(
         "--mount",
         `type=volume,source=${prefix}-ipc,target=/ipc${role === "gateway" ? ",readonly" : ""}`,
@@ -116,6 +131,7 @@ export function verifySandboxInspect(
     role: "gateway" | "worker",
     providerId: string,
     imageId: string,
+    hostPort = gatewayDhtPort,
 ) {
     const h = value.HostConfig,
         c = value.Config,
@@ -146,7 +162,7 @@ export function verifySandboxInspect(
         h.CapDrop[0]?.toUpperCase() !== "ALL" ||
         !h.SecurityOpt?.includes("no-new-privileges=true") ||
         h.SecurityOpt.some((v: string) => v !== "no-new-privileges=true") ||
-        Object.keys(h.PortBindings ?? {}).length ||
+        !validPortBindings(h.PortBindings, role, hostPort) ||
         h.Devices?.length ||
         h.DeviceRequests?.length ||
         h.VolumesFrom?.length ||
@@ -190,6 +206,101 @@ export function verifySandboxInspect(
         (role === "gateway" && !h.Tmpfs?.["/run/panas"]?.includes("noexec"))
     )
         throw new Error("Bounded temporary filesystems required");
+}
+
+export function validPortBindings(
+    bindings: Record<string, unknown> | undefined,
+    role: "gateway" | "worker",
+    hostPort = gatewayDhtPort,
+) {
+    if (
+        role === "gateway" &&
+        (!Number.isSafeInteger(hostPort) || hostPort < 1 || hostPort > 65535)
+    )
+        return false;
+    const entries = Object.entries(bindings ?? {});
+    if (role === "worker") return entries.length === 0;
+    if (entries.length !== 1 || entries[0]![0] !== `${gatewayDhtPort}/udp`)
+        return false;
+    const value = entries[0]![1];
+    return (
+        Array.isArray(value) &&
+        value.length === 1 &&
+        value[0]?.HostIp === "0.0.0.0" &&
+        value[0]?.HostPort === String(hostPort)
+    );
+}
+export function advertisedPeerAddresses(
+    port: number,
+    interfaces = networkInterfaces(),
+): PeerAddress[] {
+    // IPv4 hints bypass Docker Desktop's extra NAT only when reachable. Public
+    // DHT routes remain available for other networks; no ticket is stored here.
+    const hosts = [
+        ...new Set(
+            Object.entries(interfaces)
+                .sort(
+                    ([a], [b]) =>
+                        Number(!a.startsWith("en")) -
+                        Number(!b.startsWith("en")),
+                )
+                .flatMap(([, rows]) =>
+                    (rows ?? [])
+                        .filter((row) => row.family === "IPv4" && !row.internal)
+                        .map((row) => row.address),
+                ),
+        ),
+    ];
+    const configured = process.env.PANAS_PEER_HOSTS?.split(",").map((host) =>
+        host.trim(),
+    );
+    if (configured && configured.length > 7)
+        throw new Error("At most seven advertised peer hosts allowed");
+    return peerAddressesSchema.parse(
+        [...(configured ?? hosts.slice(0, 7)), "127.0.0.1"].map((host) => ({
+            host,
+            port,
+        })),
+    );
+}
+
+/** Reserve an OS-assigned UDP port until just before Docker starts. Docker
+ * Desktop can report HostPort=0 for wildcard/empty UDP bindings on create/start.
+ * A bind race after release causes a failed start, never another mapping.
+ */
+export async function reservePeerPort() {
+    const socket = createSocket("udp4");
+    try {
+        await new Promise<void>((resolve, reject) => {
+            socket.once("error", reject);
+            socket.bind(
+                { address: "0.0.0.0", port: 0, exclusive: true },
+                resolve,
+            );
+        });
+        socket.unref();
+        const address = socket.address();
+        if (typeof address === "string")
+            throw new Error("UDP port unavailable");
+        let closed = false;
+        return {
+            port: address.port,
+            async release() {
+                if (closed) return;
+                closed = true;
+                await new Promise<void>((resolve) =>
+                    socket.close(() => resolve()),
+                );
+            },
+        };
+    } catch (error) {
+        try {
+            socket.close();
+        } catch {
+            /* an unbound failed socket needs no close */
+        }
+        throw error;
+    }
 }
 export async function prepareIpcVolume(providerId: string) {
     const name = `panas-${providerId}-ipc`;
@@ -305,11 +416,16 @@ export async function launchDockerProvider(
         modelsPath,
         process.env.PANAS_MODEL_DIGEST ?? "",
     );
+    const peerPort = await reservePeerPort().catch(async (error: unknown) => {
+        await model.cleanup();
+        throw error;
+    });
     let closed = false;
     const created: string[] = [];
     const cleanup = async () => {
         if (closed) return;
         closed = true;
+        await peerPort.release();
         for (const name of [...created].reverse()) {
             await docker(["stop", "--time", "10", name], 20000).catch(() => {});
             await docker(["rm", "--force", name]).catch(() => {});
@@ -325,7 +441,13 @@ export async function launchDockerProvider(
         for (const role of ["worker", "gateway"] as const) {
             const name = `${prefix}-${role}`;
             await docker(
-                sandboxArgs(role, providerId, imageId, model.modelsPath),
+                sandboxArgs(
+                    role,
+                    providerId,
+                    imageId,
+                    model.modelsPath,
+                    peerPort.port,
+                ),
             );
             created.push(name);
             verifySandboxInspect(
@@ -333,6 +455,7 @@ export async function launchDockerProvider(
                 role,
                 providerId,
                 imageId,
+                peerPort.port,
             );
             if (role === "worker") {
                 await docker(["start", name]);
@@ -387,27 +510,52 @@ export async function launchDockerProvider(
             ),
         };
         process.stderr.write(
-            "Panas Docker sandbox: isolated gateway + offline CPU inference worker; no host ports, Docker socket or treasury mounts.\n",
+            "Panas Docker sandbox: isolated gateway with one UDP peer port + offline CPU inference worker; no Docker socket or treasury mounts.\n",
         );
+        await peerPort.release();
         const child = spawn(
             "docker",
             ["start", "--attach", "--interactive", `${prefix}-gateway`],
             { stdio: ["pipe", "inherit", "inherit"] },
         );
+        let attachFailed = false;
+        const attached = new Promise<number | null>((resolve) => {
+            child.once("error", () => {
+                attachFailed = true;
+                resolve(null);
+            });
+            child.once("exit", resolve);
+        });
         child.stdin.on("error", () => {});
+        let hostPort: number | undefined;
+        for (let i = 0; i < 80; i++) {
+            if (attachFailed || child.exitCode !== null)
+                throw new Error("Gateway exited before UDP forwarding");
+            const row: DockerInfo | undefined = await inspect(
+                `${prefix}-gateway`,
+            );
+            const port = Number(
+                row?.NetworkSettings?.Ports?.[`${gatewayDhtPort}/udp`]?.[0]
+                    ?.HostPort,
+            );
+            if (row?.State?.Running && port === peerPort.port) {
+                hostPort = port;
+                break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        if (!hostPort) throw new Error("Gateway UDP forwarding unavailable");
+        config.env.PANAS_PEER_ADDRESSES = JSON.stringify(
+            advertisedPeerAddresses(hostPort),
+        );
         child.stdin.write(JSON.stringify(config) + "\n");
         const heartbeat = setInterval(() => {
             if (!closed) child.stdin.write("ping\n");
         }, 5000);
         try {
-            await new Promise<void>((resolve, reject) => {
-                child.once("error", reject);
-                child.once("exit", (code) =>
-                    code === 0 || closed
-                        ? resolve()
-                        : reject(new Error("Provider sandbox exited")),
-                );
-            });
+            const code = await attached;
+            if (attachFailed || (code !== 0 && !closed))
+                throw new Error("Provider sandbox exited");
         } finally {
             clearInterval(heartbeat);
             child.stdin.destroy();

@@ -74,3 +74,10 @@ export const inferenceRequestSchema = z
     })
     .strict();
 export type InferenceRequest = z.infer<typeof inferenceRequestSchema>;
+
+export {
+    peerAddressSchema,
+    peerAddressesSchema,
+    gatewayDhtPort,
+    type PeerAddress,
+} from "./connectivity.js";

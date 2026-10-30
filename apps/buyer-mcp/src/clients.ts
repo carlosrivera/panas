@@ -167,6 +167,7 @@ export function createCloudClient(options: {
                     redirect: "error",
                     headers: {
                         "content-type": "application/json",
+                        "x-panas-peer-addresses": "1",
                         "x-panas-proof": Buffer.from(
                             JSON.stringify(proof),
                         ).toString("base64url"),
@@ -246,6 +247,9 @@ export function createPeerClient(): PeerClient & { close(): Promise<void> } {
                 );
             const session = superviseJoin({
                 ticket: descriptor.ticket,
+                ...(descriptor.peerAddresses
+                    ? { peerAddresses: descriptor.peerAddresses }
+                    : {}),
                 startupTimeoutMs: 35_000,
             });
             sessions.add(session);

@@ -39,7 +39,7 @@ See [Docker boundary](docker-sandbox.md), [buyer facade](../apps/buyer-mcp/READM
 
 ## Docker isolation and runtime
 
-Both containers run as UID 10001, with read-only roots, dropped capabilities, no-new-privileges, default seccomp, CPU/memory/PID bounds and bounded temporary storage. The gateway has network egress for peers and cloud APIs. The worker has networking disabled; its internal loopback Ollama endpoint is not published to the host or peers. Gateway-to-worker requests use authenticated Unix-socket IPC on a dedicated tmpfs volume.
+Both containers run as UID 10001, with read-only roots, dropped capabilities, no-new-privileges, default seccomp, CPU/memory/PID bounds and bounded temporary storage. The gateway has network egress for peers and cloud APIs. The worker has networking disabled; its internal loopback Ollama endpoint is not published to the host or peers. The gateway publishes one UDP DHT socket, with bounded address hints delivered only in the encrypted private handoff so native buyers can reach a Docker Desktop host. Gateway-to-worker requests use authenticated Unix-socket IPC on a dedicated tmpfs volume.
 
 Only the gateway receives the provider application key, delivered over Docker stdin into private tmpfs rather than arguments, image layers or environment metadata. The worker receives verified, read-only model manifests/blobs and IPC storage. Neither container receives the host home, Docker socket or treasury key. Durable gateway state lives in a provider-specific volume and must survive restart; its disk growth needs operator monitoring.
 
